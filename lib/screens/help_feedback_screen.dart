@@ -21,7 +21,13 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
         elevation: 1,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            try {
+              Navigator.pop(context);
+            } catch (e) {
+              debugPrint('Error navigating back: $e');
+            }
+          },
         ),
         title: Text(
           AppLocalizations.of(context)!.helpAndFeedback,
@@ -51,7 +57,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF6366F1).withOpacity(0.3),
+                    color: const Color(0xFF6366F1).withValues(alpha:0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -62,7 +68,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha:0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -175,13 +181,13 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isExpanded 
-                              ? const Color(0xFF6366F1).withOpacity(0.3)
+                              ? const Color(0xFF6366F1).withValues(alpha:0.3)
                               : Colors.grey[200]!,
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
+                            color: Colors.black.withValues(alpha:0.02),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -194,6 +200,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                             // Question
                             InkWell(
                               onTap: () {
+                                if (!mounted) return;
                                 setState(() {
                                   _expandedIndex = isExpanded ? null : index;
                                 });
@@ -205,7 +212,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF6366F1).withOpacity(0.1),
+                                        color: const Color(0xFF6366F1).withValues(alpha:0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(
@@ -243,7 +250,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                 width: double.infinity,
                                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF6366F1).withOpacity(0.03),
+                                  color: const Color(0xFF6366F1).withValues(alpha:0.03),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,12 +301,12 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF04B104).withOpacity(0.2),
+                  color: const Color(0xFF04B104).withValues(alpha:0.2),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF04B104).withOpacity(0.05),
+                    color: const Color(0xFF04B104).withValues(alpha:0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -334,12 +341,16 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ContactSupportScreen(),
-                          ),
-                        );
+                        try {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ContactSupportScreen(),
+                            ),
+                          );
+                        } catch (e) {
+                          debugPrint('Error navigating to contact support: $e');
+                        }
                       },
                       icon: const Icon(Icons.message_outlined, size: 18),
                       label: Text(

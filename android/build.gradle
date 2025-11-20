@@ -1,4 +1,5 @@
 // Root build.gradle - keep plugin versions in settings.gradle to avoid conflicts
+// Note: Kotlin version is managed in settings.gradle (version 2.1.0)
 allprojects {
     repositories {
         google()

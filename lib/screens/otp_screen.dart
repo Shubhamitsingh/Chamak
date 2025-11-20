@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'home_screen.dart';
 import '../services/database_service.dart';
+import '../generated/l10n/app_localizations.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
@@ -57,14 +58,22 @@ class _OtpScreenState extends State<OtpScreen> {
 
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_secondsRemaining > 0) {
-        setState(() {
-          _secondsRemaining--;
-        });
+        if (mounted) {
+          setState(() {
+            _secondsRemaining--;
+          });
+        }
       } else {
-        setState(() {
-          _canResend = true;
-        });
+        if (mounted) {
+          setState(() {
+            _canResend = true;
+          });
+        }
         timer.cancel();
       }
     });
@@ -72,7 +81,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   Future<void> _verifyOTP() async {
     if (_otpController.text.length < 6) {
-      _showErrorSnackBar('Please enter the complete OTP');
+      _showErrorSnackBar(AppLocalizations.of(context)!.pleaseEnterCompleteOTP);
       return;
     }
 
@@ -81,7 +90,7 @@ class _OtpScreenState extends State<OtpScreen> {
     });
 
     try {
-      print('🔐 Verifying OTP: ${_otpController.text}');
+      debugPrint('🔐 Verifying OTP: ${_otpController.text}');
       
       final credential = PhoneAuthProvider.credential(
         verificationId: _verificationId,
@@ -90,13 +99,13 @@ class _OtpScreenState extends State<OtpScreen> {
       
       UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
       
-      print('✅ OTP verified successfully!');
-      print('👤 User ID: ${userCredential.user?.uid}');
+      debugPrint('✅ OTP verified successfully!');
+      debugPrint('👤 User ID: ${userCredential.user?.uid}');
       
       // Create or update user in Firestore
-      print('💾 Saving user to database...');
-      print('📱 Phone: ${widget.countryCode}${widget.phoneNumber}');
-      print('👤 User UID: ${userCredential.user?.uid}');
+      debugPrint('💾 Saving user to database...');
+      debugPrint('📱 Phone: ${widget.countryCode}${widget.phoneNumber}');
+      debugPrint('👤 User UID: ${userCredential.user?.uid}');
       
       try {
       final dbService = DatabaseService();
@@ -104,10 +113,10 @@ class _OtpScreenState extends State<OtpScreen> {
         phoneNumber: widget.phoneNumber,
         countryCode: widget.countryCode,
       );
-      print('✅ User saved to database successfully!');
+      debugPrint('✅ User saved to database successfully!');
       } catch (dbError) {
-        print('❌ Database save error: $dbError');
-        print('❌ Error details: ${dbError.runtimeType}');
+        debugPrint('❌ Database save error: $dbError');
+        debugPrint('❌ Error details: ${dbError.runtimeType}');
         // Continue to home screen even if database save fails
         // User is authenticated, just database save failed
       }
@@ -118,15 +127,19 @@ class _OtpScreenState extends State<OtpScreen> {
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
       
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(
-            phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+      try {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(
+              phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+            ),
           ),
-        ),
-      );
+        );
+      } catch (e) {
+        debugPrint('Navigation error: $e');
+      }
     } on FirebaseAuthException catch (e) {
-      print('❌ Firebase OTP verification failed: ${e.code} - ${e.message}');
+      debugPrint('❌ Firebase OTP verification failed: ${e.code} - ${e.message}');
       if (!mounted) return;
       
       String errorMessage = 'Invalid OTP';
@@ -145,13 +158,13 @@ class _OtpScreenState extends State<OtpScreen> {
       _showErrorSnackBar(errorMessage);
       _otpController.clear();
     } on Exception catch (e) {
-      print('❌ Database or other error: $e');
-      print('❌ Error type: ${e.runtimeType}');
+      debugPrint('❌ Database or other error: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
       if (!mounted) return;
       _showErrorSnackBar('Database error: ${e.toString()}');
     } catch (e, stackTrace) {
-      print('❌ Unexpected error during OTP verification: $e');
-      print('❌ Stack trace: $stackTrace');
+      debugPrint('❌ Unexpected error during OTP verification: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       if (!mounted) return;
       _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
@@ -175,32 +188,52 @@ class _OtpScreenState extends State<OtpScreen> {
             await FirebaseAuth.instance.signInWithCredential(credential);
             
             // Save user to database if auto-verified
-            final dbService = DatabaseService();
-            await dbService.createOrUpdateUser(
-              phoneNumber: widget.phoneNumber,
-              countryCode: widget.countryCode,
-            );
-            print('✅ Auto-verified and saved to database');
+            try {
+              final dbService = DatabaseService();
+              await dbService.createOrUpdateUser(
+                phoneNumber: widget.phoneNumber,
+                countryCode: widget.countryCode,
+              );
+              debugPrint('✅ Auto-verified and saved to database');
+            } catch (dbError) {
+              debugPrint('❌ Database error in auto-verification: $dbError');
+              // Continue even if database save fails
+            }
             
             // Navigate to home
             if (mounted) {
               await Future.delayed(const Duration(milliseconds: 500));
               if (mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => HomeScreen(
-                      phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+                try {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => HomeScreen(
+                        phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+                      ),
                     ),
-                  ),
-                );
+                  );
+                } catch (e) {
+                  debugPrint('Navigation error in auto-verification: $e');
+                }
               }
             }
           } catch (e) {
-            print('❌ Error in auto-verification: $e');
+            debugPrint('❌ Error in auto-verification: $e');
+            if (mounted) {
+              _showErrorSnackBar('Auto-verification failed');
+              if (mounted) {
+                setState(() { _isLoading = false; });
+              }
+            }
           }
         },
         verificationFailed: (e) {
-          print('❌ Resend verification failed: ${e.message}');
+          debugPrint('❌ Resend verification failed: ${e.message}');
+          if (!mounted) return;
+          _showErrorSnackBar('Failed to resend OTP: ${e.message ?? 'Unknown error'}');
+          if (mounted) {
+            setState(() { _isLoading = false; });
+          }
         },
         codeSent: (newVerificationId, newResendToken) {
           if (mounted) {
@@ -223,6 +256,7 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -236,6 +270,7 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -266,7 +301,7 @@ class _OtpScreenState extends State<OtpScreen> {
         border: Border.all(color: Colors.grey[300]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             spreadRadius: 2,
           ),
@@ -281,7 +316,7 @@ class _OtpScreenState extends State<OtpScreen> {
         border: Border.all(color: const Color(0xFF04B104), width: 2),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF04B104).withOpacity(0.2),
+            color: const Color(0xFF04B104).withValues(alpha: 0.2),
             blurRadius: 10,
             spreadRadius: 2,
           ),
@@ -291,7 +326,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
     final submittedPinTheme = defaultPinTheme.copyWith(
       decoration: BoxDecoration(
-        color: const Color(0xFF04B104).withOpacity(0.1),
+        color: const Color(0xFF04B104).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: const Color(0xFF04B104)),
       ),
@@ -304,7 +339,13 @@ class _OtpScreenState extends State<OtpScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            try {
+              Navigator.of(context).pop();
+            } catch (e) {
+              debugPrint('Error navigating back: $e');
+            }
+          },
         ),
       ),
       body: SafeArea(
@@ -326,8 +367,8 @@ class _OtpScreenState extends State<OtpScreen> {
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
                     errorBuilder: (context, error, stackTrace) {
-                      print('❌ Error loading logo: $error');
-                      print('❌ Stack trace: $stackTrace');
+                      debugPrint('❌ Error loading logo: $error');
+                      debugPrint('❌ Stack trace: $stackTrace');
                       // Return a neutral placeholder instead of green phone icon
                       return Container(
                         width: 100,
@@ -398,7 +439,13 @@ class _OtpScreenState extends State<OtpScreen> {
                   child: TextButton.icon(
                     onPressed: _isLoading
                         ? null
-                        : () => Navigator.of(context).pop(),
+                        : () {
+                            try {
+                              Navigator.of(context).pop();
+                            } catch (e) {
+                              debugPrint('Error navigating back: $e');
+                            }
+                          },
                     icon: const Icon(
                       Icons.edit,
                       size: 18,
@@ -479,7 +526,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   delay: const Duration(milliseconds: 800),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 60,
+                    height: 52,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _verifyOTP,
                       style: ElevatedButton.styleFrom(
@@ -489,8 +536,8 @@ class _OtpScreenState extends State<OtpScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
-                        elevation: 5,
-                        shadowColor: const Color(0xFF9C27B0).withOpacity(0.3), // #9C27B0 shadow
+                        elevation: 8,
+                        shadowColor: const Color(0xFF9C27B0).withValues(alpha: 0.4), // #9C27B0 shadow
                       ),
                       child: _isLoading
                           ? const SizedBox(
@@ -506,9 +553,8 @@ class _OtpScreenState extends State<OtpScreen> {
                           : const Text(
                               'Verify OTP',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
                               ),
                             ),
                     ),
@@ -524,5 +570,10 @@ class _OtpScreenState extends State<OtpScreen> {
     );
   }
 }
+
+
+
+
+
 
 

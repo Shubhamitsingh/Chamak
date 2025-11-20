@@ -45,7 +45,13 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
               backgroundColor: Colors.white,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  try {
+                    Navigator.pop(context);
+                  } catch (e) {
+                    debugPrint('Error navigating back: $e');
+                  }
+                },
               ),
               title: Text(
                 AppLocalizations.of(context)!.eventsAndAnnouncements,
@@ -136,7 +142,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                 const Icon(Icons.error_outline, size: 48, color: Colors.red),
                 const SizedBox(height: 16),
                 Text(
-                  'Error loading events',
+                  AppLocalizations.of(context)!.errorLoadingEvents,
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[700],
@@ -163,7 +169,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'No Events Yet',
+                  AppLocalizations.of(context)!.noEventsYet,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -174,7 +180,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Text(
-                    'Events from admin will appear here',
+                    AppLocalizations.of(context)!.eventsFromAdminWillAppear,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[500],
@@ -195,11 +201,11 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
             final event = firebaseEvents[index];
             
             // DEBUG: Print event data
-            print('🎉 [EventScreen] Event ${index + 1}:');
-            print('   ID: ${event.id}');
-            print('   Title: ${event.title}');
-            print('   imageURL: ${event.imageURL}');
-            print('   Has image: ${event.imageURL != null && event.imageURL!.isNotEmpty}');
+            debugPrint('🎉 [EventScreen] Event ${index + 1}:');
+            debugPrint('   ID: ${event.id}');
+            debugPrint('   Title: ${event.title}');
+            debugPrint('   imageURL: ${event.imageURL}');
+            debugPrint('   Has image: ${event.imageURL != null && event.imageURL!.isNotEmpty}');
             
             final eventMap = {
               'title': event.title,
@@ -229,24 +235,24 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
   }
 
   Widget _buildAnnouncementsTab() {
-    print('🎨 [EventScreen] Building announcements tab');
+            debugPrint('🎨 [EventScreen] Building announcements tab');
     
     return StreamBuilder<List<AnnouncementModel>>(
       stream: _eventService.getAnnouncementsStream(),
       builder: (context, snapshot) {
-        print('🔄 [EventScreen] StreamBuilder state: ${snapshot.connectionState}');
-        print('   Has data: ${snapshot.hasData}');
-        print('   Has error: ${snapshot.hasError}');
+        debugPrint('🔄 [EventScreen] StreamBuilder state: ${snapshot.connectionState}');
+        debugPrint('   Has data: ${snapshot.hasData}');
+        debugPrint('   Has error: ${snapshot.hasError}');
         if (snapshot.hasData) {
-          print('   Data count: ${snapshot.data!.length}');
+          debugPrint('   Data count: ${snapshot.data!.length}');
         }
         if (snapshot.hasError) {
-          print('   Error: ${snapshot.error}');
+          debugPrint('   Error: ${snapshot.error}');
         }
         
         // Loading state
         if (snapshot.connectionState == ConnectionState.waiting) {
-          print('⏳ [EventScreen] Waiting for data...');
+          debugPrint('⏳ [EventScreen] Waiting for data...');
           return const Center(
             child: CircularProgressIndicator(
               // Match announcements theme with purple accent
@@ -257,7 +263,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
 
         // Error state
         if (snapshot.hasError) {
-          print('❌ [EventScreen] Error in StreamBuilder: ${snapshot.error}');
+          debugPrint('❌ [EventScreen] Error in StreamBuilder: ${snapshot.error}');
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -265,7 +271,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                 const Icon(Icons.error_outline, size: 48, color: Colors.red),
                 const SizedBox(height: 16),
                 Text(
-                  'Error loading announcements',
+                  AppLocalizations.of(context)!.errorLoadingAnnouncements,
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[700],
@@ -273,7 +279,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  snapshot.error.toString(),
+                  AppLocalizations.of(context)!.errorOccurred,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[500],
@@ -283,10 +289,11 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    print('🔄 [EventScreen] Manual refresh triggered');
+                    debugPrint('🔄 [EventScreen] Manual refresh triggered');
+                    if (!mounted) return;
                     setState(() {});
                   },
-                  child: const Text('Retry'),
+                  child: Text(AppLocalizations.of(context)!.retry),
                 ),
               ],
             ),
@@ -309,7 +316,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'No Announcements Yet',
+                  AppLocalizations.of(context)!.noAnnouncementsYet,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -320,7 +327,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Text(
-                    'Announcements from admin will appear here',
+                    AppLocalizations.of(context)!.announcementsFromAdminWillAppear,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[500],
@@ -354,7 +361,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                       color: Colors.grey[400]),
                     const SizedBox(height: 16),
                     Text(
-                      'All caught up!',
+                      AppLocalizations.of(context)!.allCaughtUp,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -363,7 +370,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'No announcements to show',
+                      AppLocalizations.of(context)!.noAnnouncementsToShow,
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey[500],
@@ -426,17 +433,17 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
     final hasImage = imageURL != null && imageURL.isNotEmpty;
     
     // DEBUG: Print poster build info
-    print('🖼️ [_buildEventPoster] Building poster:');
-    print('   Title: ${event['title']}');
-    print('   imageURL: $imageURL');
-    print('   hasImage: $hasImage');
+            debugPrint('🖼️ [_buildEventPoster] Building poster:');
+            debugPrint('   Title: ${event['title']}');
+            debugPrint('   imageURL: $imageURL');
+            debugPrint('   hasImage: $hasImage');
     
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha:0.3),
             blurRadius: 15,
             offset: const Offset(0, 6),
           ),
@@ -458,7 +465,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                     return Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [color, color.withOpacity(0.7)],
+                          colors: [color, color.withValues(alpha:0.7)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -479,7 +486,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                     return Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [color, color.withOpacity(0.7)],
+                          colors: [color, color.withValues(alpha:0.7)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -495,7 +502,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                   gradient: LinearGradient(
                     colors: [
                       color,
-                      color.withOpacity(0.7),
+                      color.withValues(alpha:0.7),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -510,8 +517,8 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.black.withOpacity(0.5),
-                        Colors.black.withOpacity(0.3),
+                        Colors.black.withValues(alpha:0.5),
+                        Colors.black.withValues(alpha:0.3),
                       ],
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
@@ -550,7 +557,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
+                          color: Colors.white.withValues(alpha:0.25),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -587,7 +594,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha:0.2),
                                 blurRadius: 8,
                               ),
                             ],
@@ -630,7 +637,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                   Text(
                     event['description'],
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha:0.95),
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -648,7 +655,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                         child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha:0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -676,7 +683,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                                       )
                                     else if (event['startDate'] != null)
                                       Text(
-                                        'From: ${event['startDate']}',
+                                        '${AppLocalizations.of(context)!.from} ${event['startDate']}',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 11,
@@ -685,7 +692,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                                       )
                                     else if (event['endDate'] != null)
                                       Text(
-                                        'Until: ${event['endDate']}',
+                                        '${AppLocalizations.of(context)!.until} ${event['endDate']}',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 11,
@@ -705,7 +712,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                                       Text(
                                         event['time'],
                                         style: TextStyle(
-                                        color: Colors.white.withOpacity(0.9),
+                                        color: Colors.white.withValues(alpha:0.9),
                                         fontSize: 10,
                                       ),
                                     ),
@@ -723,7 +730,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha:0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -772,11 +779,11 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.white, size: 18),
-                  SizedBox(width: 8),
-                  Text('Announcement dismissed'),
+                  const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Text(AppLocalizations.of(context)!.announcementDismissed),
                 ],
               ),
               backgroundColor: const Color(0xFF04B104),
@@ -797,14 +804,14 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
           color: Colors.red,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.delete_outline, color: Colors.white, size: 24),
-            SizedBox(height: 4),
+            const Icon(Icons.delete_outline, color: Colors.white, size: 24),
+            const SizedBox(height: 4),
             Text(
-              'Dismiss',
-              style: TextStyle(
+              AppLocalizations.of(context)!.dismiss,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -815,6 +822,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
       ),
       child: GestureDetector(
         onTap: () {
+          if (!mounted) return;
           setState(() {
             if (isExpanded) {
               _expandedAnnouncements.remove(announcementId);
@@ -830,13 +838,13 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: announcement['isNew'] 
-                ? color.withOpacity(0.2) 
-                : Colors.grey.withOpacity(0.15),
+                ? color.withValues(alpha:0.2) 
+                : Colors.grey.withValues(alpha:0.15),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha:0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -853,14 +861,14 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [color, color.withOpacity(0.7)],
+                        colors: [color, color.withValues(alpha:0.7)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.2),
+                          color: color.withValues(alpha:0.2),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
@@ -977,12 +985,12 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [color, color.withOpacity(0.8)],
+                      colors: [color, color.withValues(alpha:0.8)],
                     ),
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.25),
+                        color: color.withValues(alpha:0.25),
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                       ),

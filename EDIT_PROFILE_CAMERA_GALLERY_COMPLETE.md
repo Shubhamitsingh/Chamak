@@ -349,3 +349,11 @@ The camera and gallery functionality in Edit Profile is **fully implemented and 
 
 
 
+
+
+
+
+
+
+
+

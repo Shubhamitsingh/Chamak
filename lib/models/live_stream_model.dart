@@ -9,6 +9,11 @@ class LiveStreamModel {
   final DateTime startedAt;
   final bool isActive;
   final String? thumbnailUrl;
+  
+  // Host status fields
+  final String hostStatus;            // 'live', 'busy', 'in_call'
+  final String? currentCallUserId;
+  final DateTime? callStartedAt;
 
   LiveStreamModel({
     required this.streamId,
@@ -21,6 +26,9 @@ class LiveStreamModel {
     required this.startedAt,
     this.isActive = true,
     this.thumbnailUrl,
+    this.hostStatus = 'live',
+    this.currentCallUserId,
+    this.callStartedAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,6 +43,9 @@ class LiveStreamModel {
       'startedAt': startedAt.toIso8601String(),
       'isActive': isActive,
       'thumbnailUrl': thumbnailUrl,
+      'hostStatus': hostStatus,
+      'currentCallUserId': currentCallUserId,
+      'callStartedAt': callStartedAt?.toIso8601String(),
     };
   }
 
@@ -50,6 +61,11 @@ class LiveStreamModel {
       startedAt: DateTime.parse(map['startedAt']),
       isActive: map['isActive'] ?? true,
       thumbnailUrl: map['thumbnailUrl'],
+      hostStatus: map['hostStatus'] ?? 'live',
+      currentCallUserId: map['currentCallUserId'],
+      callStartedAt: map['callStartedAt'] != null 
+          ? DateTime.parse(map['callStartedAt']) 
+          : null,
     );
   }
 
@@ -64,6 +80,9 @@ class LiveStreamModel {
     DateTime? startedAt,
     bool? isActive,
     String? thumbnailUrl,
+    String? hostStatus,
+    String? currentCallUserId,
+    DateTime? callStartedAt,
   }) {
     return LiveStreamModel(
       streamId: streamId ?? this.streamId,
@@ -76,6 +95,9 @@ class LiveStreamModel {
       startedAt: startedAt ?? this.startedAt,
       isActive: isActive ?? this.isActive,
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      hostStatus: hostStatus ?? this.hostStatus,
+      currentCallUserId: currentCallUserId ?? this.currentCallUserId,
+      callStartedAt: callStartedAt ?? this.callStartedAt,
     );
   }
 }

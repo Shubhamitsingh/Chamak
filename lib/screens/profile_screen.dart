@@ -83,7 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         nextPage = 0;
       }
       
-      if (_pageController.hasClients) {
+      if (mounted && _pageController.hasClients) {
         // Don't call setState, just animate
         _pageController.animateToPage(
           nextPage,
@@ -160,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Error loading profile',
+                    AppLocalizations.of(context)!.errorLoadingProfile,
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[800],
@@ -198,7 +198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Profile not found',
+                    AppLocalizations.of(context)!.profileNotFound,
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[800],
@@ -248,12 +248,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Top Section - Profile Header
             _buildProfileHeader(user),
               
-              const SizedBox(height: 10),
+              const SizedBox(height: 2),
               
               // Image Slider Section
               _buildImageSlider(),
               
-              const SizedBox(height: 10),
+              const SizedBox(height: 2),
               
               // Main Options Menu
             _buildMainOptionsMenu(user),
@@ -276,7 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha:0.08),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -293,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withValues(alpha:0.15),
                         blurRadius: 20,
                         offset: const Offset(0, 6),
                       ),
@@ -306,6 +306,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: CircleAvatar(
                             radius: 40,
                             backgroundImage: NetworkImage(user.photoURL!),
+                            onBackgroundImageError: (exception, stackTrace) {
+                              debugPrint('Error loading profile image: $exception');
+                            },
                           ),
                         )
                       : CircleAvatar(
@@ -377,7 +380,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   BoxShadow(
                                     color: (user.gender!.toLowerCase() == 'male'
                                         ? Colors.blue
-                                        : Colors.pink).withOpacity(0.3),
+                                        : Colors.pink).withValues(alpha:0.3),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
@@ -402,29 +405,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           GestureDetector(
                             onTap: () {
-                              final displayId = IdGeneratorService.getDisplayId(user.numericUserId);
-                              Clipboard.setData(ClipboardData(text: displayId));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.check_circle,
-                                        color: Colors.white,
-                                        size: 20,
+                              if (!mounted) return;
+                              try {
+                                final displayId = IdGeneratorService.getDisplayId(user.numericUserId);
+                                Clipboard.setData(ClipboardData(text: displayId));
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.check_circle,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text('ID $displayId copied to clipboard!'),
+                                        ],
                                       ),
-                                      const SizedBox(width: 10),
-                                      Text('ID $displayId copied to clipboard!'),
-                                    ],
-                                  ),
-                                  backgroundColor: const Color(0xFF9C27B0),
-                                  duration: const Duration(seconds: 2),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                              );
+                                      backgroundColor: const Color(0xFF9C27B0),
+                                      duration: const Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                debugPrint('Error copying to clipboard: $e');
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Failed to copy ID'),
+                                      backgroundColor: Colors.red,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              }
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -432,10 +451,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.grey.withOpacity(0.12),
+                                color: Colors.grey.withValues(alpha:0.12),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: Colors.grey.withOpacity(0.25),
+                                  color: Colors.grey.withValues(alpha:0.25),
                                   width: 0.8,
                                 ),
                               ),
@@ -534,25 +553,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // Edit/Arrow Button (RIGHT SIDE)
                 GestureDetector(
                   onTap: () {
+                    if (!mounted) return;
                     _stopAutoScroll(); // Stop slider when navigating
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EditProfileScreen(
-                          phoneNumber: widget.phoneNumber,
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditProfileScreen(
+                            phoneNumber: widget.phoneNumber,
+                          ),
                         ),
-                      ),
-                    ).then((_) {
-                      // Resume slider when returning
-                      if (mounted) {
-                        _startAutoScroll();
-                      }
-                    });
+                      ).then((_) {
+                        // Resume slider when returning
+                        if (mounted) {
+                          _startAutoScroll();
+                        }
+                      });
+                    } catch (e) {
+                      debugPrint('Navigation error: $e');
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha:0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -576,6 +600,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   count: user.followersCount.toString(),
                   label: AppLocalizations.of(context)!.followers,
                   onTap: () {
+                    if (!mounted) return;
                     // TODO: Navigate to followers list
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -589,13 +614,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   width: 1,
                   height: 30,
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.grey.withValues(alpha:0.2),
                 ),
                 _buildStatButton(
                   icon: Icons.person_add_alt_outlined,
                   count: user.followingCount.toString(),
                   label: AppLocalizations.of(context)!.following,
                   onTap: () {
+                    if (!mounted) return;
                     // TODO: Navigate to following list
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -609,19 +635,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   width: 1,
                   height: 30,
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.grey.withValues(alpha:0.2),
                 ),
                 _buildStatButton(
                   icon: Icons.star_border_rounded,
                   count: user.level.toString(),
                   label: AppLocalizations.of(context)!.level,
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => LevelScreen(userLevel: user.level),
-                      ),
-                    );
+                    if (!mounted) return;
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LevelScreen(userLevel: user.level),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint('Navigation error: $e');
+                    }
                   },
                 ),
               ],
@@ -674,31 +705,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildImageSlider() {
     return Container(
       key: const ValueKey('image_slider'), // Key prevents animation restart
-        height: 70,
+        height: 50,
         child: PageView.builder(
           controller: _pageController,
           onPageChanged: (index) {
             // Only update state if value actually changed (prevents unnecessary rebuilds)
-            if (_currentPage != index) {
-            setState(() {
-              _currentPage = index;
-            });
+            if (_currentPage != index && mounted) {
+              setState(() {
+                _currentPage = index;
+              });
             }
           },
           itemCount: _sliderImages.length,
           itemBuilder: (context, index) {
             return SizedBox(
               width: double.infinity,
-              height: 70,
+              height: 50,
               child: Image.asset(
                 _sliderImages[index],
                 width: double.infinity,
-                height: 70,
+                height: 50,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
                     width: double.infinity,
-                    height: 70,
+                    height: 50,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -716,7 +747,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Icon(
                             Icons.image_outlined,
                             size: 28,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha:0.8),
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -750,7 +781,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha:0.05),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -765,21 +796,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: const Color(0xFFFFB800),
               showCoinIcon: true,
               onTap: () {
+                if (!mounted) return;
                 _stopAutoScroll(); // Stop slider when navigating
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => WalletScreen(
-                      phoneNumber: widget.phoneNumber,
-                      isHost: false, // TODO: Implement host status
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WalletScreen(
+                        phoneNumber: widget.phoneNumber,
+                        isHost: false, // TODO: Implement host status
+                      ),
                     ),
-                  ),
-                ).then((_) {
-                  // Resume slider when returning
-                  if (mounted) {
-                    _startAutoScroll();
-                  }
-                });
+                  ).then((_) {
+                    // Resume slider when returning
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
@@ -790,19 +826,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: AppLocalizations.of(context)!.earningsWithdrawals,
               color: const Color(0xFF10B981),
               onTap: () {
+                if (!mounted) return;
                 _stopAutoScroll();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MyEarningScreen(
-                      phoneNumber: widget.phoneNumber,
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MyEarningScreen(
+                        phoneNumber: widget.phoneNumber,
+                      ),
                     ),
-                  ),
-                ).then((_) {
-                  if (mounted) {
-                    _startAutoScroll();
-                  }
-                });
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
@@ -819,17 +860,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: const Color(0xFF3B82F6),
                   badgeCount: unreadCount,
                   onTap: () {
+                    if (!mounted) return;
                     _stopAutoScroll();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ChatListScreen(),
-                      ),
-                    ).then((_) {
-                      if (mounted) {
-                        _startAutoScroll();
-                      }
-                    });
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ChatListScreen(),
+                        ),
+                      ).then((_) {
+                        if (mounted) {
+                          _startAutoScroll();
+                        }
+                      });
+                    } catch (e) {
+                      debugPrint('Navigation error: $e');
+                    }
                   },
                 );
               },
@@ -842,17 +888,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: AppLocalizations.of(context)!.viewWarningsGuidelines,
               color: const Color(0xFFEF4444),
               onTap: () {
+                if (!mounted) return;
                 _stopAutoScroll();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WarningScreen(),
-                  ),
-                ).then((_) {
-                  if (mounted) {
-                    _startAutoScroll();
-                  }
-                });
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WarningScreen(),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
@@ -904,38 +955,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: const Color(0xFF8B5CF6),
                                   badgeCount: totalUnseenCount > 0 ? totalUnseenCount : null,
                                   onTap: () async {
+                                    if (!mounted) return;
                                     _stopAutoScroll();
                                     
-                                    // Mark all new announcements as seen
-                                    final newAnnouncementIds = announcements
-                                        .where((a) => a.isNew && !seenAnnouncementIds.contains(a.id))
-                                        .map((a) => a.id)
-                                        .toList();
-                                    
-                                    if (newAnnouncementIds.isNotEmpty) {
-                                      await _trackingService.markMultipleAsSeen(newAnnouncementIds);
-                                    }
-                                    
-                                    // Mark all new events as seen
-                                    final newEventIds = events
-                                        .where((e) => e.isNew && !seenEventIds.contains(e.id))
-                                        .map((e) => e.id)
-                                        .toList();
-                                    
-                                    if (newEventIds.isNotEmpty) {
-                                      await _trackingService.markMultipleEventsAsSeen(newEventIds);
-                                    }
-                                    
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const EventScreen(),
-                                      ),
-                                    ).then((_) {
-                                      if (mounted) {
-                                        _startAutoScroll();
+                                    try {
+                                      // Mark all new announcements as seen
+                                      final newAnnouncementIds = announcements
+                                          .where((a) => a.isNew && !seenAnnouncementIds.contains(a.id))
+                                          .map((a) => a.id)
+                                          .toList();
+                                      
+                                      if (newAnnouncementIds.isNotEmpty) {
+                                        try {
+                                          await _trackingService.markMultipleAsSeen(newAnnouncementIds);
+                                        } catch (e) {
+                                          debugPrint('Error marking announcements as seen: $e');
+                                        }
                                       }
-                                    });
+                                      
+                                      // Mark all new events as seen
+                                      final newEventIds = events
+                                          .where((e) => e.isNew && !seenEventIds.contains(e.id))
+                                          .map((e) => e.id)
+                                          .toList();
+                                      
+                                      if (newEventIds.isNotEmpty) {
+                                        try {
+                                          await _trackingService.markMultipleEventsAsSeen(newEventIds);
+                                        } catch (e) {
+                                          debugPrint('Error marking events as seen: $e');
+                                        }
+                                      }
+                                      
+                                      if (mounted) {
+                                        try {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const EventScreen(),
+                                            ),
+                                          ).then((_) {
+                                            if (mounted) {
+                                              _startAutoScroll();
+                                            }
+                                          });
+                                        } catch (e) {
+                                          debugPrint('Navigation error: $e');
+                                        }
+                                      }
+                                    } catch (e) {
+                                      debugPrint('Error in events navigation: $e');
+                                    }
                                   },
                                 );
                               },
@@ -956,17 +1026,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: AppLocalizations.of(context)!.yourProgressAchievements,
               color: const Color(0xFFF59E0B),
               onTap: () {
+                if (!mounted) return;
                 _stopAutoScroll();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => LevelScreen(userLevel: user.level),
-                  ),
-                ).then((_) {
-                  if (mounted) {
-                    _startAutoScroll();
-                  }
-                });
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LevelScreen(userLevel: user.level),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
@@ -977,20 +1052,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: AppLocalizations.of(context)!.phonePasswordAccountSettings,
               color: const Color(0xFF8B5CF6),
               onTap: () {
+                if (!mounted) return;
                 _stopAutoScroll();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AccountSecurityScreen(
-                      phoneNumber: widget.phoneNumber,
-                      userId: IdGeneratorService.getDisplayId(user.numericUserId),
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AccountSecurityScreen(
+                        phoneNumber: widget.phoneNumber,
+                        userId: IdGeneratorService.getDisplayId(user.numericUserId),
+                      ),
                     ),
-                  ),
-                ).then((_) {
-                  if (mounted) {
-                    _startAutoScroll();
-                  }
-                });
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
@@ -1001,17 +1081,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: AppLocalizations.of(context)!.getHelpReportIssues,
               color: const Color(0xFF06B6D4),
               onTap: () {
+                if (!mounted) return;
                 _stopAutoScroll();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ContactSupportScreen(),
-                  ),
-                ).then((_) {
-                  if (mounted) {
-                    _startAutoScroll();
-                  }
-                });
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ContactSupportScreen(),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
@@ -1022,17 +1107,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: AppLocalizations.of(context)!.appPreferencesPrivacyTerms,
               color: const Color(0xFF64748B),
               onTap: () {
+                if (!mounted) return;
                 _stopAutoScroll();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
-                  ),
-                ).then((_) {
-                  if (mounted) {
-                    _startAutoScroll();
-                  }
-                });
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
@@ -1043,17 +1133,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: AppLocalizations.of(context)!.faqsCommonIssues,
               color: const Color(0xFFEC4899),
               onTap: () {
+                if (!mounted) return;
                 _stopAutoScroll();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HelpFeedbackScreen(),
-                  ),
-                ).then((_) {
-                  if (mounted) {
-                    _startAutoScroll();
-                  }
-                });
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HelpFeedbackScreen(),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
           ],
@@ -1079,7 +1174,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -1104,7 +1199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.red.withOpacity(0.4),
+                      color: Colors.red.withValues(alpha:0.4),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -1160,7 +1255,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFFB800).withOpacity(0.3),
+                    color: const Color(0xFFFFB800).withValues(alpha:0.3),
                     blurRadius: 3,
                     offset: const Offset(0, 1),
                   ),

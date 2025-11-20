@@ -3,6 +3,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'contact_support_screen.dart';
 import '../services/database_service.dart';
 import '../services/gift_service.dart';
@@ -94,6 +95,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
+      if (!mounted) return;
       setState(() {
         _currentTabIndex = _tabController.index;
       });
@@ -110,13 +112,13 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   void _setupRealtimeListener() {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
-      print('⚠️ Wallet: Cannot setup listener - no user ID');
+      debugPrint('⚠️ Wallet: Cannot setup listener - no user ID');
       return;
     }
 
     // Prevent duplicate listeners
     if (_listenersSetup) {
-      print('⚠️ Wallet: Listeners already setup, skipping...');
+      debugPrint('⚠️ Wallet: Listeners already setup, skipping...');
       return;
     }
 
@@ -138,25 +140,26 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           final coins = (walletData?['coins'] as int?) ?? 0;
           final newBalance = balance > 0 ? balance : coins;
           
-          print('📡 Wallet: Real-time update from wallets collection');
-          print('   balance: $balance, coins: $coins → New: $newBalance, Current: $coinBalance');
+          debugPrint('📡 Wallet: Real-time update from wallets collection');
+          debugPrint('   balance: $balance, coins: $coins → New: $newBalance, Current: $coinBalance');
           
           // Always update if there's a change (or if balance was 0 and now has value)
           if (newBalance != coinBalance) {
-            print('✅ Wallet: Updating balance: $coinBalance → $newBalance');
+            debugPrint('✅ Wallet: Updating balance: $coinBalance → $newBalance');
+            if (!mounted) return;
             setState(() {
               coinBalance = newBalance;
             });
-            print('✅ Wallet: Real-time update complete! Balance: $coinBalance');
+            debugPrint('✅ Wallet: Real-time update complete! Balance: $coinBalance');
           } else {
-            print('ℹ️ Wallet: Balance unchanged ($coinBalance)');
+            debugPrint('ℹ️ Wallet: Balance unchanged ($coinBalance)');
           }
         } else {
-          print('⚠️ Wallet: Wallet document does not exist, listening to users collection...');
+          debugPrint('⚠️ Wallet: Wallet document does not exist, listening to users collection...');
         }
       },
       onError: (error) {
-        print('❌ Wallet: Error in wallets listener: $error');
+        debugPrint('❌ Wallet: Error in wallets listener: $error');
       },
     );
 
@@ -177,42 +180,43 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           // Use the higher value (in case coins has more from legacy data)
           final newBalance = uCoins >= coins ? uCoins : coins;
           
-          print('📡 Wallet: Real-time update from users collection');
-          print('   uCoins: $uCoins, coins: $coins → New: $newBalance, Current: $coinBalance');
+          debugPrint('📡 Wallet: Real-time update from users collection');
+          debugPrint('   uCoins: $uCoins, coins: $coins → New: $newBalance, Current: $coinBalance');
           
           // Sync if they're different (coins should be synced to uCoins)
           if (coins > uCoins && coins > 0) {
-            print('⚠️ Wallet: coins ($coins) > uCoins ($uCoins), syncing...');
+            debugPrint('⚠️ Wallet: coins ($coins) > uCoins ($uCoins), syncing...');
             firestore.collection('users').doc(userId).update({
               'uCoins': coins,
             }).then((_) {
-              print('✅ Wallet: Synced coins ($coins) → uCoins');
+              debugPrint('✅ Wallet: Synced coins ($coins) → uCoins');
             }).catchError((e) {
-              print('⚠️ Wallet: Could not sync: $e');
+              debugPrint('⚠️ Wallet: Could not sync: $e');
             });
           }
           
           // Update if balance changed (allow 0 values too, or if was 0 and now has value)
           if (newBalance != coinBalance) {
-            print('✅ Wallet: Updating from users: $coinBalance → $newBalance');
+            debugPrint('✅ Wallet: Updating from users: $coinBalance → $newBalance');
+            if (!mounted) return;
             setState(() {
               coinBalance = newBalance;
             });
-            print('✅ Wallet: Real-time update complete! Balance: $coinBalance');
+            debugPrint('✅ Wallet: Real-time update complete! Balance: $coinBalance');
           } else {
-            print('ℹ️ Wallet: Balance unchanged from users collection ($coinBalance)');
+            debugPrint('ℹ️ Wallet: Balance unchanged from users collection ($coinBalance)');
           }
         }
       },
       onError: (error) {
-        print('❌ Wallet: Error in users listener: $error');
+        debugPrint('❌ Wallet: Error in users listener: $error');
       },
     );
     
     _listenersSetup = true;
-    print('✅ Wallet: Real-time listeners setup complete');
-    print('   Listening to: wallets/$userId');
-    print('   Listening to: users/$userId');
+    debugPrint('✅ Wallet: Real-time listeners setup complete');
+    debugPrint('   Listening to: wallets/$userId');
+    debugPrint('   Listening to: users/$userId');
   }
 
   @override
@@ -227,6 +231,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
 
   /// Load real coin balance from Firestore
   Future<void> _loadCoinBalance() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
@@ -234,7 +239,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        print('❌ Wallet: No authenticated user');
+        debugPrint('❌ Wallet: No authenticated user');
         setState(() {
           _isLoading = false;
           coinBalance = 0;
@@ -243,7 +248,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         return;
       }
 
-      print('🔄 Wallet: Loading coin balance for user: $userId');
+      debugPrint('🔄 Wallet: Loading coin balance for user: $userId');
 
       // Try to load from wallets collection first (primary source)
       final FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -256,44 +261,54 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           final walletBalance = (walletData?['balance'] as int?) ?? 
                                (walletData?['coins'] as int?) ?? 0;
           
-          print('✅ Wallet: Found wallet document in wallets collection');
-          print('   balance: ${walletData?['balance']}');
-          print('   coins: ${walletData?['coins']}');
-          print('   Using balance: $walletBalance');
+          debugPrint('✅ Wallet: Found wallet document in wallets collection');
+          debugPrint('   balance: ${walletData?['balance']}');
+          debugPrint('   coins: ${walletData?['coins']}');
+          debugPrint('   Using balance: $walletBalance');
           
+          if (!mounted) return;
           setState(() {
             coinBalance = walletBalance;
           });
           
           // Load host earnings if user is a host
           if (widget.isHost) {
-            print('👑 Wallet: Loading host earnings...');
-            final earnings = await _giftService.getHostEarningsSummary(userId);
-            final withdrawable = earnings['withdrawableAmount']?.toDouble() ?? 0.0;
-            print('💰 Wallet: Host earnings: $withdrawable');
-            setState(() {
-              hostEarnings = withdrawable;
-            });
+            debugPrint('👑 Wallet: Loading host earnings...');
+            try {
+              final earnings = await _giftService.getHostEarningsSummary(userId);
+              final withdrawable = earnings['withdrawableAmount']?.toDouble() ?? 0.0;
+              debugPrint('💰 Wallet: Host earnings: $withdrawable');
+              if (!mounted) return;
+              setState(() {
+                hostEarnings = withdrawable;
+              });
+            } catch (e) {
+              debugPrint('⚠️ Wallet: Error loading host earnings: $e');
+              if (!mounted) return;
+              setState(() {
+                hostEarnings = 0.0;
+              });
+            }
           }
           
-          print('✅ Wallet: Balance loaded from wallets collection - Coins: $coinBalance');
+          debugPrint('✅ Wallet: Balance loaded from wallets collection - Coins: $coinBalance');
           return; // Exit early if wallet document found
         } else {
-          print('⚠️ Wallet: No wallet document found, trying users collection...');
+          debugPrint('⚠️ Wallet: No wallet document found, trying users collection...');
         }
       } catch (e) {
-        print('⚠️ Wallet: Error loading from wallets collection: $e');
-        print('⚠️ Wallet: Trying users collection as fallback...');
+        debugPrint('⚠️ Wallet: Error loading from wallets collection: $e');
+        debugPrint('⚠️ Wallet: Trying users collection as fallback...');
       }
 
       // Fallback: Get user data from users collection
       final userData = await _databaseService.getUserData(userId);
       
       if (userData != null) {
-        print('📊 Wallet: User data loaded from users collection');
-        print('   uCoins from model: ${userData.uCoins}');
-        print('   cCoins from model: ${userData.cCoins}');
-        print('   coins from model: ${userData.coins}');
+        debugPrint('📊 Wallet: User data loaded from users collection');
+        debugPrint('   uCoins from model: ${userData.uCoins}');
+        debugPrint('   cCoins from model: ${userData.cCoins}');
+        debugPrint('   coins from model: ${userData.coins}');
         
         // Load U Coins - Use the higher value (coins might have more from legacy)
         int finalBalance = userData.uCoins >= userData.coins 
@@ -302,8 +317,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         
         // If coins is higher than uCoins, sync them
         if (userData.coins > userData.uCoins) {
-          print('⚠️ Wallet: coins (${userData.coins}) > uCoins (${userData.uCoins})');
-          print('💰 Wallet: Using coins value and syncing to uCoins');
+          debugPrint('⚠️ Wallet: coins (${userData.coins}) > uCoins (${userData.uCoins})');
+          debugPrint('💰 Wallet: Using coins value and syncing to uCoins');
           
           // Sync the legacy coins to uCoins field
           try {
@@ -313,7 +328,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             await firestore.collection('users').doc(userId).update({
               'uCoins': userData.coins,
             });
-            print('✅ Wallet: Synced coins (${userData.coins}) → uCoins');
+            debugPrint('✅ Wallet: Synced coins (${userData.coins}) → uCoins');
             
             // Also update wallets collection if it exists
             final walletRef = firestore.collection('wallets').doc(userId);
@@ -324,7 +339,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 'coins': userData.coins,
                 'updatedAt': FieldValue.serverTimestamp(),
               });
-              print('✅ Wallet: Synced to wallets/{userId}/balance');
+              debugPrint('✅ Wallet: Synced to wallets/{userId}/balance');
             } else {
               // Create wallet document if it doesn't exist
               await walletRef.set({
@@ -337,41 +352,51 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 'createdAt': FieldValue.serverTimestamp(),
                 'updatedAt': FieldValue.serverTimestamp(),
               });
-              print('✅ Wallet: Created wallet document with balance: ${userData.coins}');
+              debugPrint('✅ Wallet: Created wallet document with balance: ${userData.coins}');
             }
           } catch (e) {
-            print('⚠️ Wallet: Could not sync: $e');
+            debugPrint('⚠️ Wallet: Could not sync: $e');
           }
         }
         
-        print('💰 Wallet: Setting coinBalance to: $finalBalance');
+        debugPrint('💰 Wallet: Setting coinBalance to: $finalBalance');
         
+        if (!mounted) return;
         setState(() {
           coinBalance = finalBalance;
         });
 
         // Load host earnings if user is a host
         if (widget.isHost) {
-          print('👑 Wallet: Loading host earnings...');
-          final earnings = await _giftService.getHostEarningsSummary(userId);
-          final withdrawable = earnings['withdrawableAmount']?.toDouble() ?? 0.0;
-          print('💰 Wallet: Host earnings: $withdrawable');
-          setState(() {
-            hostEarnings = withdrawable;
-          });
+          debugPrint('👑 Wallet: Loading host earnings...');
+          try {
+            final earnings = await _giftService.getHostEarningsSummary(userId);
+            final withdrawable = earnings['withdrawableAmount']?.toDouble() ?? 0.0;
+            debugPrint('💰 Wallet: Host earnings: $withdrawable');
+            if (!mounted) return;
+            setState(() {
+              hostEarnings = withdrawable;
+            });
+          } catch (e) {
+            debugPrint('⚠️ Wallet: Error loading host earnings: $e');
+            if (!mounted) return;
+            setState(() {
+              hostEarnings = 0.0;
+            });
+          }
         }
         
-        print('✅ Wallet: Balance loaded from users collection - U Coins: $coinBalance');
+        debugPrint('✅ Wallet: Balance loaded from users collection - U Coins: $coinBalance');
       } else {
-        print('⚠️ Wallet: User data not found in either wallets or users collection');
+        debugPrint('⚠️ Wallet: User data not found in either wallets or users collection');
         setState(() {
           coinBalance = 0;
           hostEarnings = 0.0;
         });
       }
     } catch (e) {
-      print('❌ Wallet: Error loading coin balance: $e');
-      print('❌ Wallet: Stack trace: ${StackTrace.current}');
+      debugPrint('❌ Wallet: Error loading coin balance: $e');
+      debugPrint('❌ Wallet: Stack trace: ${StackTrace.current}');
       setState(() {
         coinBalance = 0;
         hostEarnings = 0.0;
@@ -399,12 +424,18 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   color: Colors.black87,
                   size: 22,
                 ),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  try {
+                    Navigator.pop(context);
+                  } catch (e) {
+                    debugPrint('Error navigating back: $e');
+                  }
+                },
               )
             : null, // No back button when opened from homepage
-        title: const Text(
-          'Wallet',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context)!.wallet,
+          style: const TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -429,11 +460,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             ),
             onPressed: () {
               // TODO: Navigate to transaction history
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Transaction History coming soon!'),
-                  backgroundColor: Color(0xFF04B104),
-                  duration: Duration(seconds: 2),
+                SnackBar(
+                  content: Text(AppLocalizations.of(context)!.transactionHistoryComingSoon),
+                  backgroundColor: const Color(0xFF04B104),
+                  duration: const Duration(seconds: 2),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -447,12 +479,16 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               size: 22,
             ),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ContactSupportScreen(),
-                ),
-              );
+              try {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ContactSupportScreen(),
+                  ),
+                );
+              } catch (e) {
+                debugPrint('Error navigating to contact support: $e');
+              }
             },
           ),
           const SizedBox(width: 8),
@@ -490,7 +526,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               child: Column(
                 children: [
                   Text(
-                    'Recharge with confidence — your money is always secure.',
+                    '1: ${AppLocalizations.of(context)!.rechargeWithConfidence}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
@@ -501,7 +537,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Fast, safe, and trusted — every recharge is protected.',
+                    '2: ${AppLocalizations.of(context)!.fastSafeTrusted}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
@@ -537,8 +573,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           // Secure Checkout
           _buildTrustBadge(
             icon: Icons.verified_user_rounded,
-            topText: 'Secure',
-            bottomText: 'Checkout',
+            topText: AppLocalizations.of(context)!.secure,
+            bottomText: AppLocalizations.of(context)!.checkout,
           ),
           
           // Divider
@@ -551,8 +587,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           // Satisfaction Guaranteed
           _buildTrustBadge(
             icon: Icons.emoji_events_rounded,
-            topText: 'Satisfaction',
-            bottomText: 'Guaranteed',
+            topText: AppLocalizations.of(context)!.satisfaction,
+            bottomText: AppLocalizations.of(context)!.guaranteed,
           ),
           
           // Divider
@@ -565,8 +601,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           // Privacy Protected
           _buildTrustBadge(
             icon: Icons.lock_rounded,
-            topText: 'Privacy',
-            bottomText: 'Protected',
+            topText: AppLocalizations.of(context)!.privacy,
+            bottomText: AppLocalizations.of(context)!.protected,
           ),
         ],
       ),
@@ -627,12 +663,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFB800).withOpacity(0.4),
+              color: const Color(0xFFFFB800).withValues(alpha:0.4),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
             BoxShadow(
-              color: const Color(0xFF92400E).withOpacity(0.2),
+              color: const Color(0xFF92400E).withValues(alpha:0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -651,8 +687,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.white.withOpacity(0.15),
-                      Colors.white.withOpacity(0.0),
+                      Colors.white.withValues(alpha:0.15),
+                      Colors.white.withValues(alpha:0.0),
                     ],
                   ),
                 ),
@@ -668,8 +704,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.white.withOpacity(0.1),
-                      Colors.white.withOpacity(0.0),
+                      Colors.white.withValues(alpha:0.1),
+                      Colors.white.withValues(alpha:0.0),
                     ],
                   ),
                 ),
@@ -684,7 +720,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha:0.08),
                 ),
               ),
             ),
@@ -698,8 +734,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.white.withOpacity(0.3),
-                      Colors.white.withOpacity(0.15),
+                      Colors.white.withValues(alpha:0.3),
+                      Colors.white.withValues(alpha:0.15),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -707,12 +743,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha:0.2),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha:0.3),
                       blurRadius: 6,
                       offset: const Offset(-2, -2),
                     ),
@@ -733,9 +769,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Header
-                  const Text(
-                    'My Balance',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)!.myBalance,
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -759,7 +795,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha:0.3),
                                 width: 2,
                               ),
                             ),
@@ -776,7 +812,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFFFD700).withOpacity(0.6),
+                                  color: const Color(0xFFFFD700).withValues(alpha:0.6),
                                   blurRadius: 12,
                                   spreadRadius: 2,
                                 ),
@@ -816,9 +852,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   const SizedBox(height: 6),
                   
                   // Available Coins label
-                      const Text(
-                        'Available Coins',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.availableCoins,
+                        style: const TextStyle(
                           color: Colors.white70,
                       fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -849,7 +885,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF04B104).withOpacity(0.3),
+              color: const Color(0xFF04B104).withValues(alpha:0.3),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -863,7 +899,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -876,12 +912,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    'HOST',
-                    style: TextStyle(
+                  child: Text(
+                    AppLocalizations.of(context)!.host,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -891,9 +927,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               ],
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Total Earnings',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.totalEarnings,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -933,9 +969,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text(
-                'Withdraw Earnings',
-                style: TextStyle(
+              child: Text(
+                AppLocalizations.of(context)!.withdrawEarnings,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -963,7 +999,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha:0.04),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -981,7 +1017,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF92400E).withOpacity(0.3),
+                color: const Color(0xFF92400E).withValues(alpha:0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -1000,13 +1036,13 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           ),
           dividerColor: Colors.transparent,
           tabs: [
-            const Tab(
+            Tab(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.flash_on, size: 16),
-                  SizedBox(width: 6),
-                  Text('Flat Recharge'),
+                  const Icon(Icons.flash_on, size: 16),
+                  const SizedBox(width: 6),
+                  Text(AppLocalizations.of(context)!.flatRecharge),
                 ],
               ),
             ),
@@ -1016,10 +1052,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.store, size: 16),
-                      SizedBox(width: 6),
-                      Text('Reseller'),
+                    children: [
+                      const Icon(Icons.store, size: 16),
+                      const SizedBox(width: 6),
+                      Text(AppLocalizations.of(context)!.reseller),
                     ],
                   ),
                   // Special discount badge
@@ -1035,15 +1071,15 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF512F).withOpacity(0.4),
+                            color: const Color(0xFFFF512F).withValues(alpha:0.4),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      child: const Text(
-                        'SAVE 20%',
-                        style: TextStyle(
+                      child: Text(
+                        AppLocalizations.of(context)!.save20Percent,
+                        style: const TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -1070,7 +1106,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         children: [
           // Header
           Text(
-            'Deposit Amount',
+            AppLocalizations.of(context)!.depositAmount,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -1130,7 +1166,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFF8E53).withOpacity(0.4),
+                    color: const Color(0xFFFF8E53).withValues(alpha:0.4),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
@@ -1141,7 +1177,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
+                      color: Colors.white.withValues(alpha:0.25),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -1155,9 +1191,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '💰 Get Best Deals!',
-                          style: TextStyle(
+                        Text(
+                          AppLocalizations.of(context)!.getBestDeals,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
@@ -1166,9 +1202,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Save up to 20% with trusted resellers',
+                          AppLocalizations.of(context)!.saveUpTo20Percent,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.95),
+                            color: Colors.white.withValues(alpha:0.95),
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1182,9 +1218,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      'BEST',
-                      style: TextStyle(
+                    child: Text(
+                      AppLocalizations.of(context)!.best,
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFFF512F),
@@ -1217,13 +1253,13 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: reseller['verified'] 
-                ? const Color(0xFF10B981).withOpacity(0.3)
+                ? const Color(0xFF10B981).withValues(alpha:0.3)
                 : Colors.grey[300]!,
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha:0.04),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -1336,7 +1372,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                    color: const Color(0xFF92400E).withOpacity(0.3),
+                    color: const Color(0xFF92400E).withValues(alpha:0.3),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                       ),
@@ -1351,16 +1387,16 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(
+                      children: [
+                        const Icon(
                           Icons.chat_bubble,
                     color: Colors.white,
                           size: 16,
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                       Text(
-                          'Chat',
-                        style: TextStyle(
+                          AppLocalizations.of(context)!.chat,
+                        style: const TextStyle(
                       color: Colors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -1391,12 +1427,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
             border: Border.all(
-            color: const Color(0xFFD97706).withOpacity(0.3),
+            color: const Color(0xFFD97706).withValues(alpha:0.3),
             width: 1,
             ),
             boxShadow: [
               BoxShadow(
-              color: const Color(0xFFFFB800).withOpacity(0.08),
+              color: const Color(0xFFFFB800).withValues(alpha:0.08),
               blurRadius: 6,
               offset: const Offset(0, 2),
               ),
@@ -1419,7 +1455,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFFB800).withOpacity(0.3),
+                        color: const Color(0xFFFFB800).withValues(alpha:0.3),
                         blurRadius: 3,
                         offset: const Offset(0, 1),
                       ),
@@ -1444,9 +1480,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 1),
-                const Text(
-                  'Coins',
-                style: TextStyle(
+                Text(
+                  AppLocalizations.of(context)!.coins,
+                style: const TextStyle(
                     fontSize: 8,
                     fontWeight: FontWeight.w500,
                     color: Colors.grey,
@@ -1481,14 +1517,16 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
 
   // ========== DIALOGS ==========
   void _showPaymentDialog(Map<String, dynamic> package) {
+    if (!mounted) return;
     final int coins = package['coins'];
     final int inr = package['inr'];
     
-    showDialog(
-      context: context,
+    try {
+      showDialog(
+        context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Complete Payment'),
+        title: Text(AppLocalizations.of(context)!.completePayment),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1526,22 +1564,32 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Payment via Google Play',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+            Text(
+              AppLocalizations.of(context)!.paymentViaGooglePlay,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            onPressed: () {
+              try {
+                Navigator.pop(context);
+              } catch (e) {
+                debugPrint('Error closing payment dialog: $e');
+              }
+            },
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              // TODO: Implement Google Play payment
-              _showSuccessDialog('Recharge successful!');
+              try {
+                Navigator.pop(context);
+                // TODO: Implement Google Play payment
+                _showSuccessDialog(AppLocalizations.of(context)!.rechargeSuccessful);
+              } catch (e) {
+                debugPrint('Error in payment dialog: $e');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFFB800),
@@ -1549,21 +1597,26 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Pay Now'),
+            child: Text(AppLocalizations.of(context)!.payNow),
           ),
         ],
       ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing payment dialog: $e');
+    }
   }
 
   void _showWithdrawalDialog() {
+    if (!mounted) return;
     final TextEditingController amountController = TextEditingController();
     
-    showDialog(
-      context: context,
+    try {
+      showDialog(
+        context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Withdraw Earnings'),
+        title: Text(AppLocalizations.of(context)!.withdrawEarningsTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1573,20 +1626,20 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF04B104).withOpacity(0.1),
+                    color: const Color(0xFF04B104).withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.currency_rupee,
                         color: Color(0xFF04B104),
                         size: 16,
                       ),
-                      SizedBox(width: 2),
+                      const SizedBox(width: 2),
                       Text(
-                        'INR',
-                        style: TextStyle(
+                        AppLocalizations.of(context)!.inr,
+                        style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF04B104),
@@ -1619,7 +1672,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               controller: amountController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Withdrawal Amount (INR)',
+                labelText: AppLocalizations.of(context)!.withdrawalAmountINR,
                 prefixText: '₹ ',
                 prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFF04B104)),
                 border: OutlineInputBorder(
@@ -1632,9 +1685,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               ),
             ),
             const SizedBox(height: 15),
-            const Text(
-              'Minimum withdrawal: ₹50',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            Text(
+              AppLocalizations.of(context)!.minimumWithdrawal50,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
@@ -1642,21 +1695,30 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           TextButton(
             onPressed: () {
               amountController.dispose();
-              Navigator.pop(context);
+              try {
+                Navigator.pop(context);
+              } catch (e) {
+                debugPrint('Error closing withdrawal dialog: $e');
+              }
             },
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
               final amount = double.tryParse(amountController.text);
               if (amount != null && amount >= 50 && amount <= hostEarnings) {
                 amountController.dispose();
-                Navigator.pop(context);
-                // TODO: Implement withdrawal API
-                _showSuccessDialog('Withdrawal request submitted!');
+                try {
+                  Navigator.pop(context);
+                  // TODO: Implement withdrawal API
+                  _showSuccessDialog(AppLocalizations.of(context)!.withdrawalRequestSubmitted);
+                } catch (e) {
+                  debugPrint('Error in withdrawal dialog: $e');
+                }
               } else {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Invalid amount')),
+                  SnackBar(content: Text(AppLocalizations.of(context)!.invalidAmount)),
                 );
               }
             },
@@ -1666,16 +1728,21 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Withdraw'),
+            child: Text(AppLocalizations.of(context)!.withdraw),
           ),
         ],
       ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing withdrawal dialog: $e');
+    }
   }
 
   void _showSuccessDialog(String message) {
-    showDialog(
-      context: context,
+    if (!mounted) return;
+    try {
+      showDialog(
+        context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
@@ -1699,16 +1766,26 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK', style: TextStyle(color: Color(0xFF04B104))),
+            onPressed: () {
+              try {
+                Navigator.pop(context);
+              } catch (e) {
+                debugPrint('Error closing success dialog: $e');
+              }
+            },
+            child: Text(AppLocalizations.of(context)!.ok, style: const TextStyle(color: Color(0xFF04B104))),
           ),
         ],
       ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing success dialog: $e');
+    }
   }
 
   // ========== START CHAT WITH RESELLER ==========
   void _startChatWithReseller(Map<String, dynamic> reseller) {
+    if (!mounted) return;
     // Navigate to Messages screen to start chat
     // In production, this would navigate to a chat screen with the reseller
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1719,7 +1796,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Starting chat with ${reseller['name']}...',
+                AppLocalizations.of(context)!.startingChatWith(reseller['name']),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -1733,7 +1810,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         ),
         margin: const EdgeInsets.all(16),
         action: SnackBarAction(
-          label: 'Open',
+          label: AppLocalizations.of(context)!.open,
           textColor: Colors.white,
           onPressed: () {
             // TODO: Navigate to chat/messages screen with reseller

@@ -47,16 +47,29 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
           _buildSettingItem(
             title: AppLocalizations.of(context)!.id,
             value: widget.userId,
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: widget.userId));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(AppLocalizations.of(context)!.idCopiedToClipboard),
-                  backgroundColor: const Color(0xFF6C63FF),
-                  behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+            onTap: () async {
+              try {
+                await Clipboard.setData(ClipboardData(text: widget.userId));
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.idCopiedToClipboard),
+                    backgroundColor: const Color(0xFF6C63FF),
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              } catch (e) {
+                debugPrint('Error copying to clipboard: $e');
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.errorOccurred),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             },
           ),
           
@@ -91,7 +104,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF04B104),
+                  color: Colors.red,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -151,261 +164,59 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
   void _showUpdatePhoneDialog() {
     final TextEditingController phoneController = TextEditingController();
     
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 30),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                spreadRadius: 5,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: Padding(
-              padding: const EdgeInsets.all(25),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Title
-                  Text(
-                    AppLocalizations.of(context)!.updatePhoneNumber,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  
-                  const SizedBox(height: 15),
-                  
-                  // Description
-                  Text(
-                    AppLocalizations.of(context)!.enterNewPhoneNumberDescription,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  
-                  const SizedBox(height: 25),
-                  
-                  // Input Field
-                  TextField(
-                    controller: phoneController,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    maxLength: 10,
-                    decoration: InputDecoration(
-                      counterText: '',
-                      hintText: AppLocalizations.of(context)!.enterNewPhoneNumber,
-                      prefixIcon: const Icon(
-                        Icons.phone,
-                        color: Color(0xFF04B104),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide(
-                          color: Colors.grey[200]!,
-                          width: 1,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF04B104),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 25),
-                  
-                  // Buttons
-                  Row(
-                    children: [
-                      // Cancel Button
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            phoneController.dispose();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(color: Colors.grey[300]!),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            AppLocalizations.of(context)!.cancel,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ),
-                      ),
-                      
-                      const SizedBox(width: 15),
-                      
-                      // Send OTP Button
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            if (phoneController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(AppLocalizations.of(context)!.pleaseEnterPhoneNumber),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                              return;
-                            }
-                            
-                            if (phoneController.text.length < 10) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(AppLocalizations.of(context)!.pleaseEnterValidPhoneNumber),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                              return;
-                            }
-                            
-                            // Get the new phone number
-                            final newPhone = phoneController.text;
-                            final fullPhoneNumber = '+91$newPhone';
-                            
-                            // Close dialog and dispose controller
-                            Navigator.pop(context);
-                            phoneController.dispose();
-                            
-                            // Show loading indicator
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (context) => const Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFF04B104),
-                                ),
-                              ),
-                            );
-                            
-                            // Send OTP via Firebase
-                            await FirebaseAuth.instance.verifyPhoneNumber(
-                              phoneNumber: fullPhoneNumber,
-                              verificationCompleted: (PhoneAuthCredential credential) async {
-                                // Auto-verification (instant verification on some devices)
-                                try {
-                                  await FirebaseAuth.instance.signInWithCredential(credential);
-                                  
-                                  // Update phone number in database
-                                  final dbService = DatabaseService();
-                                  await dbService.updatePhoneNumber(
-                                    phoneNumber: newPhone,
-                                    countryCode: '+91',
-                                  );
-                                  
-                                  print('✅ Phone number auto-verified and updated in database');
-                                } catch (e) {
-                                  print('❌ Error in auto-verification: $e');
-                                }
-                                Navigator.pop(context); // Close loading
-                              },
-                              verificationFailed: (FirebaseAuthException e) {
-                                Navigator.pop(context); // Close loading
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Verification failed: ${e.message}'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              },
-                              codeSent: (String verificationId, int? resendToken) {
-                                Navigator.pop(context); // Close loading
-                                
-                                // Show success message
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(AppLocalizations.of(context)!.otpSentToNewNumber),
-                                    backgroundColor: const Color(0xFF04B104),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                
-                                // Navigate to OTP screen with verification ID
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => OtpScreen(
-                                      phoneNumber: newPhone,
-                                      countryCode: '+91',
-                                      verificationId: verificationId,
-                                      resendToken: resendToken,
-                                    ),
-                                  ),
-                                );
-                              },
-                              codeAutoRetrievalTimeout: (String verificationId) {
-                                // Auto-resolution timed out
-                              },
-                              timeout: const Duration(seconds: 60),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF04B104),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            AppLocalizations.of(context)!.sendOTP,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    // Available countries
+    final List<Map<String, String>> countries = [
+      {'flag': '🇮🇳', 'name': 'India', 'code': '+91'},
+      {'flag': '🇺🇸', 'name': 'USA', 'code': '+1'},
+      {'flag': '🇬🇧', 'name': 'UK', 'code': '+44'},
+      {'flag': '🇨🇦', 'name': 'Canada', 'code': '+1'},
+      {'flag': '🇦🇺', 'name': 'Australia', 'code': '+61'},
+      {'flag': '🇦🇪', 'name': 'UAE', 'code': '+971'},
+      {'flag': '🇸🇬', 'name': 'Singapore', 'code': '+65'},
+      {'flag': '🇲🇾', 'name': 'Malaysia', 'code': '+60'},
+      {'flag': '🇵🇰', 'name': 'Pakistan', 'code': '+92'},
+      {'flag': '🇧🇩', 'name': 'Bangladesh', 'code': '+880'},
+    ];
+    
+    // Extract current country code from phone number (default to +91)
+    String currentCountryCode = '+91';
+    String currentCountryFlag = '🇮🇳';
+    if (widget.phoneNumber.isNotEmpty) {
+      // Try to detect country code from existing phone number
+      for (var country in countries) {
+        if (widget.phoneNumber.startsWith(country['code']!)) {
+          currentCountryCode = country['code']!;
+          currentCountryFlag = country['flag']!;
+          break;
+        }
+      }
+    }
+    
+    if (!mounted) return;
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return _PhoneUpdateDialog(
+            phoneController: phoneController,
+            countries: countries,
+            currentCountryCode: currentCountryCode,
+            currentCountryFlag: currentCountryFlag,
+            parentContext: context,
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('Error showing phone update dialog: $e');
+    }
   }
 
   void _showKYCDialog() {
-    showDialog(
-      context: context,
+    if (!mounted) return;
+    try {
+      showDialog(
+        context: context,
       barrierDismissible: true,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
@@ -434,7 +245,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF04B104).withOpacity(0.2),
+                  color: const Color(0xFF04B104).withValues(alpha:0.2),
                   blurRadius: 30,
                   spreadRadius: 5,
                   offset: const Offset(0, 10),
@@ -455,8 +266,8 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
                           colors: [
-                            const Color(0xFF04B104).withOpacity(0.1),
-                            const Color(0xFF04B104).withOpacity(0.05),
+                            const Color(0xFF04B104).withValues(alpha:0.1),
+                            const Color(0xFF04B104).withValues(alpha:0.05),
                           ],
                         ),
                       ),
@@ -477,7 +288,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF04B104).withOpacity(0.4),
+                                color: const Color(0xFF04B104).withValues(alpha:0.4),
                                 blurRadius: 20,
                                 spreadRadius: 3,
                               ),
@@ -525,7 +336,13 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: () {
+                                  try {
+                                    Navigator.pop(context);
+                                  } catch (e) {
+                                    debugPrint('Error closing KYC dialog: $e');
+                                  }
+                                },
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(vertical: 14),
                                   backgroundColor: Colors.white,
@@ -548,7 +365,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF04B104).withOpacity(0.4),
+                                      color: const Color(0xFF04B104).withValues(alpha:0.4),
                                       blurRadius: 12,
                                       spreadRadius: 2,
                                       offset: const Offset(0, 4),
@@ -557,14 +374,18 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                                 ),
                                 child: ElevatedButton(
                                   onPressed: () {
-                                    Navigator.pop(context);
-                                    // Navigate to KYC Verification Screen
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const KycVerificationScreen(),
-                                      ),
-                                    );
+                                    try {
+                                      Navigator.pop(context);
+                                      // Navigate to KYC Verification Screen
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => const KycVerificationScreen(),
+                                        ),
+                                      );
+                                    } catch (e) {
+                                      debugPrint('Error navigating to KYC screen: $e');
+                                    }
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
@@ -602,7 +423,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
           ),
         ),
       ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing KYC dialog: $e');
+    }
   }
   
   // Build modern benefit card with gradient
@@ -622,7 +446,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha:0.03),
             blurRadius: 8,
             spreadRadius: 1,
             offset: const Offset(0, 2),
@@ -640,7 +464,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
-                  color: gradient.colors.first.withOpacity(0.3),
+                  color: gradient.colors.first.withValues(alpha:0.3),
                   blurRadius: 8,
                   spreadRadius: 1,
                 ),
@@ -672,7 +496,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFF04B104).withOpacity(0.1),
+              color: const Color(0xFF04B104).withValues(alpha:0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -687,37 +511,40 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
   }
 
   void _showSwitchAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: EdgeInsets.zero,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Text Container
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
-              child: Text(
-                AppLocalizations.of(context)!.switchAccountConfirmation,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.normal,
-                  color: Colors.black87,
+    if (!mounted) return;
+    try {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: EdgeInsets.zero,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
+                child: Text(
+                  AppLocalizations.of(context)!.switchAccountConfirmation,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.normal,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
-            ),
-            
-            // Divider below text
-            const Divider(height: 1, thickness: 1),
-            
-            // Options Row
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+              const Divider(height: 1, thickness: 1),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        try {
+                          Navigator.pop(context);
+                        } catch (e) {
+                          debugPrint('Error closing switch account dialog: $e');
+                        }
+                      },
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: const RoundedRectangleBorder(
@@ -736,24 +563,33 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                     ),
                   ),
                 ),
-                
-                // Vertical Divider between buttons
                 Container(
                   width: 1,
                   height: 50,
                   color: Colors.grey[300],
                 ),
-                
                 Expanded(
                   child: TextButton(
                     onPressed: () {
-                      Navigator.pop(context);
-                      // Proper logout: clear Firebase auth state so Splash won't auto-login
-                      FirebaseAuth.instance.signOut().then((_) {
-                        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-                      }).catchError((e) {
-                        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-                      });
+                      try {
+                        Navigator.pop(context);
+                        FirebaseAuth.instance.signOut().then((_) {
+                          try {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                          } catch (e) {
+                            debugPrint('Error navigating to login after sign out: $e');
+                          }
+                        }).catchError((e) {
+                          debugPrint('Error signing out: $e');
+                          try {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                          } catch (navError) {
+                            debugPrint('Error navigating to login: $navError');
+                          }
+                        });
+                      } catch (e) {
+                        debugPrint('Error in switch account: $e');
+                      }
                     },
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 15),
@@ -778,14 +614,19 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
           ],
         ),
       ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing switch account dialog: $e');
+    }
   }
 
   void _showDeleteAccountDialog() {
+    if (!mounted) return;
     final TextEditingController confirmController = TextEditingController();
     
-    showDialog(
-      context: context,
+    try {
+      showDialog(
+        context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
@@ -814,7 +655,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.red.withOpacity(0.2),
+                  color: Colors.red.withValues(alpha:0.2),
                   blurRadius: 25,
                   spreadRadius: 3,
                 ),
@@ -827,7 +668,6 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Warning Icon
                     Container(
                       width: 65,
                       height: 65,
@@ -841,7 +681,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.red.withOpacity(0.3),
+                            color: Colors.red.withValues(alpha:0.3),
                             blurRadius: 15,
                             spreadRadius: 2,
                           ),
@@ -853,10 +693,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         size: 36,
                       ),
                     ),
-                    
                     const SizedBox(height: 18),
-                    
-                    // Title
                     Text(
                       AppLocalizations.of(context)!.deleteAccount,
                       style: const TextStyle(
@@ -866,17 +703,14 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    
                     const SizedBox(height: 12),
-                    
-                    // Warning Message
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.05),
+                        color: Colors.red.withValues(alpha:0.05),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: Colors.red.withOpacity(0.2),
+                          color: Colors.red.withValues(alpha:0.2),
                           width: 1,
                         ),
                       ),
@@ -902,10 +736,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         ],
                       ),
                     ),
-                    
                     const SizedBox(height: 18),
-                    
-                    // Confirmation Instructions
                     Text(
                       AppLocalizations.of(context)!.typeDeleteToConfirm,
                       style: const TextStyle(
@@ -914,10 +745,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         color: Colors.black87,
                       ),
                     ),
-                    
                     const SizedBox(height: 10),
-                    
-                    // Input Field
                     TextField(
                       controller: confirmController,
                       textAlign: TextAlign.center,
@@ -950,13 +778,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         ),
                       ),
                     ),
-                    
                     const SizedBox(height: 22),
-                    
-                    // Action Buttons
                     Row(
                       children: [
-                        // Cancel Button
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () {
@@ -981,10 +805,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                             ),
                           ),
                         ),
-                        
                         const SizedBox(width: 10),
-                        
-                        // Delete Button
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
@@ -997,7 +818,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                               borderRadius: BorderRadius.circular(10),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.red.withOpacity(0.4),
+                                  color: Colors.red.withValues(alpha:0.4),
                                   blurRadius: 10,
                                   spreadRadius: 1,
                                   offset: const Offset(0, 3),
@@ -1007,17 +828,27 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                             child: ElevatedButton(
                               onPressed: () {
                                 if (confirmController.text == 'DELETE') {
-                                  Navigator.pop(context);
-                                  confirmController.dispose();
-                                  // TODO: Implement account deletion API
-                                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(AppLocalizations.of(context)!.accountDeletedSuccessfully),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
+                                  try {
+                                    Navigator.pop(context);
+                                    confirmController.dispose();
+                                    try {
+                                      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                                    } catch (e) {
+                                      debugPrint('Error navigating to login after account deletion: $e');
+                                    }
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(AppLocalizations.of(context)!.accountDeletedSuccessfully),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    debugPrint('Error deleting account: $e');
+                                    confirmController.dispose();
+                                  }
                                 } else {
+                                  if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(AppLocalizations.of(context)!.pleaseTypeDeleteToConfirm),
@@ -1037,12 +868,12 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(Icons.delete_forever, size: 20, color: Colors.white),
-                                  SizedBox(width: 8),
+                                children: [
+                                  const Icon(Icons.delete_forever, size: 20, color: Colors.white),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Delete',
-                                    style: TextStyle(
+                                    AppLocalizations.of(context)!.deletePermanently,
+                                    style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
@@ -1062,103 +893,596 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
           ),
         ),
       ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing delete account dialog: $e');
+    }
   }
 
   void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: EdgeInsets.zero,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Text Container
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
-              child: Text(
-                AppLocalizations.of(context)!.logoutConfirmation,
+    if (!mounted) return;
+    try {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: EdgeInsets.zero,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
+                child: Text(
+                  AppLocalizations.of(context)!.logoutConfirmation,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.normal,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const Divider(height: 1, thickness: 1),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        try {
+                          Navigator.pop(context);
+                        } catch (e) {
+                          debugPrint('Error closing logout dialog: $e');
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(20),
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context)!.cancel,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 50,
+                    color: Colors.grey[300],
+                  ),
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        try {
+                          Navigator.pop(context);
+                          FirebaseAuth.instance.signOut().then((_) {
+                            try {
+                              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                            } catch (e) {
+                              debugPrint('Error navigating to login after logout: $e');
+                            }
+                          }).catchError((e) {
+                            debugPrint('Error signing out: $e');
+                            try {
+                              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                            } catch (navError) {
+                              debugPrint('Error navigating to login: $navError');
+                            }
+                          });
+                        } catch (e) {
+                          debugPrint('Error in logout: $e');
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.only(
+                            bottomRight: Radius.circular(20),
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        AppLocalizations.of(context)!.confirm,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF04B104),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error showing logout dialog: $e');
+    }
+  }
+}
+
+class _PhoneUpdateDialog extends StatefulWidget {
+  final TextEditingController phoneController;
+  final List<Map<String, String>> countries;
+  final String currentCountryCode;
+  final String currentCountryFlag;
+  final BuildContext parentContext;
+  
+  const _PhoneUpdateDialog({
+    required this.phoneController,
+    required this.countries,
+    required this.currentCountryCode,
+    required this.currentCountryFlag,
+    required this.parentContext,
+  });
+  
+  @override
+  State<_PhoneUpdateDialog> createState() => _PhoneUpdateDialogState();
+}
+
+class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
+  late String selectedCountryCode;
+  late String selectedCountryFlag;
+  
+  @override
+  void initState() {
+    super.initState();
+    selectedCountryCode = widget.currentCountryCode;
+    selectedCountryFlag = widget.currentCountryFlag;
+  }
+  
+  void _showCountryPicker() {
+    if (!mounted) return;
+    try {
+      showModalBottomSheet(
+        context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                AppLocalizations.of(context)!.selectCountry,
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.normal,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
-                textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 15),
+              SizedBox(
+                height: 300,
+                child: ListView.builder(
+                  itemCount: widget.countries.length,
+                  itemBuilder: (context, index) {
+                    final country = widget.countries[index];
+                    return ListTile(
+                      leading: Text(
+                        country['flag']!,
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                      title: Text(
+                        country['name']!,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      trailing: Text(
+                        country['code']!,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onTap: () {
+                        if (!mounted) return;
+                        setState(() {
+                          selectedCountryCode = country['code']!;
+                          selectedCountryFlag = country['flag']!;
+                        });
+                        try {
+                          Navigator.pop(context);
+                        } catch (e) {
+                          debugPrint('Error closing country picker: $e');
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      );
+    } catch (e) {
+      debugPrint('Error showing country picker: $e');
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 30),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 20,
+              spreadRadius: 5,
+              offset: const Offset(0, 5),
             ),
-            
-            // Divider below text
-            const Divider(height: 1, thickness: 1),
-            
-            // Options Row
-            Row(
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.all(25),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      AppLocalizations.of(context)!.cancel,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
+                // Title
+                Text(
+                  AppLocalizations.of(context)!.updatePhoneNumber,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 
-                // Vertical Divider between buttons
+                const SizedBox(height: 15),
+                
+                // Description
+                Text(
+                  AppLocalizations.of(context)!.enterNewPhoneNumberDescription,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 25),
+                
+                // Country Code Selector and Phone Input Container
                 Container(
-                  width: 1,
-                  height: 50,
-                  color: Colors.grey[300],
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: Colors.grey[200]!,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Country Code Selector
+                      InkWell(
+                        onTap: _showCountryPicker,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(15),
+                          bottomLeft: Radius.circular(15),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              right: BorderSide(
+                                color: Colors.grey[300]!,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                selectedCountryFlag,
+                                style: const TextStyle(fontSize: 20),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                selectedCountryCode,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_drop_down,
+                                color: Colors.grey[600],
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Phone Number Input
+                      Expanded(
+                        child: TextField(
+                          controller: widget.phoneController,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          decoration: InputDecoration(
+                            hintText: AppLocalizations.of(context)!.enterNewPhoneNumber,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 
-                Expanded(
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-              // Proper logout: clear Firebase auth state
-              FirebaseAuth.instance.signOut().then((_) {
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-              }).catchError((e) {
-                      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-              });
-                    },
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          bottomRight: Radius.circular(20),
+                const SizedBox(height: 25),
+                
+                // Buttons
+                Row(
+                  children: [
+                    // Cancel Button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          try {
+                            Navigator.pop(context);
+                            widget.phoneController.dispose();
+                          } catch (e) {
+                            debugPrint('Error closing phone update dialog: $e');
+                            widget.phoneController.dispose();
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: Colors.grey[300]!),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context)!.cancel,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
                     ),
-                    child: Text(
-                      AppLocalizations.of(context)!.confirm,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF04B104),
+                    
+                    const SizedBox(width: 15),
+                    
+                    // Send OTP Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (widget.phoneController.text.isEmpty) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(AppLocalizations.of(context)!.pleaseEnterPhoneNumber),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          
+                          if (widget.phoneController.text.length < 10) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(AppLocalizations.of(context)!.pleaseEnterValidPhoneNumber),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          
+                          // Get the new phone number
+                          final newPhone = widget.phoneController.text;
+                          final fullPhoneNumber = '$selectedCountryCode$newPhone';
+                          
+                          // Get parent context reference
+                          final parentContext = widget.parentContext;
+                          
+                          // Close dialog
+                          try {
+                            Navigator.pop(context);
+                          } catch (e) {
+                            debugPrint('Error closing phone update dialog: $e');
+                          }
+                          
+                          // Show loading indicator using parent context
+                          if (parentContext.mounted) {
+                            try {
+                              showDialog(
+                                context: parentContext,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF04B104),
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              debugPrint('Error showing loading dialog: $e');
+                            }
+                          }
+                          
+                          try {
+                            // Send OTP via Firebase
+                            await FirebaseAuth.instance.verifyPhoneNumber(
+                              phoneNumber: fullPhoneNumber,
+                              verificationCompleted: (PhoneAuthCredential credential) async {
+                                // Auto-verification (instant verification on some devices)
+                                try {
+                                  await FirebaseAuth.instance.signInWithCredential(credential);
+                                  
+                                  // Update phone number in database
+                                  final dbService = DatabaseService();
+                                  await dbService.updatePhoneNumber(
+                                    phoneNumber: newPhone,
+                                    countryCode: selectedCountryCode,
+                                  );
+                                  
+                                  debugPrint('✅ Phone number auto-verified and updated in database');
+                                } catch (e) {
+                                  debugPrint('❌ Error in auto-verification: $e');
+                                }
+                                if (parentContext.mounted) {
+                                  try {
+                                    Navigator.pop(parentContext); // Close loading
+                                  } catch (e) {
+                                    debugPrint('Error closing loading dialog: $e');
+                                  }
+                                }
+                              },
+                              verificationFailed: (FirebaseAuthException e) {
+                                if (parentContext.mounted) {
+                                  try {
+                                    Navigator.pop(parentContext); // Close loading
+                                  } catch (navError) {
+                                    debugPrint('Error closing loading dialog: $navError');
+                                  }
+                                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Verification failed: ${e.message ?? 'Unknown error'}'),
+                                      backgroundColor: Colors.red,
+                                      duration: const Duration(seconds: 4),
+                                    ),
+                                  );
+                                }
+                              },
+                              codeSent: (String verificationId, int? resendToken) {
+                                if (parentContext.mounted) {
+                                  try {
+                                    Navigator.pop(parentContext); // Close loading
+                                  } catch (navError) {
+                                    debugPrint('Error closing loading dialog: $navError');
+                                  }
+                                  
+                                  // Show success message
+                                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                                    SnackBar(
+                                      content: Text(AppLocalizations.of(parentContext)!.otpSentToNewNumber),
+                                      backgroundColor: const Color(0xFF04B104),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  
+                                  // Navigate to OTP screen with verification ID
+                                  try {
+                                    Navigator.push(
+                                      parentContext,
+                                      MaterialPageRoute(
+                                        builder: (context) => OtpScreen(
+                                          phoneNumber: newPhone,
+                                          countryCode: selectedCountryCode,
+                                          verificationId: verificationId,
+                                          resendToken: resendToken,
+                                        ),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    debugPrint('Error navigating to OTP screen: $e');
+                                  }
+                                }
+                              },
+                              codeAutoRetrievalTimeout: (String verificationId) {
+                                // Auto-resolution timed out
+                              },
+                              timeout: const Duration(seconds: 60),
+                            );
+                          } catch (e) {
+                            // Handle any unexpected errors
+                            if (parentContext.mounted) {
+                              try {
+                                Navigator.pop(parentContext); // Close loading
+                              } catch (navError) {
+                                debugPrint('Error closing loading dialog: $navError');
+                              }
+                              ScaffoldMessenger.of(parentContext).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 4),
+                                ),
+                              );
+                            }
+                          } finally {
+                            // Dispose controller after all operations
+                            widget.phoneController.dispose();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF04B104),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context)!.sendOTP,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
-
 }
 

@@ -44,23 +44,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: AppLocalizations.of(context)!.language,
                   subtitle: Provider.of<LanguageProvider>(context).currentLanguageNativeName,
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LanguageSelectionScreen(),
-                      ),
-                    );
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LanguageSelectionScreen(),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint('Error navigating to language selection: $e');
+                    }
                   },
                 ),
                 _buildSettingItem(
                   title: AppLocalizations.of(context)!.notification,
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationSettingsScreen(),
-                      ),
-                    );
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationSettingsScreen(),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint('Error navigating to notification settings: $e');
+                    }
                   },
                 ),
                 _buildSettingItem(
@@ -89,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           children: [
                 Text(
-              'Chamak Live',
+              AppLocalizations.of(context)!.appName,
               style: TextStyle(
                     fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -146,47 +154,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showAboutDialog() {
-    showDialog(
-      context: context,
+    if (!mounted) return;
+    try {
+      showDialog(
+        context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(AppLocalizations.of(context)!.aboutUs),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.diamond, color: Color(0xFF9C27B0), size: 60),
-              SizedBox(height: 15),
+              const Icon(Icons.diamond, color: Color(0xFF9C27B0), size: 60),
+              const SizedBox(height: 15),
               Text(
-                'Chamak Live',
-                style: TextStyle(
+                AppLocalizations.of(context)!.appName,
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
-                'Connect with people around the world through live streaming, chat, and share amazing moments.',
-                style: TextStyle(fontSize: 14),
+                AppLocalizations.of(context)!.appDescription,
+                style: const TextStyle(fontSize: 14),
               ),
-              SizedBox(height: 15),
+              const SizedBox(height: 15),
               Text(
-                'Features:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                AppLocalizations.of(context)!.features,
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 5),
-              Text('• Live streaming'),
-              Text('• Real-time chat'),
-              Text('• Virtual gifts'),
-              Text('• Host & viewer modes'),
-              Text('• Secure payments'),
+              const SizedBox(height: 5),
+              Text(AppLocalizations.of(context)!.liveStreaming),
+              Text(AppLocalizations.of(context)!.realTimeChat),
+              Text(AppLocalizations.of(context)!.virtualGifts),
+              Text(AppLocalizations.of(context)!.hostViewerModes),
+              Text(AppLocalizations.of(context)!.securePayments),
             ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              try {
+                Navigator.pop(context);
+              } catch (e) {
+                debugPrint('Error closing about dialog: $e');
+              }
+            },
             child: Text(
               AppLocalizations.of(context)!.close,
               style: const TextStyle(color: Color(0xFF9C27B0)),
@@ -194,16 +210,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing about dialog: $e');
+    }
   }
 
   void _showPolicyDialog(String type) {
+    if (!mounted) return;
     final title = type == 'terms' 
         ? AppLocalizations.of(context)!.termsConditions 
         : AppLocalizations.of(context)!.privacyPolicy;
     
-    showDialog(
-      context: context,
+    try {
+      showDialog(
+        context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(title),
@@ -214,21 +235,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Text(
                 type == 'privacy'
-                    ? 'We respect your privacy and are committed to protecting your personal data. '
-                        'This policy describes how we collect, use, and share your information.\n\n'
-                        '1. Information Collection\n'
-                        '2. Data Usage\n'
-                        '3. Data Sharing\n'
-                        '4. Security Measures\n'
-                        '5. Your Rights\n\n'
-                        'Last updated: January 2025'
-                    : 'By using Chamak Live, you agree to these terms and conditions.\n\n'
-                        '1. Account Registration\n'
-                        '2. User Conduct\n'
-                        '3. Content Guidelines\n'
-                        '4. Payment Terms\n'
-                        '5. Termination\n\n'
-                        'Last updated: January 2025',
+                    ? AppLocalizations.of(context)!.privacyPolicyContent
+                    : AppLocalizations.of(context)!.termsConditionsContent,
                 style: const TextStyle(fontSize: 14),
               ),
             ],
@@ -236,7 +244,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              try {
+                Navigator.pop(context);
+              } catch (e) {
+                debugPrint('Error closing policy dialog: $e');
+              }
+            },
             child: Text(
               AppLocalizations.of(context)!.close,
               style: const TextStyle(color: Color(0xFF9C27B0)),
@@ -244,14 +258,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing policy dialog: $e');
+    }
   }
 
   void _showFeedbackDialog() {
+    if (!mounted) return;
     final TextEditingController feedbackController = TextEditingController();
     
-    showDialog(
-      context: context,
+    try {
+      showDialog(
+        context: context,
       builder: (context) {
         return AlertDialog(
           title: Text(AppLocalizations.of(context)!.feedback),
@@ -268,21 +287,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                feedbackController.dispose();
-                Navigator.pop(context);
+                try {
+                  feedbackController.dispose();
+                  Navigator.pop(context);
+                } catch (e) {
+                  debugPrint('Error closing feedback dialog: $e');
+                  feedbackController.dispose();
+                }
               },
               child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton(
               onPressed: () {
                 if (feedbackController.text.trim().isNotEmpty) {
-                  feedbackController.dispose();
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(AppLocalizations.of(context)!.thankYouForFeedback),
-                    ),
-                  );
+                  try {
+                    feedbackController.dispose();
+                    Navigator.pop(context);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(AppLocalizations.of(context)!.thankYouForFeedback),
+                      ),
+                    );
+                  } catch (e) {
+                    debugPrint('Error submitting feedback: $e');
+                    feedbackController.dispose();
+                  }
                 }
               },
               child: Text(AppLocalizations.of(context)!.send),
@@ -290,6 +320,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         );
       },
-    );
+      );
+    } catch (e) {
+      debugPrint('Error showing feedback dialog: $e');
+    }
   }
 }

@@ -4,6 +4,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'otp_screen.dart';
 import 'splash_screen.dart';
+import '../generated/l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -113,7 +114,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           _selectedCountryCode = country['code']!;
                           _selectedCountryFlag = country['flag']!;
                         });
-                        Navigator.pop(context);
+                        try {
+                          Navigator.pop(context);
+                        } catch (e) {
+                          debugPrint('Error closing country picker: $e');
+                        }
                       },
                     );
                   },
@@ -126,14 +131,43 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Validate phone number format
+  bool _isValidPhoneNumber(String phone) {
+    if (phone.isEmpty || phone.length != 10) {
+      return false;
+    }
+    
+    // Check if all digits are the same (e.g., 1111111111, 0000000000)
+    if (phone.split('').toSet().length == 1) {
+      return false;
+    }
+    
+    // Check for sequential numbers (e.g., 1234567890, 0123456789)
+    if (phone == '1234567890' || phone == '0123456789' || phone == '9876543210') {
+      return false;
+    }
+    
+    // Check if it starts with 0 (invalid for most countries)
+    if (phone.startsWith('0')) {
+      return false;
+    }
+    
+    // Check if it's all numeric
+    if (!RegExp(r'^[0-9]+$').hasMatch(phone)) {
+      return false;
+    }
+    
+    return true;
+  }
+
   void _sendOTP() async {
     if (_phoneController.text.isEmpty) {
-      _showErrorSnackBar('Please enter your mobile number');
+      _showErrorSnackBar(AppLocalizations.of(context)!.pleaseEnterYourMobileNumber);
       return;
     }
 
-    if (_phoneController.text.length < 10) {
-      _showErrorSnackBar('Please enter a valid mobile number');
+    if (!_isValidPhoneNumber(_phoneController.text)) {
+      _showErrorSnackBar(AppLocalizations.of(context)!.pleaseEnterValidMobileNumber);
       return;
     }
 
@@ -144,25 +178,25 @@ class _LoginScreenState extends State<LoginScreen> {
     final String rawNumber = _phoneController.text;
     final String fullNumber = '$_selectedCountryCode$rawNumber';
 
-    print('📱 Starting Phone Auth for: $fullNumber');
+    debugPrint('📱 Starting Phone Auth for: $fullNumber');
 
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: fullNumber,
         timeout: const Duration(seconds: 60),
         verificationCompleted: (PhoneAuthCredential credential) async {
-          print('✅ Verification completed automatically');
+          debugPrint('✅ Verification completed automatically');
           // Auto-retrieval or instant verification
           try {
             await FirebaseAuth.instance.signInWithCredential(credential);
             if (!mounted) return;
             _showSuccessSnackBar('Verified automatically');
           } catch (e) {
-            print('❌ Auto-verification error: $e');
+            debugPrint('❌ Auto-verification error: $e');
           }
         },
         verificationFailed: (FirebaseAuthException e) {
-          print('❌ Verification failed: ${e.code} - ${e.message}');
+          debugPrint('❌ Verification failed: ${e.code} - ${e.message}');
           if (!mounted) return;
           
           String errorMessage = 'Verification failed';
@@ -181,40 +215,55 @@ class _LoginScreenState extends State<LoginScreen> {
           }
           
           _showErrorSnackBar(errorMessage);
-          setState(() { _isLoading = false; });
+          if (mounted) {
+            setState(() { _isLoading = false; });
+          }
         },
         codeSent: (String verificationId, int? resendToken) {
-          print('✅ OTP sent successfully! Verification ID: $verificationId');
+          debugPrint('✅ OTP sent successfully! Verification ID: $verificationId');
           if (!mounted) return;
-          setState(() { _isLoading = false; });
+          if (mounted) {
+            setState(() { _isLoading = false; });
+          }
           _showSuccessSnackBar('OTP sent to $fullNumber');
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OtpScreen(
-                phoneNumber: rawNumber,
-                countryCode: _selectedCountryCode,
-                verificationId: verificationId,
-                resendToken: resendToken,
-              ),
-            ),
-          );
+          if (mounted) {
+            try {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OtpScreen(
+                    phoneNumber: rawNumber,
+                    countryCode: _selectedCountryCode,
+                    verificationId: verificationId,
+                    resendToken: resendToken,
+                  ),
+                ),
+              );
+            } catch (e) {
+              debugPrint('Navigation error: $e');
+            }
+          }
         },
         codeAutoRetrievalTimeout: (String verificationId) {
-          print('⏱️ Auto-retrieval timeout: $verificationId');
+          debugPrint('⏱️ Auto-retrieval timeout: $verificationId');
           if (!mounted) return;
-          setState(() { _isLoading = false; });
+          if (mounted) {
+            setState(() { _isLoading = false; });
+          }
         },
       );
     } catch (e) {
-      print('❌ Exception in verifyPhoneNumber: $e');
+      debugPrint('❌ Exception in verifyPhoneNumber: $e');
       if (!mounted) return;
       _showErrorSnackBar('Failed to start verification: $e');
-      setState(() { _isLoading = false; });
+      if (mounted) {
+        setState(() { _isLoading = false; });
+      }
     }
   }
 
   void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -228,6 +277,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showErrorSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -283,7 +333,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                try {
+                  Navigator.of(context).pop();
+                } catch (e) {
+                  debugPrint('Error closing dialog: $e');
+                }
+              },
               child: const Text(
                 'Close',
                 style: TextStyle(
@@ -360,25 +416,41 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-     backgroundColor: const Color(0xFFFFFFFF),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () {
-            // Navigate back to splash screen instead of pop
-            // This prevents black screen when there's no route in stack
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => const SplashScreen(),
-              ),
-            );
-          },
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // Dark icons for light background
+        statusBarBrightness: Brightness.light, // For iOS
       ),
-      body: SafeArea(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFFFF),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black87),
+            onPressed: () {
+              if (!mounted) return;
+              try {
+                // Navigate back to splash screen instead of pop
+                // This prevents black screen when there's no route in stack
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const SplashScreen(),
+                  ),
+                );
+              } catch (e) {
+                debugPrint('Navigation error: $e');
+              }
+            },
+          ),
+        ),
+        body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Column(
@@ -427,10 +499,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 48,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
+                          borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
+                              color: Colors.black.withValues(alpha: 0.08),
                               blurRadius: 12,
                               spreadRadius: 1,
                               offset: const Offset(0, 4),
@@ -443,8 +515,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         InkWell(
                           onTap: _showCountryPicker,
                           borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(15),
-                            bottomLeft: Radius.circular(15),
+                            topLeft: Radius.circular(10),
+                            bottomLeft: Radius.circular(10),
                           ),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -487,7 +559,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             keyboardType: TextInputType.phone,
                             enabled: !_isLoading,
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 17,
                               fontWeight: FontWeight.w500,
                               color: Colors.black87,
                             ),
@@ -498,6 +570,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 fontSize: 14,
                               ),
                               border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              disabledBorder: InputBorder.none,
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 14,
@@ -565,7 +640,7 @@ class _LoginScreenState extends State<LoginScreen> {
             delay: const Duration(milliseconds: 600),
             child: SizedBox(
               width: double.infinity,
-              height: 60,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _sendOTP,
                 style: ElevatedButton.styleFrom(
@@ -573,9 +648,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey[300],
                   elevation: 8,
-                  shadowColor: const Color(0xFF9C27B0).withOpacity(0.4), // #9C27B0 shadow
+                  shadowColor: const Color(0xFF9C27B0).withValues(alpha: 0.4), // #9C27B0 shadow
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                 ),
                 child: _isLoading
@@ -658,6 +733,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     ),
   ),
+      ),
     );
   }
 }

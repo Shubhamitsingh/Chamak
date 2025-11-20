@@ -382,7 +382,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   /// Build selected user card
   Widget _buildSelectedUserCard() {
     return Card(
-      color: const Color(0xFF04B104).withOpacity(0.1),
+      color: const Color(0xFF04B104).withValues(alpha:0.1),
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -452,9 +452,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha:0.3)),
       ),
       child: Column(
         children: [
@@ -506,9 +506,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                border: Border.all(color: Colors.orange.withValues(alpha:0.3)),
               ),
               child: const Row(
                 children: [
@@ -648,7 +648,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: Colors.orange.withOpacity(0.2),
+                      backgroundColor: Colors.orange.withValues(alpha:0.2),
                       child: const Icon(
                         Icons.add_circle,
                         color: Colors.orange,

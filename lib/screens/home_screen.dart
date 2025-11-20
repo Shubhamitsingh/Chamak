@@ -6,6 +6,7 @@ import 'user_search_screen.dart';
 import 'profile_screen.dart';
 import 'chat_list_screen.dart';
 import 'wallet_screen.dart';
+import 'live_page.dart';
 import '../widgets/announcement_panel.dart';
 import '../services/live_stream_service.dart';
 import '../services/chat_service.dart';
@@ -100,11 +101,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final isNewUser = await _locationPermissionService.isNewUserWithoutLocation();
       
       if (!isNewUser) {
-        print('✅ User already has location saved');
+        debugPrint('✅ User already has location saved');
         return;
       }
 
-      print('🆕 New user detected - requesting location permission...');
+      debugPrint('🆕 New user detected - requesting location permission...');
 
       // Small delay to let screen load first
       await Future.delayed(const Duration(milliseconds: 1000));
@@ -115,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final shouldRequest = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        barrierColor: Colors.black.withOpacity(0.6),
+        barrierColor: Colors.black.withValues(alpha:0.6),
         builder: (context) => Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.all(20),
@@ -125,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(25),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
+                  color: Colors.black.withValues(alpha:0.15),
                   blurRadius: 20,
                   spreadRadius: 5,
                   offset: const Offset(0, 10),
@@ -159,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha:0.2),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -169,9 +170,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Enable Location',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.enableLocation,
+                        style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -200,17 +201,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Benefits list
                       _buildBenefitItem(
                         icon: Icons.near_me,
-                        text: 'Discover local content',
+                        text: AppLocalizations.of(context)!.discoverLocalContent,
                       ),
                       const SizedBox(height: 12),
                       _buildBenefitItem(
                         icon: Icons.explore,
-                        text: 'Find nearby hosts',
+                        text: AppLocalizations.of(context)!.findNearbyHosts,
                       ),
                       const SizedBox(height: 12),
                       _buildBenefitItem(
                         icon: Icons.security,
-                        text: 'Your data stays private',
+                        text: AppLocalizations.of(context)!.yourDataStaysPrivate,
                       ),
                     ],
                   ),
@@ -224,7 +225,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Skip button
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context, false),
+                          onPressed: () {
+                            try {
+                              Navigator.pop(context, false);
+                            } catch (e) {
+                              debugPrint('Error closing dialog: $e');
+                            }
+                          },
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             side: BorderSide(color: Colors.grey[300]!),
@@ -232,9 +239,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Skip',
-                            style: TextStyle(
+                          child: Text(
+                            AppLocalizations.of(context)!.skip,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
@@ -247,25 +254,31 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         flex: 2,
                         child: ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
+                          onPressed: () {
+                            try {
+                              Navigator.pop(context, true);
+                            } catch (e) {
+                              debugPrint('Error closing dialog: $e');
+                            }
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFE91E63),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             elevation: 4,
-                            shadowColor: const Color(0xFFE91E63).withOpacity(0.4),
+                            shadowColor: const Color(0xFFE91E63).withValues(alpha:0.4),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.check_circle, size: 20),
-                              SizedBox(width: 8),
+                              const Icon(Icons.check_circle, size: 20),
+                              const SizedBox(width: 8),
                               Text(
-                                'Allow',
-                                style: TextStyle(
+                                AppLocalizations.of(context)!.allow,
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
@@ -290,7 +303,8 @@ class _HomeScreenState extends State<HomeScreen> {
         
         if (mounted) {
           if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Row(
                   children: [
@@ -316,8 +330,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: Duration(seconds: 2),
               ),
             );
+            }
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Row(
                   children: [
@@ -343,11 +359,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: Duration(seconds: 3),
               ),
             );
+            }
           }
         }
       }
     } catch (e) {
-      print('❌ Error requesting location for new user: $e');
+      debugPrint('❌ Error requesting location for new user: $e');
       // Don't disrupt user experience if location fails
     }
   }
@@ -377,13 +394,15 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       
       if (shouldShow && mounted) {
-        // Show the popup
-        await CoinPurchasePopup().show(
-          context,
-          specialOffer: userCoins < 100 
-              ? '💰 Your coins are running low!' 
-              : null,
-        );
+        if (mounted) {
+          // Show the popup
+          await CoinPurchasePopup().show(
+            context,
+            specialOffer: userCoins < 100 
+                ? '💰 Your coins are running low!' 
+                : null,
+          );
+        }
       }
     } catch (e) {
       // Silently fail - don't disrupt user experience
@@ -444,8 +463,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTopBar() {
     return FadeInDown(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-        height: 45,
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        height: 42,
         child: Row(
           children: [
             // Text-Only Tabs (Left Side) - Scrollable
@@ -487,7 +506,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 
-                const SizedBox(width: 20),
+                const SizedBox(width: 15),
                 
                 // Live Button
                 GestureDetector(
@@ -533,7 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 
-                const SizedBox(width: 20),
+                const SizedBox(width: 15),
                 
                 // Following Button
                 GestureDetector(
@@ -567,7 +586,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 
-                const SizedBox(width: 20),
+                const SizedBox(width: 15),
                 
                 // New Button
                 GestureDetector(
@@ -691,7 +710,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       border: Border.all(color: Colors.white, width: 1.5),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.orange.withOpacity(0.5),
+                                          color: Colors.orange.withValues(alpha:0.5),
                                           blurRadius: 6,
                                           offset: const Offset(0, 2),
                                         ),
@@ -729,11 +748,16 @@ class _HomeScreenState extends State<HomeScreen> {
             // User Search Icon (Search People by ID)
             GestureDetector(
               onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const UserSearchScreen(),
-                  ),
-                );
+                if (!mounted) return;
+                try {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const UserSearchScreen(),
+                    ),
+                  );
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
               child: Padding(
                 padding: const EdgeInsets.all(4.0),
@@ -833,6 +857,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: RepaintBoundary(
                 child: GestureDetector(
                   onTap: () {
+                    if (!mounted) return;
                     // Live streaming feature coming soon
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -937,7 +962,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Icon(
               thumbnail,
               size: 100,
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha:0.1),
             ),
           ),
           
@@ -987,7 +1012,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha:0.3),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -1035,6 +1060,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           backgroundImage: hostPhotoUrl != null && hostPhotoUrl.isNotEmpty
                               ? NetworkImage(hostPhotoUrl)
                               : null,
+                          onBackgroundImageError: (exception, stackTrace) {
+                            debugPrint('Error loading host photo: $exception');
+                          },
                           child: hostPhotoUrl == null || hostPhotoUrl.isEmpty
                               ? const Icon(
                                   Icons.person,
@@ -1060,7 +1088,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha:0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -1091,6 +1119,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return GestureDetector(
       onTap: () {
+        if (!mounted) return;
         // Live streaming feature coming soon
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1114,7 +1143,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha:0.2),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -1133,7 +1162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.7),
+                        Colors.black.withValues(alpha:0.7),
                       ],
                     ),
                   ),
@@ -1141,7 +1170,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Icon(
                       Icons.person_outline,
                       size: 80,
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha:0.2),
                     ),
                   ),
                 ),
@@ -1166,7 +1195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(5),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha:0.3),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -1202,7 +1231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha:0.6),
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(15),
                       bottomRight: Radius.circular(15),
@@ -1236,7 +1265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha:0.2),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
@@ -1274,7 +1303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha:0.2),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
@@ -1316,7 +1345,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               borderRadius: BorderRadius.circular(6),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF8E24AA).withOpacity(0.4),
+                                  color: const Color(0xFF8E24AA).withValues(alpha:0.4),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
@@ -1346,7 +1375,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   vertical: 3,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withValues(alpha:0.6),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -1397,7 +1426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFEC4899).withOpacity(0.4),
+                    color: const Color(0xFFEC4899).withValues(alpha:0.4),
                     blurRadius: 20,
                     spreadRadius: 5,
                   ),
@@ -1456,41 +1485,45 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         // Header
         Padding(
-          padding: const EdgeInsets.fromLTRB(15, 4, 15, 8),
+          padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(7),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFFEF4444), Color(0xFFEC4899)],
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
                   Icons.fiber_new_rounded,
                   color: Colors.white,
-                  size: 18,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       AppLocalizations.of(context)!.newlyJoinedHosts,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
+                        height: 1.2,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       AppLocalizations.of(context)!.discoverNewTalent,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         color: Colors.grey[600],
+                        height: 1.2,
                       ),
                     ),
                   ],
@@ -1503,7 +1536,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Grid of New Hosts
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+            padding: const EdgeInsets.fromLTRB(10, 2, 10, 12),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 8,
@@ -1540,6 +1573,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return GestureDetector(
       onTap: () {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.connectingToLiveStream(name)),
@@ -1562,7 +1596,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha:0.2),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -1581,7 +1615,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.7),
+                        Colors.black.withValues(alpha:0.7),
                       ],
                     ),
                   ),
@@ -1589,7 +1623,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Icon(
                       Icons.person_outline,
                       size: 80,
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha:0.2),
                     ),
                   ),
                 ),
@@ -1616,7 +1650,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(5),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
+                              color: Colors.black.withValues(alpha:0.3),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
@@ -1645,7 +1679,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             borderRadius: BorderRadius.circular(5),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
+                                color: Colors.black.withValues(alpha:0.3),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
@@ -1682,7 +1716,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha:0.6),
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(15),
                       bottomRight: Radius.circular(15),
@@ -1739,7 +1773,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha:0.2),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
@@ -1777,7 +1811,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha:0.2),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
@@ -1846,7 +1880,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF8E24AA).withOpacity(0.45),
+                      color: const Color(0xFF8E24AA).withValues(alpha:0.45),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -1881,14 +1915,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: () {
-                // Live streaming feature coming soon
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(AppLocalizations.of(context)!.liveStreamingComingSoon),
-                    backgroundColor: const Color(0xFF8E24AA),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
+                _startLiveStream();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8E24AA),
@@ -1901,7 +1928,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(25),
                 ),
                 elevation: 5,
-                shadowColor: const Color(0xFF8E24AA).withOpacity(0.4),
+                shadowColor: const Color(0xFF8E24AA).withValues(alpha:0.4),
               ),
               child: Text(
                 AppLocalizations.of(context)!.goLiveNow,
@@ -1915,6 +1942,113 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  // ========== START LIVE STREAM ==========
+  Future<void> _startLiveStream() async {
+    if (!mounted) return;
+    
+    try {
+      final currentUser = _auth.currentUser;
+        if (currentUser == null) {
+        if (!mounted) return;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.pleaseLoginToStartLiveStream),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Show loading indicator
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      try {
+        showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF8E24AA),
+          ),
+        ),
+      );
+      } catch (e) {
+        debugPrint('Error showing dialog: $e');
+        return;
+      }
+
+      // Get user data
+      final userData = await _databaseService.getUserData(currentUser.uid);
+      if (!mounted) return;
+      
+      final hostName = userData?.name ?? currentUser.displayName ?? currentUser.phoneNumber ?? 'Host';
+      final hostPhotoUrl = userData?.photoURL;
+
+      // Create live stream in Firebase and get stream ID
+      final liveStreamService = LiveStreamService();
+      final streamId = await liveStreamService.createLiveStream(
+        hostId: currentUser.uid,
+        hostName: hostName,
+        hostPhotoUrl: hostPhotoUrl,
+        title: AppLocalizations.of(context)!.liveStream,
+      );
+
+      if (!mounted) return;
+
+      // Generate unique liveID
+      final liveID = 'live_${streamId.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}';
+
+      // Close loading dialog
+      if (mounted) {
+        try {
+          navigator.pop();
+        } catch (e) {
+          debugPrint('Error closing dialog: $e');
+        }
+      }
+
+      // Navigate to LivePage as Host
+      if (mounted) {
+        try {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LivePage(
+                liveID: liveID,
+                isHost: true, // Host mode
+              ),
+            ),
+          );
+        } catch (e) {
+          debugPrint('Navigation error: $e');
+        }
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted) {
+        try {
+          Navigator.of(context, rootNavigator: true).pop();
+        } catch (popError) {
+          debugPrint('Error closing dialog: $popError');
+        }
+      }
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error starting live stream: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      debugPrint('❌ Error starting live stream: $e');
+    }
   }
 
   // ========== PROFILE TAB ==========
@@ -1934,11 +2068,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return BottomNavigationBar(
         currentIndex: _currentBottomIndex,
         onTap: (index) {
+          // Handle (+) button click (index 2) - navigate to live streaming screen
+          if (index == 2) {
+            _startLiveStream();
+            // Don't change the selected index, keep it on current tab
+            return;
+          }
+          
           setState(() {
             _currentBottomIndex = index;
           });
         },
-        selectedItemColor: const Color(0xFF9C27B0), // Purple for selected items
+        selectedItemColor: Colors.black, // Black for selected items
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
@@ -1983,7 +2124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2), // Gray shadow
+                      color: Colors.grey.withValues(alpha:0.2), // Gray shadow
                       blurRadius: 6,
                       spreadRadius: 1,
                     ),
@@ -1991,7 +2132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: const Icon(
                   Icons.add,
-                  color: Color(0xFF9C27B0), // Purple icon
+                  color: Colors.black, // Black icon
                   size: 24,
                   weight: 700,
                 ),
@@ -2044,7 +2185,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.red.withOpacity(0.5),
+                    color: Colors.red.withValues(alpha:0.5),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -2075,10 +2216,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ========== SHOW ANNOUNCEMENT PANEL ==========
   void _showAnnouncementPanel(BuildContext context) {
-    showGeneralDialog(
+    if (!mounted) return;
+    try {
+      showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Announcement Panel',
+      barrierLabel: AppLocalizations.of(context)!.announcementPanel,
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
@@ -2099,6 +2242,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+    } catch (e) {
+      debugPrint('Error showing announcement panel: $e');
+    }
   }
 
   // ========== HELPER METHODS ==========

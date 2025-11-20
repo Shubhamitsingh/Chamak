@@ -12,7 +12,6 @@ import 'app_localizations_ml.dart';
 import 'app_localizations_mr.dart';
 import 'app_localizations_ta.dart';
 import 'app_localizations_te.dart';
-import 'app_localizations_ur.dart';
 
 // ignore_for_file: type=lint
 
@@ -106,8 +105,7 @@ abstract class AppLocalizations {
     Locale('ml'),
     Locale('mr'),
     Locale('ta'),
-    Locale('te'),
-    Locale('ur')
+    Locale('te')
   ];
 
   /// No description provided for @appTitle.
@@ -752,6 +750,24 @@ abstract class AppLocalizations {
   /// **'Please enter a valid phone number'**
   String get pleaseEnterValidPhoneNumber;
 
+  /// No description provided for @pleaseEnterYourMobileNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your mobile number'**
+  String get pleaseEnterYourMobileNumber;
+
+  /// No description provided for @pleaseEnterValidMobileNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid mobile number'**
+  String get pleaseEnterValidMobileNumber;
+
+  /// No description provided for @pleaseEnterCompleteOTP.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter the complete OTP'**
+  String get pleaseEnterCompleteOTP;
+
   /// No description provided for @otpSentToNewNumber.
   ///
   /// In en, this message translates to:
@@ -947,7 +963,7 @@ abstract class AppLocalizations {
   /// No description provided for @withdrawalRequestSubmitted.
   ///
   /// In en, this message translates to:
-  /// **'Withdrawal request submitted successfully!'**
+  /// **'Withdrawal request submitted!'**
   String get withdrawalRequestSubmitted;
 
   /// No description provided for @recentTransactions.
@@ -1669,6 +1685,552 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Buy Now'**
   String get buyNow;
+
+  /// No description provided for @myBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'My Balance'**
+  String get myBalance;
+
+  /// No description provided for @availableCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'Available Coins'**
+  String get availableCoins;
+
+  /// No description provided for @totalEarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Earnings'**
+  String get totalEarnings;
+
+  /// No description provided for @withdrawEarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw Earnings'**
+  String get withdrawEarnings;
+
+  /// No description provided for @depositAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit Amount'**
+  String get depositAmount;
+
+  /// No description provided for @flatRecharge.
+  ///
+  /// In en, this message translates to:
+  /// **'Flat Recharge'**
+  String get flatRecharge;
+
+  /// No description provided for @reseller.
+  ///
+  /// In en, this message translates to:
+  /// **'Reseller'**
+  String get reseller;
+
+  /// No description provided for @save20Percent.
+  ///
+  /// In en, this message translates to:
+  /// **'SAVE 20%'**
+  String get save20Percent;
+
+  /// No description provided for @getBestDeals.
+  ///
+  /// In en, this message translates to:
+  /// **'💰 Get Best Deals!'**
+  String get getBestDeals;
+
+  /// No description provided for @saveUpTo20Percent.
+  ///
+  /// In en, this message translates to:
+  /// **'Save up to 20% with trusted resellers'**
+  String get saveUpTo20Percent;
+
+  /// No description provided for @best.
+  ///
+  /// In en, this message translates to:
+  /// **'BEST'**
+  String get best;
+
+  /// No description provided for @chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get chat;
+
+  /// No description provided for @secure.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure'**
+  String get secure;
+
+  /// No description provided for @checkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout'**
+  String get checkout;
+
+  /// No description provided for @satisfaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Satisfaction'**
+  String get satisfaction;
+
+  /// No description provided for @guaranteed.
+  ///
+  /// In en, this message translates to:
+  /// **'Guaranteed'**
+  String get guaranteed;
+
+  /// No description provided for @privacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get privacy;
+
+  /// No description provided for @protected.
+  ///
+  /// In en, this message translates to:
+  /// **'Protected'**
+  String get protected;
+
+  /// No description provided for @completePayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete Payment'**
+  String get completePayment;
+
+  /// No description provided for @paymentViaGooglePlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment via Google Play'**
+  String get paymentViaGooglePlay;
+
+  /// No description provided for @payNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay Now'**
+  String get payNow;
+
+  /// No description provided for @withdrawEarningsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw Earnings'**
+  String get withdrawEarningsTitle;
+
+  /// No description provided for @withdrawalAmountINR.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal Amount (INR)'**
+  String get withdrawalAmountINR;
+
+  /// No description provided for @minimumWithdrawal50.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum withdrawal: ₹50'**
+  String get minimumWithdrawal50;
+
+  /// No description provided for @invalidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid amount'**
+  String get invalidAmount;
+
+  /// No description provided for @rechargeSuccessful.
+  ///
+  /// In en, this message translates to:
+  /// **'Recharge successful!'**
+  String get rechargeSuccessful;
+
+  /// No description provided for @startingChatWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting chat with {name}...'**
+  String startingChatWith(String name);
+
+  /// No description provided for @open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get open;
+
+  /// No description provided for @selectCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Country'**
+  String get selectCountry;
+
+  /// No description provided for @coins.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins'**
+  String get coins;
+
+  /// No description provided for @host.
+  ///
+  /// In en, this message translates to:
+  /// **'HOST'**
+  String get host;
+
+  /// No description provided for @inr.
+  ///
+  /// In en, this message translates to:
+  /// **'INR'**
+  String get inr;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @rechargeWithConfidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Recharge with confidence — your money is always secure.'**
+  String get rechargeWithConfidence;
+
+  /// No description provided for @fastSafeTrusted.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast, safe, and trusted — every recharge is protected.'**
+  String get fastSafeTrusted;
+
+  /// No description provided for @enableLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Location'**
+  String get enableLocation;
+
+  /// No description provided for @discoverLocalContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover local content'**
+  String get discoverLocalContent;
+
+  /// No description provided for @findNearbyHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Find nearby hosts'**
+  String get findNearbyHosts;
+
+  /// No description provided for @yourDataStaysPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data stays private'**
+  String get yourDataStaysPrivate;
+
+  /// No description provided for @skip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get skip;
+
+  /// No description provided for @allow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get allow;
+
+  /// No description provided for @pleaseLoginToStartLiveStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Please login to start a live stream'**
+  String get pleaseLoginToStartLiveStream;
+
+  /// No description provided for @liveStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Stream'**
+  String get liveStream;
+
+  /// No description provided for @announcementPanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Announcement Panel'**
+  String get announcementPanel;
+
+  /// No description provided for @errorLoadingEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading events'**
+  String get errorLoadingEvents;
+
+  /// No description provided for @noEventsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Events Yet'**
+  String get noEventsYet;
+
+  /// No description provided for @eventsFromAdminWillAppear.
+  ///
+  /// In en, this message translates to:
+  /// **'Events from admin will appear here'**
+  String get eventsFromAdminWillAppear;
+
+  /// No description provided for @errorLoadingAnnouncements.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading announcements'**
+  String get errorLoadingAnnouncements;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @noAnnouncementsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No Announcements Yet'**
+  String get noAnnouncementsYet;
+
+  /// No description provided for @announcementsFromAdminWillAppear.
+  ///
+  /// In en, this message translates to:
+  /// **'Announcements from admin will appear here'**
+  String get announcementsFromAdminWillAppear;
+
+  /// No description provided for @allCaughtUp.
+  ///
+  /// In en, this message translates to:
+  /// **'All caught up!'**
+  String get allCaughtUp;
+
+  /// No description provided for @noAnnouncementsToShow.
+  ///
+  /// In en, this message translates to:
+  /// **'No announcements to show'**
+  String get noAnnouncementsToShow;
+
+  /// No description provided for @announcementDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Announcement dismissed'**
+  String get announcementDismissed;
+
+  /// No description provided for @dismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get dismiss;
+
+  /// No description provided for @transactionHistoryComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction History coming soon!'**
+  String get transactionHistoryComingSoon;
+
+  /// No description provided for @errorLoadingProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading profile'**
+  String get errorLoadingProfile;
+
+  /// No description provided for @profileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile not found'**
+  String get profileNotFound;
+
+  /// No description provided for @errorLoadingTransactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading transactions'**
+  String get errorLoadingTransactions;
+
+  /// No description provided for @noTransactionsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions yet'**
+  String get noTransactionsYet;
+
+  /// No description provided for @earningsWillAppearHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Your earnings will appear here'**
+  String get earningsWillAppearHere;
+
+  /// No description provided for @searchMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages...'**
+  String get searchMessages;
+
+  /// No description provided for @newMessageFeatureComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'New message feature coming soon!'**
+  String get newMessageFeatureComingSoon;
+
+  /// No description provided for @chatWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat with {name}'**
+  String chatWith(String name);
+
+  /// No description provided for @fullChatInterfaceComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Full chat interface coming soon!'**
+  String get fullChatInterfaceComingSoon;
+
+  /// No description provided for @warningsRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} warnings remaining'**
+  String warningsRemaining(int count);
+
+  /// No description provided for @followTheseGuidelines.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow these guidelines'**
+  String get followTheseGuidelines;
+
+  /// No description provided for @errorOccurred.
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred. Please try again.'**
+  String get errorOccurred;
+
+  /// No description provided for @from.
+  ///
+  /// In en, this message translates to:
+  /// **'From:'**
+  String get from;
+
+  /// No description provided for @until.
+  ///
+  /// In en, this message translates to:
+  /// **'Until:'**
+  String get until;
+
+  /// No description provided for @levelAndAchievements.
+  ///
+  /// In en, this message translates to:
+  /// **'Level & Achievements'**
+  String get levelAndAchievements;
+
+  /// No description provided for @yourCurrentLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Current Level'**
+  String get yourCurrentLevel;
+
+  /// No description provided for @xpProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{currentXP} / {totalXP} XP'**
+  String xpProgress(int currentXP, int totalXP);
+
+  /// No description provided for @achievements.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get achievements;
+
+  /// No description provided for @totalXP.
+  ///
+  /// In en, this message translates to:
+  /// **'Total XP'**
+  String get totalXP;
+
+  /// No description provided for @rank.
+  ///
+  /// In en, this message translates to:
+  /// **'Rank'**
+  String get rank;
+
+  /// No description provided for @xpReward.
+  ///
+  /// In en, this message translates to:
+  /// **'+{amount} XP'**
+  String xpReward(int amount);
+
+  /// No description provided for @failedToSubmitTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to submit ticket. Please try again.'**
+  String get failedToSubmitTicket;
+
+  /// No description provided for @or.
+  ///
+  /// In en, this message translates to:
+  /// **'OR'**
+  String get or;
+
+  /// No description provided for @needHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Need Help?'**
+  String get needHelp;
+
+  /// No description provided for @chatWithSupportTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat with support team'**
+  String get chatWithSupportTeam;
+
+  /// No description provided for @appName.
+  ///
+  /// In en, this message translates to:
+  /// **'Chamak Live'**
+  String get appName;
+
+  /// No description provided for @appDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect with people around the world through live streaming, chat, and share amazing moments.'**
+  String get appDescription;
+
+  /// No description provided for @features.
+  ///
+  /// In en, this message translates to:
+  /// **'Features:'**
+  String get features;
+
+  /// No description provided for @liveStreaming.
+  ///
+  /// In en, this message translates to:
+  /// **'• Live streaming'**
+  String get liveStreaming;
+
+  /// No description provided for @realTimeChat.
+  ///
+  /// In en, this message translates to:
+  /// **'• Real-time chat'**
+  String get realTimeChat;
+
+  /// No description provided for @virtualGifts.
+  ///
+  /// In en, this message translates to:
+  /// **'• Virtual gifts'**
+  String get virtualGifts;
+
+  /// No description provided for @hostViewerModes.
+  ///
+  /// In en, this message translates to:
+  /// **'• Host & viewer modes'**
+  String get hostViewerModes;
+
+  /// No description provided for @securePayments.
+  ///
+  /// In en, this message translates to:
+  /// **'• Secure payments'**
+  String get securePayments;
+
+  /// No description provided for @privacyPolicyContent.
+  ///
+  /// In en, this message translates to:
+  /// **'We respect your privacy and are committed to protecting your personal data. This policy describes how we collect, use, and share your information.\n\n1. Information Collection\n2. Data Usage\n3. Data Sharing\n4. Security Measures\n5. Your Rights\n\nLast updated: January 2025'**
+  String get privacyPolicyContent;
+
+  /// No description provided for @termsConditionsContent.
+  ///
+  /// In en, this message translates to:
+  /// **'By using Chamak Live, you agree to these terms and conditions.\n\n1. Account Registration\n2. User Conduct\n3. Content Guidelines\n4. Payment Terms\n5. Termination\n\nLast updated: January 2025'**
+  String get termsConditionsContent;
 }
 
 class _AppLocalizationsDelegate
@@ -1688,8 +2250,7 @@ class _AppLocalizationsDelegate
         'ml',
         'mr',
         'ta',
-        'te',
-        'ur'
+        'te'
       ].contains(locale.languageCode);
 
   @override
@@ -1713,8 +2274,6 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsTa();
     case 'te':
       return AppLocalizationsTe();
-    case 'ur':
-      return AppLocalizationsUr();
   }
 
   throw FlutterError(

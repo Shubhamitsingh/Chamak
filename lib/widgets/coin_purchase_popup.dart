@@ -19,7 +19,7 @@ class CoinPurchasePopup {
     showDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Colors.black.withValues(alpha:0.7),
       builder: (context) => _CoinPurchaseDialog(
         specialOffer: specialOffer,
         popupService: _popupService,
@@ -83,7 +83,7 @@ class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha:0.3),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -184,7 +184,7 @@ class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha:0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -227,7 +227,7 @@ class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
                                 turns: _sparkleController,
                                 child: Icon(
                                   Icons.star,
-                                  color: Colors.yellow.withOpacity(0.8),
+                                  color: Colors.yellow.withValues(alpha:0.8),
                                   size: 20,
                                 ),
                               ),
@@ -268,7 +268,7 @@ class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha:0.9),
                               decoration: TextDecoration.lineThrough,
                               decorationColor: Colors.white,
                               decorationThickness: 2,
@@ -321,7 +321,7 @@ class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha:0.2),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -374,7 +374,7 @@ class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFD700).withOpacity(0.6),
+                      color: const Color(0xFFFFD700).withValues(alpha:0.6),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -404,7 +404,7 @@ class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFD700).withOpacity(0.6),
+                      color: const Color(0xFFFFD700).withValues(alpha:0.6),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -434,7 +434,7 @@ class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFD700).withOpacity(0.6),
+                      color: const Color(0xFFFFD700).withValues(alpha:0.6),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),

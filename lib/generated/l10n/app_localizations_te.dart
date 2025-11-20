@@ -345,6 +345,16 @@ class AppLocalizationsTe extends AppLocalizations {
       'దయచేసి చెల్లుబాటు అయ్యే ఫోన్ నంబర్‌ను నమోదు చేయండి';
 
   @override
+  String get pleaseEnterYourMobileNumber => 'Please enter your mobile number';
+
+  @override
+  String get pleaseEnterValidMobileNumber =>
+      'Please enter a valid mobile number';
+
+  @override
+  String get pleaseEnterCompleteOTP => 'Please enter the complete OTP';
+
+  @override
   String get otpSentToNewNumber => 'కొత్త నంబర్‌కు OTP పంపబడింది';
 
   @override
@@ -842,4 +852,295 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get buyNow => 'Buy Now';
+
+  @override
+  String get myBalance => 'My Balance';
+
+  @override
+  String get availableCoins => 'Available Coins';
+
+  @override
+  String get totalEarnings => 'Total Earnings';
+
+  @override
+  String get withdrawEarnings => 'Withdraw Earnings';
+
+  @override
+  String get depositAmount => 'Deposit Amount';
+
+  @override
+  String get flatRecharge => 'Flat Recharge';
+
+  @override
+  String get reseller => 'Reseller';
+
+  @override
+  String get save20Percent => 'SAVE 20%';
+
+  @override
+  String get getBestDeals => '💰 Get Best Deals!';
+
+  @override
+  String get saveUpTo20Percent => 'Save up to 20% with trusted resellers';
+
+  @override
+  String get best => 'BEST';
+
+  @override
+  String get chat => 'Chat';
+
+  @override
+  String get secure => 'Secure';
+
+  @override
+  String get checkout => 'Checkout';
+
+  @override
+  String get satisfaction => 'Satisfaction';
+
+  @override
+  String get guaranteed => 'Guaranteed';
+
+  @override
+  String get privacy => 'Privacy';
+
+  @override
+  String get protected => 'Protected';
+
+  @override
+  String get completePayment => 'Complete Payment';
+
+  @override
+  String get paymentViaGooglePlay => 'Payment via Google Play';
+
+  @override
+  String get payNow => 'Pay Now';
+
+  @override
+  String get withdrawEarningsTitle => 'Withdraw Earnings';
+
+  @override
+  String get withdrawalAmountINR => 'Withdrawal Amount (INR)';
+
+  @override
+  String get minimumWithdrawal50 => 'Minimum withdrawal: ₹50';
+
+  @override
+  String get invalidAmount => 'Invalid amount';
+
+  @override
+  String get rechargeSuccessful => 'Recharge successful!';
+
+  @override
+  String startingChatWith(String name) {
+    return 'Starting chat with $name...';
+  }
+
+  @override
+  String get open => 'Open';
+
+  @override
+  String get selectCountry => 'Select Country';
+
+  @override
+  String get coins => 'Coins';
+
+  @override
+  String get host => 'HOST';
+
+  @override
+  String get inr => 'INR';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get rechargeWithConfidence =>
+      'Recharge with confidence — your money is always secure.';
+
+  @override
+  String get fastSafeTrusted =>
+      'Fast, safe, and trusted — every recharge is protected.';
+
+  @override
+  String get enableLocation => 'Enable Location';
+
+  @override
+  String get discoverLocalContent => 'Discover local content';
+
+  @override
+  String get findNearbyHosts => 'Find nearby hosts';
+
+  @override
+  String get yourDataStaysPrivate => 'Your data stays private';
+
+  @override
+  String get skip => 'Skip';
+
+  @override
+  String get allow => 'Allow';
+
+  @override
+  String get pleaseLoginToStartLiveStream =>
+      'Please login to start a live stream';
+
+  @override
+  String get liveStream => 'Live Stream';
+
+  @override
+  String get announcementPanel => 'Announcement Panel';
+
+  @override
+  String get errorLoadingEvents => 'Error loading events';
+
+  @override
+  String get noEventsYet => 'No Events Yet';
+
+  @override
+  String get eventsFromAdminWillAppear => 'Events from admin will appear here';
+
+  @override
+  String get errorLoadingAnnouncements => 'Error loading announcements';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get noAnnouncementsYet => 'No Announcements Yet';
+
+  @override
+  String get announcementsFromAdminWillAppear =>
+      'Announcements from admin will appear here';
+
+  @override
+  String get allCaughtUp => 'All caught up!';
+
+  @override
+  String get noAnnouncementsToShow => 'No announcements to show';
+
+  @override
+  String get announcementDismissed => 'Announcement dismissed';
+
+  @override
+  String get dismiss => 'Dismiss';
+
+  @override
+  String get transactionHistoryComingSoon => 'Transaction History coming soon!';
+
+  @override
+  String get errorLoadingProfile => 'Error loading profile';
+
+  @override
+  String get profileNotFound => 'Profile not found';
+
+  @override
+  String get errorLoadingTransactions => 'Error loading transactions';
+
+  @override
+  String get noTransactionsYet => 'No transactions yet';
+
+  @override
+  String get earningsWillAppearHere => 'Your earnings will appear here';
+
+  @override
+  String get searchMessages => 'Search messages...';
+
+  @override
+  String get newMessageFeatureComingSoon => 'New message feature coming soon!';
+
+  @override
+  String chatWith(String name) {
+    return 'Chat with $name';
+  }
+
+  @override
+  String get fullChatInterfaceComingSoon => 'Full chat interface coming soon!';
+
+  @override
+  String warningsRemaining(int count) {
+    return '$count warnings remaining';
+  }
+
+  @override
+  String get followTheseGuidelines => 'Follow these guidelines';
+
+  @override
+  String get errorOccurred => 'An error occurred. Please try again.';
+
+  @override
+  String get from => 'From:';
+
+  @override
+  String get until => 'Until:';
+
+  @override
+  String get levelAndAchievements => 'Level & Achievements';
+
+  @override
+  String get yourCurrentLevel => 'Your Current Level';
+
+  @override
+  String xpProgress(int currentXP, int totalXP) {
+    return '$currentXP / $totalXP XP';
+  }
+
+  @override
+  String get achievements => 'Achievements';
+
+  @override
+  String get totalXP => 'Total XP';
+
+  @override
+  String get rank => 'Rank';
+
+  @override
+  String xpReward(int amount) {
+    return '+$amount XP';
+  }
+
+  @override
+  String get failedToSubmitTicket =>
+      'Failed to submit ticket. Please try again.';
+
+  @override
+  String get or => 'OR';
+
+  @override
+  String get needHelp => 'Need Help?';
+
+  @override
+  String get chatWithSupportTeam => 'Chat with support team';
+
+  @override
+  String get appName => 'Chamak Live';
+
+  @override
+  String get appDescription =>
+      'Connect with people around the world through live streaming, chat, and share amazing moments.';
+
+  @override
+  String get features => 'Features:';
+
+  @override
+  String get liveStreaming => '• Live streaming';
+
+  @override
+  String get realTimeChat => '• Real-time chat';
+
+  @override
+  String get virtualGifts => '• Virtual gifts';
+
+  @override
+  String get hostViewerModes => '• Host & viewer modes';
+
+  @override
+  String get securePayments => '• Secure payments';
+
+  @override
+  String get privacyPolicyContent =>
+      'We respect your privacy and are committed to protecting your personal data. This policy describes how we collect, use, and share your information.\n\n1. Information Collection\n2. Data Usage\n3. Data Sharing\n4. Security Measures\n5. Your Rights\n\nLast updated: January 2025';
+
+  @override
+  String get termsConditionsContent =>
+      'By using Chamak Live, you agree to these terms and conditions.\n\n1. Account Registration\n2. User Conduct\n3. Content Guidelines\n4. Payment Terms\n5. Termination\n\nLast updated: January 2025';
 }

@@ -23,7 +23,7 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
       // Tap outside to close
       onTap: () => Navigator.of(context).pop(),
       child: Material(
-        color: Colors.black.withOpacity(0.5), // Dark overlay
+        color: Colors.black.withValues(alpha:0.5), // Dark overlay
         child: GestureDetector(
           // Prevent tap from closing when tapping inside panel
           onTap: () {},
@@ -43,7 +43,7 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
                   color: Colors.grey[50],
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha:0.3),
                       blurRadius: 20,
                       offset: const Offset(-5, 0),
                     ),
@@ -90,7 +90,7 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha:0.2),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
@@ -115,7 +115,7 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
                 Text(
                   AppLocalizations.of(context)!.stayUpdated,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha:0.9),
                     fontSize: 10,
                   ),
                 ),
@@ -128,7 +128,7 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha:0.2),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -305,13 +305,13 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: announcement['isNew'] 
-                ? color.withOpacity(0.2) 
-                : Colors.grey.withOpacity(0.15),
+                ? color.withValues(alpha:0.2) 
+                : Colors.grey.withValues(alpha:0.15),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha:0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -329,14 +329,14 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
                     padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [color, color.withOpacity(0.7)],
+                        colors: [color, color.withValues(alpha:0.7)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.2),
+                          color: color.withValues(alpha:0.2),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
@@ -452,12 +452,12 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [color, color.withOpacity(0.8)],
+                      colors: [color, color.withValues(alpha:0.8)],
                     ),
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.25),
+                        color: color.withValues(alpha:0.25),
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                       ),

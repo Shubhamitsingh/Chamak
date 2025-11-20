@@ -29,36 +29,47 @@ class _SplashScreenState extends State<SplashScreen> {
       
       if (currentUser != null && currentUser.phoneNumber != null) {
         // User is logged in - navigate to home automatically
-        print('✅ User already logged in: ${currentUser.phoneNumber}');
-        print('👤 User UID: ${currentUser.uid}');
+        debugPrint('✅ User already logged in: ${currentUser.phoneNumber}');
+        debugPrint('👤 User UID: ${currentUser.uid}');
         
         // Minimal delay before navigating (reduced for faster startup)
         await Future.delayed(const Duration(milliseconds: 200));
         
         if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                phoneNumber: currentUser.phoneNumber!,
+          try {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => HomeScreen(
+                  phoneNumber: currentUser.phoneNumber!,
+                ),
               ),
-            ),
-          );
+            );
+          } catch (e) {
+            debugPrint('Navigation error: $e');
+            // Stay on splash screen - user can click button
+          }
         }
       }
       // If not logged in, don't auto-navigate - wait for user to click button
     } catch (e) {
-      print('❌ Error checking auth state: $e');
+      debugPrint('❌ Error checking auth state: $e');
       // On error, just stay on splash screen - user can click button
     }
   }
 
   void _navigateToLogin() {
-    // Navigate to login when user clicks "Continue with Phone" button
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const LoginScreen(),
-      ),
-    );
+    if (!mounted) return;
+    
+    try {
+      // Navigate to login when user clicks "Continue with Phone" button
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Navigation error in _navigateToLogin: $e');
+    }
   }
 
   @override
@@ -68,51 +79,47 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: Colors.black, // Set black background to prevent cream flash
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.black, // Ensure black background before image loads
-        child: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: const AssetImage('assets/images/backgroungim.png'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.3),
-                BlendMode.darken,
-              ),
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: const AssetImage('assets/images/backgroungim3.jpg'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withValues(alpha: 0.3),
+              BlendMode.darken,
             ),
           ),
-          child: Container(
+        ),
+        child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withOpacity(0.7),
+                  Colors.black.withValues(alpha: 0.7),
                 ],
               ),
             ),
             child: SafeArea(
             child: Column(
               children: [
-                const Spacer(),
+                SizedBox(height: size.height * 0.10),
                 // Logo - Full HD Quality
                 Image.asset(
-                  'assets/images/logo.png',
+                  'assets/images/splaslogo.png',
                   width: 120,
                   height: 120,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
                   errorBuilder: (context, error, stackTrace) {
-                    print('❌ Error loading logo: $error');
-                    print('❌ Stack trace: $stackTrace');
+                    debugPrint('❌ Error loading logo: $error');
+                    debugPrint('❌ Stack trace: $stackTrace');
                     // Return a transparent placeholder instead of green icon
                     return Container(
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Icon(
@@ -123,7 +130,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     );
                   },
                 ),
-                const SizedBox(height: 30),
+                SizedBox(height: size.height * 0.08),
                 const Text(
                     'Chamak',
                     style: TextStyle(
@@ -158,32 +165,48 @@ class _SplashScreenState extends State<SplashScreen> {
                   ),
                 const Spacer(),
                 Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 60,
-                      child: ElevatedButton.icon(
-                        onPressed: _navigateToLogin,
-                        icon: const Icon(
-                          Icons.phone_android,
-                          size: 32,
-                          color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _navigateToLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF9C27B0),
+                        foregroundColor: Colors.white,
+                        elevation: 8,
+                        shadowColor: const Color(0xFF9C27B0).withValues(alpha: 0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        label: const Text(
-                          'Continue with Phone',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: Stack(
+                        children: [
+                          // Centered text in entire container
+                          const Center(
+                            child: Text(
+                              'Continue with Phone',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF04B104),
-                          foregroundColor: Colors.white,
-                          elevation: 8,
-                        shadowColor: const Color.fromARGB(255, 237, 237, 240),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                        ),
+                          // Phone icon at left position
+                          Positioned(
+                            left: 12,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: const Icon(
+                                Icons.phone_android,
+                                size: 28,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -195,7 +218,7 @@ class _SplashScreenState extends State<SplashScreen> {
                       'By continuing, you agree to our Terms & Privacy Policy',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 12,
                       ),
                     ),
@@ -203,7 +226,6 @@ class _SplashScreenState extends State<SplashScreen> {
                 SizedBox(height: size.height * 0.05),
               ],
             ),
-          ),
           ),
         ),
       ),

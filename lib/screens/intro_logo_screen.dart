@@ -74,29 +74,78 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
   }
 
   Future<void> _decideNext() async {
-    // Show logo with animations - reduced delay for faster app startup
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
+    try {
+      // Show logo with animations - reduced delay for faster app startup
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
 
-    // Check auth state once
-    final User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null && currentUser.phoneNumber != null) {
-      // Already logged in → go straight to Home
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => HomeScreen(
-              phoneNumber: currentUser.phoneNumber!,
-            ),
-          ),
-        );
+      // Check auth state once
+      User? currentUser;
+      try {
+        currentUser = FirebaseAuth.instance.currentUser;
+      } catch (e) {
+        debugPrint('Error getting current user: $e');
+        // Fallback: navigate to splash screen
+        if (mounted) {
+          try {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const SplashScreen()),
+            );
+          } catch (navError) {
+            debugPrint('Navigation error: $navError');
+          }
+        }
+        return;
       }
-    } else {
-      // Not logged in → go to Splash (then user taps Continue to Login)
+
+      if (currentUser != null && currentUser.phoneNumber != null) {
+        // Already logged in → go straight to Home
+        if (mounted) {
+          try {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => HomeScreen(
+                  phoneNumber: currentUser!.phoneNumber!,
+                ),
+              ),
+            );
+          } catch (e) {
+            debugPrint('Navigation error: $e');
+            // Fallback: navigate to splash screen
+            if (mounted) {
+              try {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const SplashScreen()),
+                );
+              } catch (navError) {
+                debugPrint('Fallback navigation error: $navError');
+              }
+            }
+          }
+        }
+      } else {
+        // Not logged in → go to Splash (then user taps Continue to Login)
+        if (mounted) {
+          try {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const SplashScreen()),
+            );
+          } catch (e) {
+            debugPrint('Navigation error: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in _decideNext: $e');
+      // Fallback navigation
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SplashScreen()),
-        );
+        try {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const SplashScreen()),
+          );
+        } catch (navError) {
+          debugPrint('Fallback navigation error: $navError');
+        }
       }
     }
   }
@@ -105,11 +154,7 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.white, // Explicitly set container color to prevent flash
-        child: Center(
+      body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -148,7 +193,10 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
             AnimatedBuilder(
               animation: _typewriterAnimation,
               builder: (context, child) {
-                String displayText = _fullText.substring(0, _typewriterAnimation.value);
+                String displayText = _fullText.substring(
+                  0,
+                  _typewriterAnimation.value.clamp(0, _fullText.length),
+                );
                 return ShaderMask(
                   shaderCallback: (bounds) => const LinearGradient(
                     colors: [
@@ -175,7 +223,6 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
             ],
           ),
         ),
-      ),
     );
   }
 }

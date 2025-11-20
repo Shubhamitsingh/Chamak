@@ -37,6 +37,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
 
   void _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
+      if (!mounted) return;
       setState(() {
         _isSubmitting = true;
       });
@@ -62,7 +63,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
           description: _concernController.text.trim(),
         );
 
-        print('✅ Ticket created with ID: $ticketId');
+        debugPrint('✅ Ticket created with ID: $ticketId');
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -99,11 +100,15 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
           // Navigate back
           await Future.delayed(const Duration(milliseconds: 1000));
           if (mounted) {
-            Navigator.pop(context);
+            try {
+              Navigator.pop(context);
+            } catch (e) {
+              debugPrint('Error navigating back: $e');
+            }
           }
         }
       } catch (e) {
-        print('❌ Error submitting ticket: $e');
+        debugPrint('❌ Error submitting ticket: $e');
         
         if (mounted) {
           setState(() {
@@ -116,10 +121,10 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                 children: [
                   const Icon(Icons.error, color: Colors.white),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Failed to submit ticket. Please try again.',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      AppLocalizations.of(context)!.failedToSubmitTicket,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -147,7 +152,13 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
         backgroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            try {
+              Navigator.pop(context);
+            } catch (e) {
+              debugPrint('Error navigating back: $e');
+            }
+          },
         ),
         title: Text(
           AppLocalizations.of(context)!.contactSupport,
@@ -182,7 +193,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha:0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -221,6 +232,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                   }).toList(),
                   onChanged: (String? newValue) {
                     if (newValue != null) {
+                      if (!mounted) return;
                       setState(() {
                         _selectedCategoryIndex = _categories.indexOf(newValue);
                       });
@@ -247,7 +259,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha:0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -306,7 +318,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.grey[400],
                       elevation: 2,
-                      shadowColor: const Color(0xFF00BCD4).withOpacity(0.3),
+                      shadowColor: const Color(0xFF00BCD4).withValues(alpha:0.3),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -361,7 +373,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
-                      'OR',
+                      AppLocalizations.of(context)!.or,
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 11,
@@ -387,15 +399,15 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF00BCD4).withOpacity(0.08),
-                      const Color(0xFF00E5FF).withOpacity(0.08),
+                      const Color(0xFF00BCD4).withValues(alpha:0.08),
+                      const Color(0xFF00E5FF).withValues(alpha:0.08),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF00BCD4).withOpacity(0.3),
+                    color: const Color(0xFF00BCD4).withValues(alpha:0.3),
                     width: 1,
                   ),
                 ),
@@ -416,7 +428,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF00BCD4).withOpacity(0.3),
+                            color: const Color(0xFF00BCD4).withValues(alpha:0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -436,9 +448,9 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Need Help?',
-                            style: TextStyle(
+                          Text(
+                            AppLocalizations.of(context)!.needHelp,
+                            style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
@@ -446,7 +458,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Chat with support team',
+                            AppLocalizations.of(context)!.chatWithSupportTeam,
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey[600],
@@ -460,17 +472,21 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                     OutlinedButton.icon(
                       onPressed: () {
                         // Navigate to Contact Support Chat Screen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ContactSupportChatScreen(),
-                          ),
-                        );
+                        try {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ContactSupportChatScreen(),
+                            ),
+                          );
+                        } catch (e) {
+                          debugPrint('Error navigating to chat screen: $e');
+                        }
                       },
                       icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                      label: const Text(
-                        'Chat',
-                        style: TextStyle(
+                      label: Text(
+                        AppLocalizations.of(context)!.chat,
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),

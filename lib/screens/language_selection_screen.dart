@@ -22,8 +22,6 @@ class LanguageSelectionScreen extends StatelessWidget {
         return const Color(0xFFEF4444); // Red
       case 'mr': // Marathi
         return const Color(0xFFF59E0B); // Amber
-      case 'ur': // Urdu
-        return const Color(0xFF06B6D4); // Cyan
       case 'kn': // Kannada
         return const Color(0xFFEC4899); // Pink
       default:
@@ -68,7 +66,7 @@ class LanguageSelectionScreen extends StatelessWidget {
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
-              color: isSelected ? languageColor.withOpacity(0.1) : Colors.grey[50],
+              color: isSelected ? languageColor.withValues(alpha:0.1) : Colors.grey[50],
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected ? languageColor : Colors.grey[300]!,
@@ -113,8 +111,8 @@ class LanguageSelectionScreen extends StatelessWidget {
                         height: 48,
                         decoration: BoxDecoration(
                           color: isSelected 
-                              ? languageColor.withOpacity(0.2) 
-                              : languageColor.withOpacity(0.1),
+                              ? languageColor.withValues(alpha:0.2) 
+                              : languageColor.withValues(alpha:0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Center(
@@ -148,7 +146,7 @@ class LanguageSelectionScreen extends StatelessWidget {
                               languageData['nativeName']!,
                               style: TextStyle(
                                 fontSize: 14,
-                                color: languageColor.withOpacity(0.8),
+                                color: languageColor.withValues(alpha:0.8),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),

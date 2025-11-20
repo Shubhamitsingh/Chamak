@@ -76,7 +76,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     'Marathi',
     'Tamil',
     'Gujarati',
-    'Urdu',
     'Kannada',
     'Odia',
     'Malayalam',
@@ -134,20 +133,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         
         // Auto-fill location if city is empty
         if (userData.city == null || userData.city!.isEmpty) {
-          print('🌍 City is empty, auto-detecting location...');
+          debugPrint('🌍 City is empty, auto-detecting location...');
           await _getCurrentLocation();
         } else {
-          print('✅ City already set: ${userData.city}');
+          debugPrint('✅ City already set: ${userData.city}');
         }
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
         // Auto-fill location for new users
-        print('🆕 New user, auto-detecting location...');
+        debugPrint('🆕 New user, auto-detecting location...');
         await _getCurrentLocation();
       }
     } catch (e) {
-      print('❌ Error loading user data: $e');
-      setState(() => _isLoading = false);
+      debugPrint('❌ Error loading user data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -169,7 +172,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         backgroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            try {
+              Navigator.pop(context);
+            } catch (e) {
+              debugPrint('Error navigating back: $e');
+            }
+          },
         ),
         title: Text(
           AppLocalizations.of(context)!.editProfile,
@@ -286,12 +295,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            color: hasImage ? Colors.grey[50] : const Color(0xFF9C27B0).withOpacity(0.06),
+            color: hasImage ? Colors.grey[50] : const Color(0xFF9C27B0).withValues(alpha:0.06),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: hasImage
                   ? Colors.grey[300]!
-                  : const Color(0xFF9C27B0).withOpacity(0.4),
+                  : const Color(0xFF9C27B0).withValues(alpha:0.4),
               width: 1.5,
             ),
             image: coverImage != null
@@ -303,6 +312,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ? DecorationImage(
                         image: NetworkImage(currentCoverURL),
                         fit: BoxFit.cover,
+                        onError: (exception, stackTrace) {
+                          debugPrint('Error loading cover image: $exception');
+                        },
                       )
                     : null),
           ),
@@ -353,6 +365,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 : (_currentPhotoURL != null && _currentPhotoURL!.isNotEmpty
                     ? NetworkImage(_currentPhotoURL!) as ImageProvider
                     : null),
+            onBackgroundImageError: _currentPhotoURL != null && _currentPhotoURL!.isNotEmpty
+                ? (exception, stackTrace) {
+                    debugPrint('Error loading profile image: $exception');
+                  }
+                : null,
             child: _profileImage == null && (_currentPhotoURL == null || _currentPhotoURL!.isEmpty)
                 ? Icon(Icons.person, size: 50, color: Colors.grey[400])
                 : null,
@@ -564,10 +581,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withOpacity(0.08),
+                      color: const Color(0xFF9C27B0).withValues(alpha:0.08),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: const Color(0xFF9C27B0).withOpacity(0.4),
+                        color: const Color(0xFF9C27B0).withValues(alpha:0.4),
                       ),
                     ),
                     child: Row(
@@ -601,10 +618,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF9C27B0).withOpacity(0.08),
+                color: const Color(0xFF9C27B0).withValues(alpha:0.08),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF9C27B0).withOpacity(0.3),
+                  color: const Color(0xFF9C27B0).withValues(alpha:0.3),
                 ),
               ),
               child: Text(
@@ -813,7 +830,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   // ========== CHANGE COVER PHOTO DIALOG ==========
   void _changeCoverPhoto(int index) {
-    showModalBottomSheet(
+    if (!mounted) return;
+    try {
+      showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -851,16 +870,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 // Camera Option
                 InkWell(
                   onTap: () {
-                    Navigator.pop(context);
+                    try {
+                      Navigator.pop(context);
+                    } catch (e) {
+                      debugPrint('Error closing dialog: $e');
+                    }
                     _pickCoverImageFromCamera(index);
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withOpacity(0.04),
+                      color: const Color(0xFF9C27B0).withValues(alpha:0.04),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.35)),
+                      border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha:0.35)),
                     ),
                     child: Row(
                       children: [
@@ -910,16 +933,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 // Gallery Option
                 InkWell(
                   onTap: () {
-                    Navigator.pop(context);
+                    try {
+                      Navigator.pop(context);
+                    } catch (e) {
+                      debugPrint('Error closing dialog: $e');
+                    }
                     _pickCoverImageFromGallery(index);
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withOpacity(0.04),
+                      color: const Color(0xFF9C27B0).withValues(alpha:0.04),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.35)),
+                      border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha:0.35)),
                     ),
                     child: Row(
                       children: [
@@ -971,11 +998,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       },
     );
+    } catch (e) {
+      debugPrint('Error showing cover photo dialog: $e');
+    }
   }
 
   // ========== CHANGE PROFILE PICTURE DIALOG ==========
   void _changeProfilePicture() {
-    showModalBottomSheet(
+    if (!mounted) return;
+    try {
+      showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -1013,16 +1045,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 // Camera Option
                 InkWell(
                   onTap: () {
-                    Navigator.pop(context);
+                    try {
+                      Navigator.pop(context);
+                    } catch (e) {
+                      debugPrint('Error closing dialog: $e');
+                    }
                     _pickImageFromCamera();
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withOpacity(0.04),
+                      color: const Color(0xFF9C27B0).withValues(alpha:0.04),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.35)),
+                      border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha:0.35)),
                     ),
                     child: Row(
                       children: [
@@ -1072,16 +1108,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 // Gallery Option
                 InkWell(
                   onTap: () {
-                    Navigator.pop(context);
+                    try {
+                      Navigator.pop(context);
+                    } catch (e) {
+                      debugPrint('Error closing dialog: $e');
+                    }
                     _pickImageFromGallery();
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withOpacity(0.04),
+                      color: const Color(0xFF9C27B0).withValues(alpha:0.04),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.35)),
+                      border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha:0.35)),
                     ),
                     child: Row(
                       children: [
@@ -1133,6 +1173,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       },
     );
+    } catch (e) {
+      debugPrint('Error showing profile picture dialog: $e');
+    }
   }
 
   // ========== SAVE PROFILE ==========
@@ -1147,19 +1190,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
         // Upload new profile picture if selected
         if (_profileImage != null) {
-          print('📤 Uploading new profile picture...');
+          debugPrint('📤 Uploading new profile picture...');
           photoURL = await _storageService.updateProfilePicture(
             newImageFile: _profileImage!,
             oldPhotoURL: _currentPhotoURL,
           );
-          print('✅ Profile picture uploaded: $photoURL');
+          debugPrint('✅ Profile picture uploaded: $photoURL');
         }
 
         // Upload cover photos
         List<String> coverURLs = [];
         
         if (_coverImage1 != null) {
-          print('📤 Uploading cover photo 1...');
+          debugPrint('📤 Uploading cover photo 1...');
           final url = await _storageService.updateCoverPhoto(
             newImageFile: _coverImage1!,
             oldCoverURL: _currentCoverURL1,
@@ -1171,7 +1214,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
         
         if (_coverImage2 != null) {
-          print('📤 Uploading cover photo 2...');
+          debugPrint('📤 Uploading cover photo 2...');
           final url = await _storageService.updateCoverPhoto(
             newImageFile: _coverImage2!,
             oldCoverURL: _currentCoverURL2,
@@ -1183,7 +1226,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
         
         if (_coverImage3 != null) {
-          print('📤 Uploading cover photo 3...');
+          debugPrint('📤 Uploading cover photo 3...');
           final url = await _storageService.updateCoverPhoto(
             newImageFile: _coverImage3!,
             oldCoverURL: _currentCoverURL3,
@@ -1195,7 +1238,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
         
         if (_coverImage4 != null) {
-          print('📤 Uploading cover photo 4...');
+          debugPrint('📤 Uploading cover photo 4...');
           final url = await _storageService.updateCoverPhoto(
             newImageFile: _coverImage4!,
             oldCoverURL: _currentCoverURL4,
@@ -1210,7 +1253,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         String? coverURL = coverURLs.isNotEmpty ? coverURLs.join(',') : null;
 
         // Update profile in Firestore
-        print('💾 Saving profile to Firestore...');
+        debugPrint('💾 Saving profile to Firestore...');
         await _databaseService.updateUserProfile(
           displayName: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
           photoURL: photoURL,
@@ -1222,21 +1265,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
           language: _selectedLanguage,
         );
-        print('✅ Profile saved successfully!');
+        debugPrint('✅ Profile saved successfully!');
 
       if (mounted) {
         setState(() {
           _isSaving = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha:0.3),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -1266,21 +1310,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             duration: const Duration(seconds: 2),
           ),
         );
+        }
         
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
-          Navigator.pop(context);
+          try {
+            Navigator.pop(context);
+          } catch (e) {
+            debugPrint('Error navigating back: $e');
+          }
         }
         }
       } catch (e) {
-        print('❌ Error saving profile: $e');
+        debugPrint('❌ Error saving profile: $e');
         
         if (mounted) {
           setState(() {
             _isSaving = false;
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
                 children: [
@@ -1310,6 +1360,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               duration: const Duration(seconds: 3),
             ),
           );
+          }
         }
       }
     }
@@ -1319,21 +1370,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _getCurrentLocation() async {
     if (!mounted) return;
     
-    setState(() {
-      _isGettingLocation = true;
-      _locationStatus = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isGettingLocation = true;
+        _locationStatus = null;
+      });
+    }
 
-    print('📍 Starting location detection...');
+    debugPrint('📍 Starting location detection...');
 
     try {
       Map<String, String> location = await _locationService.getCurrentCityAndCountry();
       
-      print('✅ Location detected: ${location['city']}, ${location['country']}');
+      debugPrint('✅ Location detected: ${location['city']}, ${location['country']}');
       
       if (!mounted) return;
       
-      setState(() {
+      if (mounted) {
+        setState(() {
         _cityController.text = location['city'] ?? '';
         
         // Update country if it exists in the dropdown
@@ -1346,30 +1400,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
         
         _isGettingLocation = false;
-      });
+        });
+      }
 
       // Show inline success message just below the Detect button
       if (mounted && location['city']?.isNotEmpty == true) {
-        setState(() {
-          _locationStatus = '📍 ${location['city']}, ${location['country']}';
-        });
+        if (mounted) {
+          setState(() {
+            _locationStatus = '📍 ${location['city']}, ${location['country']}';
+          });
+        }
 
         // Auto-hide the status after a short delay
         Future.delayed(const Duration(seconds: 3), () {
           if (!mounted) return;
-          setState(() {
-            _locationStatus = null;
-          });
+          if (mounted) {
+            setState(() {
+              _locationStatus = null;
+            });
+          }
         });
       }
     } catch (e) {
-      print('❌ Location error: $e');
+      debugPrint('❌ Location error: $e');
       
       if (!mounted) return;
       
-      setState(() {
-        _isGettingLocation = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isGettingLocation = false;
+        });
+      }
 
       String errorMessage = 'Location unavailable - Please enter manually';
       
@@ -1437,7 +1498,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha:0.3),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -1496,9 +1557,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
       
       if (image != null) {
-        setState(() {
-          _profileImage = File(image.path);
-        });
+        if (mounted) {
+          setState(() {
+            _profileImage = File(image.path);
+          });
+        }
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1508,7 +1571,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha:0.3),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -1593,7 +1656,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha:0.3),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -1677,7 +1740,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha:0.3),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(

@@ -173,8 +173,8 @@ class _ContactSupportChatScreenState extends State<ContactSupportChatScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF00BCD4).withOpacity(0.1),
-                  const Color(0xFF00E5FF).withOpacity(0.05),
+                  const Color(0xFF00BCD4).withValues(alpha:0.1),
+                  const Color(0xFF00E5FF).withValues(alpha:0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -203,7 +203,7 @@ class _ContactSupportChatScreenState extends State<ContactSupportChatScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00BCD4).withOpacity(0.3),
+                        color: const Color(0xFF00BCD4).withValues(alpha:0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -314,7 +314,7 @@ class _ContactSupportChatScreenState extends State<ContactSupportChatScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha:0.05),
                   blurRadius: 10,
                   offset: const Offset(0, -2),
                 ),
@@ -376,7 +376,7 @@ class _ContactSupportChatScreenState extends State<ContactSupportChatScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF00BCD4).withOpacity(0.3),
+                            color: const Color(0xFF00BCD4).withValues(alpha:0.3),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -445,7 +445,7 @@ class _ContactSupportChatScreenState extends State<ContactSupportChatScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha:0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -468,7 +468,7 @@ class _ContactSupportChatScreenState extends State<ContactSupportChatScreen> {
                     '${time.hour}:${time.minute.toString().padLeft(2, '0')}',
                     style: TextStyle(
                       color: isSentByMe
-                          ? Colors.white.withOpacity(0.8)
+                          ? Colors.white.withValues(alpha:0.8)
                           : Colors.grey[500],
                       fontSize: 9,
                       fontWeight: FontWeight.w500,

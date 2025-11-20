@@ -220,6 +220,23 @@ class LiveStreamService {
       return null;
     }
   }
+  
+  /// Update host status
+  Future<void> updateHostStatus(String streamId, String status) async {
+    try {
+      await _firestore.collection(_collection).doc(streamId).update({
+        'hostStatus': status,
+        'statusUpdatedAt': DateTime.now().toIso8601String(),
+      });
+      print('✅ Host status updated to: $status');
+    } catch (e) {
+      print('❌ Error updating host status: $e');
+      rethrow;
+    }
+  }
+
 }
+
+
 
 

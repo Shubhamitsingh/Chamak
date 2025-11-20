@@ -60,7 +60,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         });
       }
     } catch (e) {
-      print('Error loading earnings: $e');
+      debugPrint('Error loading earnings: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -96,7 +96,13 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           backgroundColor: Colors.white,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              try {
+                Navigator.pop(context);
+              } catch (e) {
+                debugPrint('Error navigating back: $e');
+              }
+            },
           ),
           title: Text(
             AppLocalizations.of(context)!.myEarning,
@@ -142,12 +148,16 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
               size: 22,
             ),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ContactSupportScreen(),
-                ),
-              );
+              try {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ContactSupportScreen(),
+                  ),
+                );
+              } catch (e) {
+                debugPrint('Error navigating to contact support: $e');
+              }
             },
             tooltip: 'Contact Support',
           ),
@@ -189,7 +199,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF04B104).withOpacity(0.3),
+            color: const Color(0xFF04B104).withValues(alpha:0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -214,7 +224,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha:0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Text(
@@ -256,7 +266,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha:0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
@@ -350,7 +360,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -364,7 +374,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF04B104).withOpacity(0.1),
+                  color: const Color(0xFF04B104).withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -427,7 +437,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                               Icon(
                                 method == 'UPI'
                                     ? Icons.account_balance
-                                    : method == 'Crypto'
+                                    : method == AppLocalizations.of(context)!.crypto
                                         ? Icons.currency_bitcoin
                                         : Icons.account_balance_outlined,
                                 size: 18,
@@ -498,7 +508,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     if (amount < minWithdrawal) {
                       return '${AppLocalizations.of(context)!.minimumWithdrawal} C $minWithdrawal';
                     }
-                    if (amount > availableBalance) {
+                    if (amount > totalCCoins) {
                       return AppLocalizations.of(context)!.insufficientBalance;
                     }
                     return null;
@@ -569,7 +579,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -609,7 +619,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                   padding: const EdgeInsets.all(20.0),
                   child: Center(
                     child: Text(
-                      'Error loading transactions',
+                      AppLocalizations.of(context)!.errorLoadingTransactions,
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 14,
@@ -634,7 +644,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'No transactions yet',
+                          AppLocalizations.of(context)!.noTransactionsYet,
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
@@ -643,7 +653,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Your earnings will appear here',
+                          AppLocalizations.of(context)!.earningsWillAppearHere,
                           style: TextStyle(
                             color: Colors.grey[500],
                             fontSize: 12,
@@ -722,8 +732,8 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isPositive 
-                ? const Color(0xFF04B104).withOpacity(0.1)
-                : Colors.orange.withOpacity(0.1),
+                ? const Color(0xFF04B104).withValues(alpha:0.1)
+                : Colors.orange.withValues(alpha:0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
@@ -777,8 +787,8 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: isCompleted 
-                    ? const Color(0xFF04B104).withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
+                    ? const Color(0xFF04B104).withValues(alpha:0.1)
+                    : Colors.orange.withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -1034,6 +1044,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   // ========== HANDLE WITHDRAWAL ==========
   void _handleWithdrawal() async {
     if (_formKey.currentState!.validate()) {
+      if (!mounted) return;
       setState(() {
         _isProcessing = true;
       });
@@ -1047,6 +1058,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         });
         
         // Show success message
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(

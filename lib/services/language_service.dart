@@ -12,7 +12,6 @@ class LanguageService {
     'te': {'name': 'Telugu', 'nativeName': 'తెలుగు'},
     'ml': {'name': 'Malayalam', 'nativeName': 'മലയാളം'},
     'mr': {'name': 'Marathi', 'nativeName': 'मराठी'},
-    'ur': {'name': 'Urdu', 'nativeName': 'اردو'},
     'kn': {'name': 'Kannada', 'nativeName': 'ಕನ್ನಡ'},
   };
   

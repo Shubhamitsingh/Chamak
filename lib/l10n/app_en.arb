@@ -113,6 +113,9 @@
   "sendOTP": "Send OTP",
   "pleaseEnterPhoneNumber": "Please enter a phone number",
   "pleaseEnterValidPhoneNumber": "Please enter a valid phone number",
+  "pleaseEnterYourMobileNumber": "Please enter your mobile number",
+  "pleaseEnterValidMobileNumber": "Please enter a valid mobile number",
+  "pleaseEnterCompleteOTP": "Please enter the complete OTP",
   "otpSentToNewNumber": "OTP sent to new number",
   "completeKYCDescription": "Complete your KYC verification to unlock additional features and increase your account limits.",
   "enhancedSecurity": "Enhanced security",
@@ -279,6 +282,136 @@
       }
     }
   },
-  "buyNow": "Buy Now"
+  "buyNow": "Buy Now",
+  "myBalance": "My Balance",
+  "availableCoins": "Available Coins",
+  "totalEarnings": "Total Earnings",
+  "withdrawEarnings": "Withdraw Earnings",
+  "depositAmount": "Deposit Amount",
+  "flatRecharge": "Flat Recharge",
+  "reseller": "Reseller",
+  "save20Percent": "SAVE 20%",
+  "getBestDeals": "💰 Get Best Deals!",
+  "saveUpTo20Percent": "Save up to 20% with trusted resellers",
+  "best": "BEST",
+  "chat": "Chat",
+  "secure": "Secure",
+  "checkout": "Checkout",
+  "satisfaction": "Satisfaction",
+  "guaranteed": "Guaranteed",
+  "privacy": "Privacy",
+  "protected": "Protected",
+  "completePayment": "Complete Payment",
+  "paymentViaGooglePlay": "Payment via Google Play",
+  "payNow": "Pay Now",
+  "withdrawEarningsTitle": "Withdraw Earnings",
+  "withdrawalAmountINR": "Withdrawal Amount (INR)",
+  "minimumWithdrawal50": "Minimum withdrawal: ₹50",
+  "invalidAmount": "Invalid amount",
+  "rechargeSuccessful": "Recharge successful!",
+  "withdrawalRequestSubmitted": "Withdrawal request submitted!",
+  "startingChatWith": "Starting chat with {name}...",
+  "@startingChatWith": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "open": "Open",
+  "selectCountry": "Select Country",
+  "coins": "Coins",
+  "host": "HOST",
+  "inr": "INR",
+  "ok": "OK",
+  "rechargeWithConfidence": "Recharge with confidence — your money is always secure.",
+  "fastSafeTrusted": "Fast, safe, and trusted — every recharge is protected.",
+  "enableLocation": "Enable Location",
+  "discoverLocalContent": "Discover local content",
+  "findNearbyHosts": "Find nearby hosts",
+  "yourDataStaysPrivate": "Your data stays private",
+  "skip": "Skip",
+  "allow": "Allow",
+  "pleaseLoginToStartLiveStream": "Please login to start a live stream",
+  "liveStream": "Live Stream",
+  "announcementPanel": "Announcement Panel",
+  "errorLoadingEvents": "Error loading events",
+  "noEventsYet": "No Events Yet",
+  "eventsFromAdminWillAppear": "Events from admin will appear here",
+  "errorLoadingAnnouncements": "Error loading announcements",
+  "retry": "Retry",
+  "noAnnouncementsYet": "No Announcements Yet",
+  "announcementsFromAdminWillAppear": "Announcements from admin will appear here",
+  "allCaughtUp": "All caught up!",
+  "noAnnouncementsToShow": "No announcements to show",
+  "announcementDismissed": "Announcement dismissed",
+  "dismiss": "Dismiss",
+  "transactionHistoryComingSoon": "Transaction History coming soon!",
+  "errorLoadingProfile": "Error loading profile",
+  "profileNotFound": "Profile not found",
+  "errorLoadingTransactions": "Error loading transactions",
+  "noTransactionsYet": "No transactions yet",
+  "earningsWillAppearHere": "Your earnings will appear here",
+  "searchMessages": "Search messages...",
+  "newMessageFeatureComingSoon": "New message feature coming soon!",
+  "chatWith": "Chat with {name}",
+  "@chatWith": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fullChatInterfaceComingSoon": "Full chat interface coming soon!",
+  "warningsRemaining": "{count} warnings remaining",
+  "@warningsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "followTheseGuidelines": "Follow these guidelines",
+  "errorOccurred": "An error occurred. Please try again.",
+  "from": "From:",
+  "until": "Until:",
+  "levelAndAchievements": "Level & Achievements",
+  "yourCurrentLevel": "Your Current Level",
+  "xpProgress": "{currentXP} / {totalXP} XP",
+  "@xpProgress": {
+    "placeholders": {
+      "currentXP": {
+        "type": "int"
+      },
+      "totalXP": {
+        "type": "int"
+      }
+    }
+  },
+  "achievements": "Achievements",
+  "totalXP": "Total XP",
+  "rank": "Rank",
+  "xpReward": "+{amount} XP",
+  "@xpReward": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
+  "failedToSubmitTicket": "Failed to submit ticket. Please try again.",
+  "or": "OR",
+  "needHelp": "Need Help?",
+  "chatWithSupportTeam": "Chat with support team",
+  "appName": "Chamak Live",
+  "appDescription": "Connect with people around the world through live streaming, chat, and share amazing moments.",
+  "features": "Features:",
+  "liveStreaming": "• Live streaming",
+  "realTimeChat": "• Real-time chat",
+  "virtualGifts": "• Virtual gifts",
+  "hostViewerModes": "• Host & viewer modes",
+  "securePayments": "• Secure payments",
+  "privacyPolicyContent": "We respect your privacy and are committed to protecting your personal data. This policy describes how we collect, use, and share your information.\n\n1. Information Collection\n2. Data Usage\n3. Data Sharing\n4. Security Measures\n5. Your Rights\n\nLast updated: January 2025",
+  "termsConditionsContent": "By using Chamak Live, you agree to these terms and conditions.\n\n1. Account Registration\n2. User Conduct\n3. Content Guidelines\n4. Payment Terms\n5. Termination\n\nLast updated: January 2025"
 }
 

@@ -105,7 +105,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF04B104).withOpacity(0.2),
+                color: const Color(0xFF04B104).withValues(alpha:0.2),
                 blurRadius: 30,
                 spreadRadius: 5,
               ),
@@ -137,7 +137,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF04B104).withOpacity(0.4),
+                        color: const Color(0xFF04B104).withValues(alpha:0.4),
                         blurRadius: 20,
                         spreadRadius: 3,
                       ),
@@ -185,13 +185,13 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF04B104).withOpacity(0.1),
-                      const Color(0xFF66BB6A).withOpacity(0.1),
+                      const Color(0xFF04B104).withValues(alpha:0.1),
+                      const Color(0xFF66BB6A).withValues(alpha:0.1),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF04B104).withOpacity(0.3),
+                    color: const Color(0xFF04B104).withValues(alpha:0.3),
                     width: 1,
                   ),
                 ),
@@ -234,7 +234,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF04B104).withOpacity(0.3),
+                        color: const Color(0xFF04B104).withValues(alpha:0.3),
                         blurRadius: 12,
                         spreadRadius: 2,
                       ),
@@ -297,11 +297,11 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha:0.9),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha:0.05),
                             blurRadius: 8,
                           ),
                         ],
@@ -383,8 +383,8 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                             shape: BoxShape.circle,
                             gradient: RadialGradient(
                               colors: [
-                                const Color(0xFF04B104).withOpacity(0.1),
-                                const Color(0xFF04B104).withOpacity(0.0),
+                                const Color(0xFF04B104).withValues(alpha:0.1),
+                                const Color(0xFF04B104).withValues(alpha:0.0),
                               ],
                             ),
                           ),
@@ -406,7 +406,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF04B104).withOpacity(0.3),
+                                color: const Color(0xFF04B104).withValues(alpha:0.3),
                                 blurRadius: 25,
                                 spreadRadius: 5,
                               ),
@@ -456,12 +456,12 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(
-                            color: const Color(0xFF04B104).withOpacity(0.5),
+                            color: const Color(0xFF04B104).withValues(alpha:0.5),
                             width: 2,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF04B104).withOpacity(0.15),
+                              color: const Color(0xFF04B104).withValues(alpha:0.15),
                               blurRadius: 12,
                               spreadRadius: 2,
                             ),
@@ -514,7 +514,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha:0.1),
                     blurRadius: 20,
                     spreadRadius: 5,
                     offset: const Offset(0, -5),
@@ -536,13 +536,13 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF04B104).withOpacity(0.08),
-                              const Color(0xFF66BB6A).withOpacity(0.08),
+                              const Color(0xFF04B104).withValues(alpha:0.08),
+                              const Color(0xFF66BB6A).withValues(alpha:0.08),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0xFF04B104).withOpacity(0.2),
+                            color: const Color(0xFF04B104).withValues(alpha:0.2),
                             width: 1,
                           ),
                         ),
@@ -551,7 +551,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                             Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF04B104).withOpacity(0.15),
+                                color: const Color(0xFF04B104).withValues(alpha:0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(
@@ -598,7 +598,7 @@ class _KycVerificationScreenState extends State<KycVerificationScreen> {
                             boxShadow: _capturedImage != null
                                 ? [
                                     BoxShadow(
-                                      color: const Color(0xFF04B104).withOpacity(0.4),
+                                      color: const Color(0xFF04B104).withValues(alpha:0.4),
                                       blurRadius: 16,
                                       spreadRadius: 3,
                                       offset: const Offset(0, 6),

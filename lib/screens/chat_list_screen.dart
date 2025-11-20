@@ -249,8 +249,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
             gradient: hasUnread
                 ? LinearGradient(
                     colors: [
-                      const Color(0xFF04B104).withOpacity(0.08),
-                      const Color(0xFF04B104).withOpacity(0.03),
+                      const Color(0xFF04B104).withValues(alpha:0.08),
+                      const Color(0xFF04B104).withValues(alpha:0.03),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -260,15 +260,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: hasUnread 
-                  ? const Color(0xFF04B104).withOpacity(0.2)
+                  ? const Color(0xFF04B104).withValues(alpha:0.2)
                   : Colors.grey[200]!,
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
                 color: hasUnread
-                    ? const Color(0xFF04B104).withOpacity(0.1)
-                    : Colors.black.withOpacity(0.03),
+                    ? const Color(0xFF04B104).withValues(alpha:0.1)
+                    : Colors.black.withValues(alpha:0.03),
                 blurRadius: hasUnread ? 8 : 4,
                 offset: const Offset(0, 2),
               ),
@@ -377,7 +377,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: hasUnread 
-                                ? const Color(0xFF04B104).withOpacity(0.15)
+                                ? const Color(0xFF04B104).withValues(alpha:0.15)
                                 : Colors.grey[100],
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -432,7 +432,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               borderRadius: BorderRadius.circular(10),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF04B104).withOpacity(0.3),
+                                  color: const Color(0xFF04B104).withValues(alpha:0.3),
                                   blurRadius: 4,
                                   offset: const Offset(0, 1),
                                 ),

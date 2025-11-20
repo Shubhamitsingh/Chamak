@@ -48,6 +48,7 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -78,4 +79,8 @@ dependencies {
   
   // Core library desugaring for Java 8+ features
   coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+  
+  // Kotlin standard library
+  // Note: kotlin_version is managed in settings.gradle
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0"
 }

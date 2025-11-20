@@ -226,3 +226,11 @@ Now when you add coins through the admin panel:
 
 
 
+
+
+
+
+
+
+
+
