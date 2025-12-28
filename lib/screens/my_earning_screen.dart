@@ -5,7 +5,8 @@ import 'contact_support_screen.dart';
 import 'transaction_history_screen.dart';
 import '../services/gift_service.dart';
 import '../services/withdrawal_service.dart';
-import '../models/gift_model.dart';
+import '../services/database_service.dart';
+import '../services/id_generator_service.dart';
 
 class MyEarningScreen extends StatefulWidget {
   final String phoneNumber;
@@ -29,6 +30,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   final _formKey = GlobalKey<FormState>();
   final GiftService _giftService = GiftService();
   final WithdrawalService _withdrawalService = WithdrawalService();
+  final DatabaseService _databaseService = DatabaseService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   // Real-time earnings data (C Coins)
@@ -89,34 +91,97 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     AppLocalizations.of(context)!.crypto,
   ];
 
+  // Helper method to navigate to transaction history
+  void _navigateToTransactionHistory() {
+    try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const TransactionHistoryScreen(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error navigating to transaction history: $e');
+    }
+  }
+
+  // Helper method to build AppBar
+  PreferredSizeWidget _buildAppBar({bool showActions = true}) {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: Colors.white,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Text(
+        AppLocalizations.of(context)!.myEarning,
+        style: const TextStyle(
+          color: Colors.black87,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      centerTitle: true,
+      actions: showActions
+          ? [
+              // History/Details Icon - Navigate to Transaction History
+              IconButton(
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: Colors.black87,
+                  size: 22,
+                ),
+                onPressed: _navigateToTransactionHistory,
+                tooltip: 'Transaction History',
+              ),
+              // Contact Support Icon
+              IconButton(
+                icon: const Icon(
+                  Icons.support_agent,
+                  color: Colors.black87,
+                  size: 22,
+                ),
+                onPressed: () {
+                  try {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ContactSupportScreen(),
+                      ),
+                    );
+                  } catch (e) {
+                    debugPrint('Error navigating to contact support: $e');
+                  }
+                },
+                tooltip: 'Contact Support',
+              ),
+            ]
+          : null,
+    );
+  }
+
+  // Helper method for white container decoration
+  BoxDecoration _getWhiteContainerDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
         backgroundColor: Colors.grey[50],
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
-            onPressed: () {
-              try {
-                Navigator.pop(context);
-              } catch (e) {
-                debugPrint('Error navigating back: $e');
-              }
-            },
-          ),
-          title: Text(
-            AppLocalizations.of(context)!.myEarning,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          centerTitle: true,
-        ),
+        appBar: _buildAppBar(showActions: false),
         body: const Center(
           child: CircularProgressIndicator(
             color: Color(0xFF04B104),
@@ -127,70 +192,31 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          AppLocalizations.of(context)!.myEarning,
-          style: const TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+      appBar: _buildAppBar(),
+      body: RefreshIndicator(
+        onRefresh: _loadEarningsData,
+        color: const Color(0xFF04B104),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Earning Overview Card
+              _buildEarningOverview(),
+              
+              const SizedBox(height: 20),
+              
+              // Withdrawal Section
+              _buildWithdrawalSection(),
+              
+              const SizedBox(height: 20),
+              
+              // Trust Badges Section
+              _buildTrustBadges(),
+              
+              const SizedBox(height: 20),
+            ],
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.support_agent,
-              color: Colors.black87,
-              size: 22,
-            ),
-            onPressed: () {
-              try {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ContactSupportScreen(),
-                  ),
-                );
-              } catch (e) {
-                debugPrint('Error navigating to contact support: $e');
-              }
-            },
-            tooltip: 'Contact Support',
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Earning Overview Card
-            _buildEarningOverview(),
-            
-            const SizedBox(height: 20),
-            
-            // Withdrawal Section
-            _buildWithdrawalSection(),
-            
-            const SizedBox(height: 20),
-            
-            // Trust Badges Section
-            _buildTrustBadges(),
-            
-            const SizedBox(height: 20),
-            
-            // Recent Transactions
-            _buildRecentTransactions(),
-            
-            const SizedBox(height: 20),
-          ],
         ),
       ),
     );
@@ -349,17 +375,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   Widget _buildWithdrawalSection() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: _getWhiteContainerDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -565,17 +581,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   Widget _buildTrustBadges() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: _getWhiteContainerDecoration(),
       child: Column(
         children: [
           // Minimum withdrawal text
@@ -664,252 +670,6 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  // ========== RECENT TRANSACTIONS ==========
-  Widget _buildRecentTransactions() {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      return const SizedBox.shrink();
-    }
-    
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppLocalizations.of(context)!.recentTransactions,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Real transactions from Firebase
-          StreamBuilder<List<GiftModel>>(
-            stream: _giftService.getHostReceivedGifts(currentUser.uid),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF04B104),
-                    ),
-                  ),
-                );
-              }
-              
-              if (snapshot.hasError) {
-                return Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Center(
-                    child: Text(
-                      AppLocalizations.of(context)!.errorLoadingTransactions,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                );
-              }
-              
-              final gifts = snapshot.data ?? [];
-              
-              if (gifts.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.receipt_long_outlined,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          AppLocalizations.of(context)!.noTransactionsYet,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          AppLocalizations.of(context)!.earningsWillAppearHere,
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              
-              // Show only recent transactions (limit to 10)
-              final recentGifts = gifts.take(10).toList();
-              
-              return Column(
-                children: List.generate(recentGifts.length, (index) {
-                  final gift = recentGifts[index];
-                  final cCoinsEarned = gift.cCoinsEarned ?? 0;
-                  final timestamp = gift.timestamp;
-                  
-                  // Skip if timestamp is null
-                  if (timestamp == null) {
-                    return const SizedBox.shrink();
-                  }
-                  
-                  String formattedDate = _formatDate(timestamp);
-                  
-                  return Column(
-                    children: [
-                      _buildTransactionItem(
-                        title: AppLocalizations.of(context)!.earnings,
-                        date: formattedDate,
-                        amount: cCoinsEarned,
-                        status: 'Received',
-                      ),
-                      if (index < recentGifts.length - 1) const Divider(height: 24),
-                    ],
-                  );
-                }),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-  
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-    
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
-      // Format: Oct 28, 2025
-      const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-      return '${months[date.month - 1]} ${date.day}, ${date.year}';
-    }
-  }
-
-  Widget _buildTransactionItem({
-    required String title,
-    required String date,
-    required int amount,
-    required String status,
-  }) {
-    final isPositive = amount > 0;
-    final isCompleted = status == 'Completed' || status == 'Received';
-    
-    return Row(
-      children: [
-        // Icon
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: isPositive 
-                ? const Color(0xFF04B104).withValues(alpha:0.1)
-                : Colors.orange.withValues(alpha:0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            isPositive ? Icons.arrow_downward : Icons.arrow_upward,
-            color: isPositive ? const Color(0xFF04B104) : Colors.orange,
-            size: 20,
-          ),
-        ),
-        
-        const SizedBox(width: 12),
-        
-        // Details
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                date,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        // Amount & Status
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${isPositive ? '+' : ''}C ${amount.abs()}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isPositive ? const Color(0xFF04B104) : Colors.orange,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: isCompleted 
-                    ? const Color(0xFF04B104).withValues(alpha:0.1)
-                    : Colors.orange.withValues(alpha:0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                status,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: isCompleted ? const Color(0xFF04B104) : Colors.orange,
-                ),
-              ),
-            ),
-          ],
         ),
       ],
     );
@@ -1188,12 +948,28 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         // Get amount from controller
         final amount = int.tryParse(_amountController.text.trim()) ?? 0;
         
-        // Submit withdrawal request
+        // Get user information to store with withdrawal request
+        String? userName;
+        String? displayId;
+        try {
+          final userData = await _databaseService.getUserData(currentUser.uid);
+          if (userData != null) {
+            userName = userData.displayName ?? 'Unknown Host';
+            displayId = IdGeneratorService.getDisplayId(userData.numericUserId);
+          }
+        } catch (e) {
+          debugPrint('Error fetching user data: $e');
+          // Continue with null values if fetch fails
+        }
+        
+        // Submit withdrawal request with host information
         final requestId = await _withdrawalService.submitWithdrawalRequest(
           userId: currentUser.uid,
           amount: amount,
           withdrawalMethod: _selectedMethod,
           paymentDetails: paymentDetails,
+          userName: userName,
+          displayId: displayId,
         );
         
         if (mounted) {

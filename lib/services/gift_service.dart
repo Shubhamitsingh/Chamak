@@ -140,7 +140,35 @@ class GiftService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => GiftModel.fromFirestore(doc))
-            .toList());
+            .toList())
+        .handleError((error) {
+          // Log error but let it propagate to UI for handling
+          print('Error fetching gifts: $error');
+          throw error;
+        });
+  }
+  
+  /// Fallback method: Get gifts without orderBy (no index needed)
+  Stream<List<GiftModel>> getHostReceivedGiftsFallback(String hostId) {
+    return _firestore
+        .collection('gifts')
+        .where('receiverId', isEqualTo: hostId)
+        .limit(100) // Fetch more to sort, then limit
+        .snapshots()
+        .map((snapshot) {
+          final gifts = snapshot.docs
+              .map((doc) => GiftModel.fromFirestore(doc))
+              .toList();
+          // Sort in memory by timestamp descending
+          gifts.sort((a, b) {
+            if (a.timestamp == null && b.timestamp == null) return 0;
+            if (a.timestamp == null) return 1;
+            if (b.timestamp == null) return -1;
+            return b.timestamp!.compareTo(a.timestamp!);
+          });
+          // Return only first 50
+          return gifts.take(50).toList();
+        });
   }
   
   /// Get total C Coins earned by host

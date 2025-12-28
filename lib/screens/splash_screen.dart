@@ -114,18 +114,26 @@ class _SplashScreenState extends State<SplashScreen> {
     
     return Scaffold(
       backgroundColor: Colors.black, // Set black background to prevent cream flash
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: const AssetImage('assets/images/backgroungim3.jpg'),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withValues(alpha: 0.3),
-              BlendMode.darken,
+      body: Stack(
+        children: [
+          // Background image with 15% zoom
+          Transform.scale(
+            scale: 1.15,
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: const AssetImage('assets/images/Group-login-image.jpg'),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: 0.3),
+                    BlendMode.darken,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-        child: Container(
+          // Content overlay
+          Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -208,10 +216,10 @@ class _SplashScreenState extends State<SplashScreen> {
                     child: ElevatedButton(
                       onPressed: _navigateToLogin,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF9C27B0),
+                        backgroundColor: const Color(0xFFFF1B7C),
                         foregroundColor: Colors.white,
                         elevation: 8,
-                        shadowColor: const Color(0xFF9C27B0).withValues(alpha: 0.4),
+                        shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
@@ -264,6 +272,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
           ),
         ),
+        ],
       ),
     );
   }

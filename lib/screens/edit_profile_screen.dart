@@ -1122,14 +1122,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         height: 50,
         child: Container(
           decoration: BoxDecoration(
-            gradient: _isSaving
-                ? null
-                : const LinearGradient(
-                    colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-            color: _isSaving ? Colors.grey[400] : null,
+            color: _isSaving ? Colors.grey[400] : const Color(0xFFFF1B7C),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Material(

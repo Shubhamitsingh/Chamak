@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class WithdrawalRequestModel {
   final String id;
   final String userId;
+  final String? userName; // Host/User name
+  final String? displayId; // Formatted user ID for display
   final int amount; // Amount in C Coins
   final String withdrawalMethod; // UPI, Bank Transfer, Crypto
   final Map<String, dynamic> paymentDetails;
@@ -17,6 +19,8 @@ class WithdrawalRequestModel {
   WithdrawalRequestModel({
     required this.id,
     required this.userId,
+    this.userName,
+    this.displayId,
     required this.amount,
     required this.withdrawalMethod,
     required this.paymentDetails,
@@ -34,6 +38,8 @@ class WithdrawalRequestModel {
     return WithdrawalRequestModel(
       id: doc.id,
       userId: data['userId'] as String,
+      userName: data['userName'] as String?,
+      displayId: data['displayId'] as String?,
       amount: data['amount'] as int,
       withdrawalMethod: data['withdrawalMethod'] as String,
       paymentDetails: data['paymentDetails'] as Map<String, dynamic>,
@@ -50,6 +56,8 @@ class WithdrawalRequestModel {
   Map<String, dynamic> toFirestore() {
     return {
       'userId': userId,
+      'userName': userName,
+      'displayId': displayId,
       'amount': amount,
       'withdrawalMethod': withdrawalMethod,
       'paymentDetails': paymentDetails,

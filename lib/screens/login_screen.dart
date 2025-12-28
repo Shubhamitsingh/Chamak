@@ -61,12 +61,12 @@ class _LoginScreenState extends State<LoginScreen> {
           prefixIcon: const Icon(Icons.search),
           border: OutlineInputBorder(
             borderSide: BorderSide(
-              color: const Color(0xFF9C27B0).withValues(alpha: 0.2),
+              color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
             ),
           ),
           focusedBorder: const OutlineInputBorder(
             borderSide: BorderSide(
-              color: Color(0xFF9C27B0),
+              color: Color(0xFFFF1B7C),
               width: 2,
             ),
           ),
@@ -243,12 +243,39 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF9C27B0), // Purple
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFFFF1B7C), // Pink - matches app theme
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
+        margin: const EdgeInsets.all(18),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -453,7 +480,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               : Icons.info_outline,
                           size: 16,
                           color: _digitCount >= 10
-                              ? const Color(0xFF9C27B0) // Purple
+                              ? const Color(0xFFFF1B7C) // Pink
                               : Colors.grey[600],
                         ),
                         const SizedBox(width: 5),
@@ -462,7 +489,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             color: _digitCount >= 10
-                                ? const Color(0xFF9C27B0) // Purple
+                                ? const Color(0xFFFF1B7C) // Pink
                                 : Colors.grey[600],
                             fontWeight: _digitCount >= 10
                                 ? FontWeight.w600
@@ -474,7 +501,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ' ✓',
                             style: const TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF9C27B0), // Purple
+                              color: Color(0xFFFF1B7C), // Pink
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -497,11 +524,11 @@ class _LoginScreenState extends State<LoginScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _sendOTP,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF9C27B0), // #9C27B0
+                  backgroundColor: const Color(0xFFFF1B7C), // Pink
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey[300],
                   elevation: 8,
-                  shadowColor: const Color(0xFF9C27B0).withValues(alpha: 0.4), // #9C27B0 shadow
+                  shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4), // Pink shadow
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),

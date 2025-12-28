@@ -10,10 +10,14 @@ class WithdrawalService {
     required int amount,
     required String withdrawalMethod,
     required Map<String, dynamic> paymentDetails,
+    String? userName,
+    String? displayId,
   }) async {
     try {
       final docRef = await _firestore.collection('withdrawal_requests').add({
         'userId': userId,
+        'userName': userName,
+        'displayId': displayId,
         'amount': amount,
         'withdrawalMethod': withdrawalMethod,
         'paymentDetails': paymentDetails,
@@ -41,7 +45,28 @@ class WithdrawalService {
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => WithdrawalRequestModel.fromFirestore(doc))
-            .toList());
+            .toList())
+        .handleError((error) {
+          // Log error but let it propagate to UI for handling
+          print('Error fetching withdrawal requests: $error');
+          throw error;
+        });
+  }
+  
+  // Fallback method: Get withdrawal requests without orderBy (no index needed)
+  Stream<List<WithdrawalRequestModel>> getUserWithdrawalRequestsFallback(String userId) {
+    return _firestore
+        .collection('withdrawal_requests')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+          final requests = snapshot.docs
+              .map((doc) => WithdrawalRequestModel.fromFirestore(doc))
+              .toList();
+          // Sort in memory by requestDate descending
+          requests.sort((a, b) => b.requestDate.compareTo(a.requestDate));
+          return requests;
+        });
   }
 
   // Get a stream of all withdrawal requests for admin

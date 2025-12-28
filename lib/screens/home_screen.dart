@@ -37,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentBottomIndex = 0;
   int _topTabIndex = 0; // 0 = Explore, 1 = Live, 2 = Following, 3 = New
   final TextEditingController _searchController = TextEditingController();
+  final PageController _pageController = PageController();
   final ChatService _chatService = ChatService();
   final EventService _eventService = EventService();
   final AnnouncementTrackingService _trackingService = AnnouncementTrackingService();
@@ -374,6 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -438,6 +440,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Build page content based on index
+  Widget _buildPageContent(int index) {
+    switch (index) {
+      case 0:
+        return _buildExploreContent();
+      case 1:
+        return _buildLiveContent();
+      case 2:
+        return _buildFollowingContent();
+      case 3:
+        return _buildNewHostsContent();
+      default:
+        return _buildExploreContent();
+    }
+  }
+
   // ========== HOME TAB (Explore/Live) ==========
   Widget _buildHomeTab() {
     return SafeArea(
@@ -446,15 +464,25 @@ class _HomeScreenState extends State<HomeScreen> {
           // Top Bar with Explore/Live Toggle and Search in One Line
           _buildTopBar(),
           
-          // Main Content Area
+          // Main Content Area - Swipeable PageView
           Expanded(
-            child: _topTabIndex == 0 
-                ? _buildExploreContent() 
-                : _topTabIndex == 1
-                    ? _buildLiveContent()
-                    : _topTabIndex == 2
-                        ? _buildFollowingContent()
-                        : _buildNewHostsContent(),
+            child: ClipRect(
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _topTabIndex = index;
+                  });
+                },
+                physics: const PageScrollPhysics(),
+                allowImplicitScrolling: false,
+                pageSnapping: true,
+                itemCount: 4,
+                itemBuilder: (context, index) {
+                  return _buildPageContent(index);
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -479,9 +507,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Explore Button
                 GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _topTabIndex = 0;
-                    });
+                    _pageController.animateToPage(
+                      0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
                   },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -500,7 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 30,
                           height: 3,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF8E24AA), // purple underline
+                            color: const Color(0xFFFF1B7C), // pink underline
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -513,9 +543,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Live Button
                 GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _topTabIndex = 1;
-                    });
+                    _pageController.animateToPage(
+                      1,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
                   },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -546,7 +578,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 30,
                           height: 3,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF8E24AA), // purple underline
+                            color: const Color(0xFFFF1B7C), // pink underline
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -559,9 +591,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Following Button
                 GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _topTabIndex = 2;
-                    });
+                    _pageController.animateToPage(
+                      2,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
                   },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -580,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 30,
                           height: 3,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF8E24AA),
+                            color: const Color(0xFFFF1B7C), // pink underline
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -593,9 +627,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 // New Button
                 GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _topTabIndex = 3;
-                    });
+                    _pageController.animateToPage(
+                      3,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
                   },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -636,7 +672,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 30,
                           height: 3,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF8E24AA),
+                            color: const Color(0xFFFF1B7C), // pink underline
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -848,43 +884,41 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 10,
             childAspectRatio: 0.85,
           ),
+          physics: const NeverScrollableScrollPhysics(),
           addRepaintBoundaries: true,
-          addAutomaticKeepAlives: true,
-          cacheExtent: 500,
+          addAutomaticKeepAlives: false,
           itemCount: liveStreams.length,
           itemBuilder: (context, index) {
             final stream = liveStreams[index];
-            return FadeInUp(
-              delay: Duration(milliseconds: 50 * index),
-              child: RepaintBoundary(
-                child: GestureDetector(
-                  onTap: () {
-                    if (!mounted) return;
-                    // Navigate to live stream as audience/viewer
-                    // Use the channel name from the stream document
-                    const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
+            return RepaintBoundary(
+              child: GestureDetector(
+                onTap: () {
+                  if (!mounted) return;
+                  // Navigate to live stream as audience/viewer
+                  // Use the channel name from the stream document
+                  const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
+                  
+                  debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
+                  debugPrint('📺 Channel: ${stream.channelName}');
                     
-                    debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
-                    debugPrint('📺 Channel: ${stream.channelName}');
-                      
-                      // Increment viewer count
-                    liveStreamService.joinStream(stream.streamId);
-                      
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AgoraLiveStreamScreen(
-                          channelName: stream.channelName, // Use channel name from Firebase
-                            token: token,
-                            isHost: false, // Viewer mode
-                          streamId: stream.streamId, // Pass streamId for cleanup
-                          ),
+                    // Increment viewer count
+                  liveStreamService.joinStream(stream.streamId);
+                    
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AgoraLiveStreamScreen(
+                        channelName: stream.channelName, // Use channel name from Firebase
+                          token: token,
+                          isHost: false, // Viewer mode
+                        streamId: stream.streamId, // Pass streamId for cleanup
                         ),
-                      ).then((_) {
-                        // Decrement viewer count when viewer leaves
-                      liveStreamService.leaveStream(stream.streamId);
-                    });
-                  },
+                      ),
+                    ).then((_) {
+                      // Decrement viewer count when viewer leaves
+                    liveStreamService.leaveStream(stream.streamId);
+                  });
+                },
                   child: _buildLiveStreamCard(
                     hostName: stream.hostName,
                     title: stream.title,
@@ -893,8 +927,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     isLive: true,
                     hostPhotoUrl: stream.hostPhotoUrl,
                     streamId: stream.streamId, // Pass streamId for chat
+                    hostId: stream.hostId, // Pass hostId to fetch user data
                   ),
-                ),
               ),
             );
           },
@@ -1016,6 +1050,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     isLive: true,
                     hostPhotoUrl: stream.hostPhotoUrl,
                     streamId: stream.streamId, // Pass streamId for chat
+                    hostId: stream.hostId, // Pass hostId to fetch user data
                   ),
               ),
             );
@@ -1034,6 +1069,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isLive,
     String? hostPhotoUrl,
     String? streamId, // Add streamId for chat
+    String? hostId, // Add hostId to fetch user data
   }) {
         return Container(
       decoration: const BoxDecoration(
@@ -1074,7 +1110,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Live Badge & Viewers
+                // Live Badge & Viewers (Top)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1142,70 +1178,96 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 
-                // Title & Host Info
-                Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                      title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                        fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    const SizedBox(height: 8),
-                      Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 10,
-                          backgroundColor: Colors.white,
-                          backgroundImage: hostPhotoUrl != null && hostPhotoUrl.isNotEmpty
-                              ? NetworkImage(hostPhotoUrl)
-                              : null,
-                          onBackgroundImageError: (exception, stackTrace) {
-                            debugPrint('Error loading host photo: $exception');
-                          },
-                          child: hostPhotoUrl == null || hostPhotoUrl.isEmpty
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 12,
-                                  color: Color(0xFF8E24AA),
-                                )
-                              : null,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                            hostName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                                      fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                // Age + Language + Call Icon (Bottom - Horizontal Row)
+                hostId != null
+                    ? StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(hostId)
+                            .snapshots(),
+                        builder: (context, userSnapshot) {
+                          if (userSnapshot.connectionState == ConnectionState.waiting) {
+                            return const SizedBox.shrink();
+                          }
+                          
+                          final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
+                          final age = userData?['age'];
+                          final language = userData?['language'] ?? 'English';
+                          
+                          return Row(
+                            children: [
+                              // Age (only number, no icon)
+                              if (age != null) ...[
+                                Text(
+                                  '$age',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha:0.2),
-                            shape: BoxShape.circle,
+                                const SizedBox(width: 10),
+                              ],
+                              // Language (no icon)
+                              Flexible(
+                                child: Text(
+                                  language,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Spacer(),
+                              // Video Icon
+                              Image.asset(
+                                'assets/images/video.png',
+                                width: 26,
+                                height: 26,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.videocam_rounded,
+                                    color: Colors.white,
+                                    size: 26,
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      )
+                    : Row(
+                        children: [
+                          // Fallback if no hostId (no icon)
+                          Text(
+                            'English',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.play_arrow,
-                            color: Colors.white,
-                            size: 14,
+                          const Spacer(),
+                          // Video Icon
+                          Image.asset(
+                            'assets/images/video.png',
+                            width: 26,
+                            height: 26,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.videocam_rounded,
+                                color: Colors.white,
+                                size: 26,
+                              );
+                            },
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-          ),
+                        ],
+                      ),
             ],
           ),
           ),
@@ -1345,38 +1407,38 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 10,
             childAspectRatio: 0.85,
           ),
+          physics: const NeverScrollableScrollPhysics(),
+          addAutomaticKeepAlives: false,
           itemCount: liveStreams.length,
           itemBuilder: (context, index) {
             final stream = liveStreams[index];
-            return FadeInUp(
-              delay: Duration(milliseconds: 50 * index),
-              child: GestureDetector(
-                onTap: () {
-                  if (!mounted) return;
-                  // Navigate to live stream as viewer
-                  const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
+            return GestureDetector(
+              onTap: () {
+                if (!mounted) return;
+                // Navigate to live stream as viewer
+                const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
+                
+                debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
+                debugPrint('📺 Channel: ${stream.channelName}');
                   
-                  debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
-                  debugPrint('📺 Channel: ${stream.channelName}');
-                    
-                    // Increment viewer count
-                  liveStreamService.joinStream(stream.streamId);
-                    
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AgoraLiveStreamScreen(
-                        channelName: stream.channelName,
-                          token: token,
-                          isHost: false, // Viewer mode
-                        streamId: stream.streamId, // Pass streamId for cleanup
-                        ),
+                  // Increment viewer count
+                liveStreamService.joinStream(stream.streamId);
+                  
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AgoraLiveStreamScreen(
+                      channelName: stream.channelName,
+                        token: token,
+                        isHost: false, // Viewer mode
+                      streamId: stream.streamId, // Pass streamId for cleanup
                       ),
-                    ).then((_) {
-                      // Decrement viewer count when viewer leaves
-                    liveStreamService.leaveStream(stream.streamId);
-                  });
-                },
+                    ),
+                  ).then((_) {
+                    // Decrement viewer count when viewer leaves
+                  liveStreamService.leaveStream(stream.streamId);
+                });
+              },
                   child: _buildLiveStreamCard(
                     hostName: stream.hostName,
                     title: stream.title,
@@ -1385,8 +1447,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     isLive: true,
                     hostPhotoUrl: stream.hostPhotoUrl,
                     streamId: stream.streamId, // Pass streamId for chat
+                    hostId: stream.hostId, // Pass hostId to fetch user data
                   ),
-              ),
             );
           },
         );
@@ -1683,25 +1745,16 @@ class _HomeScreenState extends State<HomeScreen> {
         items: [
           // Home
           BottomNavigationBarItem(
-            icon: Image.asset(
-              'assets/images/logo.png',
-              width: 28,
-              height: 28,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.home,
-                  size: 28,
-                );
-              },
-            ),
+            icon: const Icon(Icons.home_rounded, size: 28),
             label: AppLocalizations.of(context)!.home,
           ),
           
           // Wallet
           BottomNavigationBarItem(
-            icon: const Icon(Icons.account_balance_wallet, size: 28),
+            icon: _buildColoredIcon(
+              'assets/images/walleticon.png',
+              isSelected: _currentBottomIndex == 1,
+            ),
             label: AppLocalizations.of(context)!.wallet,
           ),
           
@@ -1744,7 +1797,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       return _buildMessageIconWithBadge(unreadCount);
                     },
                   )
-                : const Icon(Icons.message, size: 28),
+                : _buildColoredIcon(
+                    'assets/images/comment.png',
+                    isSelected: _currentBottomIndex == 3,
+                  ),
             label: AppLocalizations.of(context)!.messages,
           ),
           
@@ -1762,7 +1818,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        const Icon(Icons.message, size: 28),
+        _buildColoredIcon(
+          'assets/images/comment.png',
+          isSelected: _currentBottomIndex == 3,
+        ),
         if (unreadCount > 0)
           Positioned(
             top: -4,
@@ -1846,5 +1905,31 @@ class _HomeScreenState extends State<HomeScreen> {
       return '${(count / 1000).toStringAsFixed(1)}K';
     }
     return count.toString();
+  }
+
+  // Build colored icon (black when selected, gray when not selected)
+  Widget _buildColoredIcon(String imagePath, {required bool isSelected}) {
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(
+        isSelected ? Colors.black : Colors.grey,
+        BlendMode.srcATop,
+      ),
+      child: Image.asset(
+        imagePath,
+        width: 28,
+        height: 28,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(
+            imagePath.contains('walleticon') 
+                ? Icons.account_balance_wallet 
+                : Icons.message,
+            size: 28,
+            color: isSelected ? Colors.black : Colors.grey,
+          );
+        },
+      ),
+    );
   }
 }

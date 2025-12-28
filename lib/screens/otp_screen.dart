@@ -315,7 +315,7 @@ class _OtpScreenState extends State<OtpScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFF04B104),
+        backgroundColor: const Color(0xFFFF1B7C), // Pink - matches app theme
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
@@ -340,50 +340,35 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
+    // Clean OTP Input Theme - Light grey boxes with green cursor (Perfect sizing)
     final defaultPinTheme = PinTheme(
-      width: 56,
-      height: 60,
+      width: 48,
+      height: 56,
       textStyle: const TextStyle(
         fontSize: 22,
         fontWeight: FontWeight.bold,
         color: Colors.black87,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey[300]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
       ),
     );
 
     final focusedPinTheme = defaultPinTheme.copyWith(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF04B104), width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF04B104).withValues(alpha: 0.2),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
       ),
     );
 
     final submittedPinTheme = defaultPinTheme.copyWith(
       decoration: BoxDecoration(
-        color: const Color(0xFF04B104).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFF04B104)),
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
       ),
     );
 
@@ -404,222 +389,160 @@ class _OtpScreenState extends State<OtpScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(height: size.height * 0.02),
-
-                // Logo - Full HD Quality
-                FadeInDown(
-                  duration: const Duration(milliseconds: 800),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                    errorBuilder: (context, error, stackTrace) {
-                      debugPrint('❌ Error loading logo: $error');
-                      debugPrint('❌ Stack trace: $stackTrace');
-                      // Return a neutral placeholder instead of green phone icon
-                      return Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.image,
-                          size: 60,
-                          color: Colors.grey,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // Title
-                FadeInDown(
-                  delay: const Duration(milliseconds: 200),
-                  child: const Text(
-                    'Verify OTP',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Subtitle
-                FadeInDown(
-                  delay: const Duration(milliseconds: 300),
-                  child: Text(
-                    'We have sent a verification code to',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 5),
-
-                FadeInDown(
-                  delay: const Duration(milliseconds: 400),
-                  child: Text(
-                    '${widget.countryCode} ${widget.phoneNumber}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF04B104),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // Change Number
-                FadeInDown(
-                  delay: const Duration(milliseconds: 500),
-                  child: TextButton.icon(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            try {
-                              Navigator.of(context).pop();
-                            } catch (e) {
-                              debugPrint('Error navigating back: $e');
-                            }
-                          },
-                    icon: const Icon(
-                      Icons.edit,
-                      size: 18,
-                      color: Colors.grey,
-                    ),
-                    label: const Text(
-                      'Change Phone Number',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // OTP Input
-                FadeInUp(
-                  delay: const Duration(milliseconds: 600),
-                  child: Pinput(
-                    controller: _otpController,
-                    length: 6,
-                    defaultPinTheme: defaultPinTheme,
-                    focusedPinTheme: focusedPinTheme,
-                    submittedPinTheme: submittedPinTheme,
-                    pinputAutovalidateMode: PinputAutovalidateMode.onSubmit,
-                    showCursor: true,
-                    enabled: !_isLoading,
-                    onCompleted: (pin) {
-                      // Auto-verify when all 6 digits are entered
-                      _verifyOTP();
-                    },
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // Timer / Resend
-                FadeInUp(
-                  delay: const Duration(milliseconds: 700),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _canResend
-                            ? "Didn't receive the code?"
-                            : 'Resend OTP in $_secondsRemaining seconds',
+                      const SizedBox(height: 20),
+
+                      // Title - Aligned with OTP input start
+                      FadeInDown(
+                        delay: const Duration(milliseconds: 200),
+                        child: const Text(
+                          'Enter 6 digit OTP',
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Subtitle - Aligned with OTP input start
+                      FadeInDown(
+                        delay: const Duration(milliseconds: 300),
+                        child: Text(
+                          'SMS sent to ${widget.countryCode} ${widget.phoneNumber}',
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // OTP Input - Aligned to start (same as text above)
+                      FadeInUp(
+                        delay: const Duration(milliseconds: 600),
+                        child: Pinput(
+                          controller: _otpController,
+                          length: 6,
+                          defaultPinTheme: defaultPinTheme,
+                          focusedPinTheme: focusedPinTheme,
+                          submittedPinTheme: submittedPinTheme,
+                          pinputAutovalidateMode: PinputAutovalidateMode.onSubmit,
+                          showCursor: true,
+                          enabled: !_isLoading,
+                          separatorBuilder: (index) => const SizedBox(width: 12),
+                          onCompleted: (pin) {
+                            // Auto-verify when all 6 digits are entered
+                            _verifyOTP();
+                          },
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        ),
+                      ),
+
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Resend OTP - Just above Log in button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: FadeInUp(
+                delay: const Duration(milliseconds: 700),
+                child: _canResend
+                    ? TextButton(
+                        onPressed: _isLoading ? null : _resendOTP,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                        child: Text(
+                          'Resend OTP',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      )
+                    : Text(
+                        'Resend OTP ( $_secondsRemaining s )',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[600],
                         ),
                       ),
-                      if (_canResend) ...[
-                        const SizedBox(width: 5),
-                        TextButton(
-                          onPressed: _isLoading ? null : _resendOTP,
-                          child: const Text(
-                            'Resend',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF04B104),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Log in Button at Bottom - Fixed at bottom with proper spacing
+            Padding(
+              padding: const EdgeInsets.fromLTRB(30, 0, 30, 30),
+              child: FadeInUp(
+                delay: const Duration(milliseconds: 800),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _verifyOTP,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF1B7C), // Pink
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey[300],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      elevation: 0,
+                      padding: EdgeInsets.zero, // Remove default padding
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Log in',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ],
                   ),
                 ),
-
-                const SizedBox(height: 60),
-
-                // Verify Button at Bottom
-                FadeInUp(
-                  delay: const Duration(milliseconds: 800),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _verifyOTP,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF9C27B0), // #9C27B0
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey[300],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: 8,
-                        shadowColor: const Color(0xFF9C27B0).withValues(alpha: 0.4), // #9C27B0 shadow
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : const Text(
-                              'Verify OTP',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

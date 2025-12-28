@@ -5,14 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import '../services/promotion_service.dart';
-import '../services/promotional_frame_service.dart';
 import '../services/promotion_reward_service.dart';
 import '../models/promotion_model.dart';
-import 'image_crop_screen.dart';
 
 class PromotionScreen extends StatefulWidget {
   const PromotionScreen({super.key});
@@ -23,9 +20,7 @@ class PromotionScreen extends StatefulWidget {
 
 class _PromotionScreenState extends State<PromotionScreen> {
   final PromotionService _promotionService = PromotionService();
-  final PromotionalFrameService _frameService = PromotionalFrameService();
   final PromotionRewardService _rewardService = PromotionRewardService();
-  final ImagePicker _imagePicker = ImagePicker();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   final PageController _pageController = PageController();
@@ -33,9 +28,14 @@ class _PromotionScreenState extends State<PromotionScreen> {
   bool _isLoading = false;
   String? _appLink;
   String? _qrCodeData;
-  int _gameRate = 70;
-  int _giftRate = 70;
   List<PromotionModel> _promotions = [];
+  
+  // Local asset images for promotion carousel
+  final List<String> _localPromoImages = [
+    'assets/images/promoimage.jpg',
+    'assets/images/promoimage1.jpg',
+    'assets/images/promobaner.jpg',
+  ];
 
   @override
   void initState() {
@@ -71,15 +71,6 @@ class _PromotionScreenState extends State<PromotionScreen> {
           });
         }
       });
-
-      // Load earning rates
-      final rates = await _rewardService.getDownlineRates(userId);
-      if (mounted) {
-        setState(() {
-          _gameRate = rates['gameRate'] ?? 70;
-          _giftRate = rates['giftRate'] ?? 70;
-        });
-      }
     } catch (e) {
       debugPrint('Error loading promotion data: $e');
     } finally {
@@ -132,18 +123,15 @@ class _PromotionScreenState extends State<PromotionScreen> {
                 children: [
                   // Image Carousel
                   _buildImageCarousel(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   
-                  // Custom Share Template Button
-                  _buildCustomShareButton(),
-                  const SizedBox(height: 20),
-                  
-                  // Earning Rate Information
-                  _buildEarningRateSection(),
-                  const SizedBox(height: 20),
+                  // Attractive Text
+                  _buildAttractiveText(),
+                  const SizedBox(height: 36),
                   
                   // Action Buttons
                   _buildActionButtons(),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -151,33 +139,23 @@ class _PromotionScreenState extends State<PromotionScreen> {
   }
 
   Widget _buildImageCarousel() {
-    if (_promotions.isEmpty) {
-      return Container(
-        height: 300,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Text('No promotional images available'),
-        ),
-      );
-    }
+    // Always use local asset images
+    final List<String> imagesToShow = _localPromoImages;
 
     return Column(
       children: [
         SizedBox(
-          height: 300,
+          height: 400, // Increased height
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
               setState(() => _currentPage = index);
             },
-            itemCount: _promotions.length,
+            itemCount: imagesToShow.length,
             itemBuilder: (context, index) {
-              final promotion = _promotions[index];
+              final imagePath = imagesToShow[index];
               return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 8),
+                margin: const EdgeInsets.symmetric(horizontal: 40), // Reduced width with more margin
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
@@ -190,8 +168,8 @@ class _PromotionScreenState extends State<PromotionScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    promotion.imageUrl,
+                  child: Image.asset(
+                    imagePath,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
@@ -212,7 +190,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            _promotions.length,
+            imagesToShow.length,
             (index) => Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
               width: _currentPage == index ? 24 : 8,
@@ -230,210 +208,91 @@ class _PromotionScreenState extends State<PromotionScreen> {
     );
   }
 
-  Widget _buildCustomShareButton() {
-    return OutlinedButton.icon(
-      onPressed: _handleCustomShareTemplate,
-      icon: const Icon(Icons.add_photo_alternate, size: 20),
-      label: const Text('Custom share template'),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        side: BorderSide(color: Colors.grey[400]!),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEarningRateSection() {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Current Downline Rate: Game $_gameRate% Gift $_giftRate%',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+  Widget _buildAttractiveText() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        children: [
+          Text(
+            'Invite friends. Earn instantly.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[900],
+              letterSpacing: 0.5,
+              height: 1.3,
             ),
-            if (_gameRate == 0 || _giftRate == 0) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning, size: 20, color: Colors.orange[700]),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'When rate is 0%, the downline have no earnings.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange[700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Share your referral link and get rewarded for every friend who joins!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+              height: 1.4,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildActionButtons() {
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Share URL Button
         SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
+          width: 140,
+          child: ElevatedButton(
             onPressed: _handleShareURL,
-            icon: const Icon(Icons.share, size: 20),
-            label: const Text('Share URL'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: Colors.black87,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
               side: BorderSide(color: Colors.grey[400]!),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              minimumSize: const Size(140, 44),
+            ),
+            child: const Text(
+              'Share URL',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(width: 12),
         // Save QR Code Button
         SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
+          width: 140,
+          child: ElevatedButton(
             onPressed: _handleSaveQRCode,
-            icon: const Icon(Icons.qr_code, size: 20),
-            label: Text(AppLocalizations.of(context)!.saveQRCode),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF04B104),
+              backgroundColor: const Color(0xFFFF1B7C), // Pink - matches app theme
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              minimumSize: const Size(140, 44),
+            ),
+            child: Text(
+              AppLocalizations.of(context)!.saveQRCode,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ),
       ],
     );
-  }
-
-  Future<void> _handleCustomShareTemplate() async {
-    final userId = _auth.currentUser?.uid;
-    if (userId == null) {
-      _showError('Please login to continue');
-      return;
-    }
-
-    // Show image source selection
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Take Photo'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from Gallery'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (source == null) return;
-
-    try {
-      final pickedFile = await _imagePicker.pickImage(source: source);
-      if (pickedFile == null) return;
-
-      // Navigate to crop screen
-      final croppedFile = await Navigator.push<File>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ImageCropScreen(
-            imageFile: File(pickedFile.path),
-            isProfilePicture: false,
-          ),
-        ),
-      );
-
-      if (croppedFile == null) {
-        return;
-      }
-      if (!mounted) {
-        return;
-      }
-
-      setState(() => _isLoading = true);
-
-      // Generate QR code data
-      final qrData = await _promotionService.generateQRCodeData(userId);
-      final appLink = await _promotionService.generateAppLink(userId);
-
-      // Apply promotional frame
-      final framedImage = await _frameService.applyPromotionalFrame(
-        imageFile: croppedFile,
-        qrCodeData: qrData,
-      );
-
-      // Upload to Firebase Storage
-      final imageUrl = await _promotionService.uploadPromotionalImage(
-        framedImage.path,
-        userId,
-      );
-
-      // Save promotion to Firestore
-      final promotion = PromotionModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: userId,
-        imageUrl: imageUrl,
-        appLink: appLink,
-        referralCode: await _promotionService.getUserReferralCode(userId),
-        createdAt: DateTime.now(),
-        isCustom: true,
-      );
-
-      await _promotionService.savePromotion(promotion);
-
-      if (mounted) {
-        _showSuccess('Image uploaded successfully!');
-        _loadData();
-      }
-    } catch (e) {
-      debugPrint('Error creating custom template: $e');
-      if (mounted) {
-        _showError('Failed to create template: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
   }
 
   Future<void> _handleShareURL() async {
@@ -562,8 +421,38 @@ class _PromotionScreenState extends State<PromotionScreen> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
         backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: const EdgeInsets.all(18),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -572,8 +461,38 @@ class _PromotionScreenState extends State<PromotionScreen> {
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFFFF1B7C), // Pink - matches app theme
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: const EdgeInsets.all(18),
         duration: const Duration(seconds: 3),
       ),
     );

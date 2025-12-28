@@ -10,8 +10,8 @@ class PromotionService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final DatabaseService _databaseService = DatabaseService();
 
-  // Base app URL (update with your actual app download URL)
-  static const String baseAppUrl = 'https://chamakz.app/download';
+  // Google Play Store app URL
+  static const String baseAppUrl = 'https://play.google.com/store/apps/details?id=com.chamakz.app&pcampaignid=web_share';
 
   /// Generate app share link with user referral code
   Future<String> generateAppLink(String userId) async {
@@ -20,10 +20,12 @@ class PromotionService {
       final user = await _databaseService.getUserData(userId);
       final referralCode = user?.numericUserId ?? userId.substring(0, 8);
       
-      return '$baseAppUrl?ref=$userId&code=$referralCode';
+      // Use Play Store link with referral code as parameter
+      return '$baseAppUrl&referrer=ref_$referralCode';
     } catch (e) {
       debugPrint('Error generating app link: $e');
-      return '$baseAppUrl?ref=$userId';
+      // Return base Play Store link if error
+      return baseAppUrl;
     }
   }
 

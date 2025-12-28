@@ -15,6 +15,7 @@ import 'contact_support_screen.dart';
 import 'help_feedback_screen.dart';
 import 'warning_screen.dart';
 import 'event_screen.dart';
+import 'promotion_screen.dart';
 import '../services/database_service.dart';
 import '../services/id_generator_service.dart';
 import '../services/chat_service.dart';
@@ -55,9 +56,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   
   // Sample images for the slider
   final List<String> _sliderImages = [
-    'assets/images/adimage.png',
-    'assets/images/adimage2.png',
-    'assets/images/adimage3.png',
+    'assets/images/bannerpromo.jpg',
+    'assets/images/bannerpromo1.jpg',
+    'assets/images/banner2.jpeg',
+    'assets/images/banner3.jpeg',
   ];
 
   @override
@@ -725,7 +727,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildImageSlider() {
     return Container(
       key: const ValueKey('image_slider'), // Key prevents animation restart
-        height: 50,
+        height: 55,
         child: PageView.builder(
           controller: _pageController,
           onPageChanged: (index) {
@@ -740,16 +742,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           itemBuilder: (context, index) {
             return SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 55,
               child: Image.asset(
                 _sliderImages[index],
                 width: double.infinity,
-                height: 50,
-                fit: BoxFit.cover,
+                height: 55,
+                fit: BoxFit.fitWidth, // Shows full image without cropping top/bottom
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
                     width: double.infinity,
-                    height: 50,
+                    height: 55,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -956,6 +958,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }
                   },
                 );
+              },
+            ),
+            _buildDivider(),
+            
+            // Promotion Screen - placed just below Messages
+            _buildMenuOption(
+              icon: Icons.campaign_rounded,
+              title: 'Promotion',
+              subtitle: 'Share app & earn rewards',
+              color: const Color(0xFFFF1B7C), // Pink - matches app theme
+              onTap: () {
+                if (!mounted) return;
+                _stopAutoScroll();
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PromotionScreen(),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
