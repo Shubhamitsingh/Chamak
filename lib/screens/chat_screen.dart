@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../models/user_model.dart';
 import '../models/message_model.dart';
@@ -37,12 +38,12 @@ class _ChatScreenState extends State<ChatScreen> {
       _chatService.markMessagesAsRead(widget.chatId, _currentUserId!);
     }
 
-    // Listen for digits while typing
+    // Listen for numbers (digits or words) while typing
     _messageController.addListener(() {
-      final hasDigits = _containsDigits(_messageController.text);
-      if (hasDigits != _containsDigitsWarning) {
+      final hasNumbers = _containsAnyNumbers(_messageController.text);
+      if (hasNumbers != _containsDigitsWarning) {
         setState(() {
-          _containsDigitsWarning = hasDigits;
+          _containsDigitsWarning = hasNumbers;
         });
       }
     });
@@ -60,13 +61,37 @@ class _ChatScreenState extends State<ChatScreen> {
     return RegExp(r'\d').hasMatch(text);
   }
 
+  // Check if message contains number words (zero, one, two, etc.)
+  bool _containsNumberWords(String text) {
+    final lowerText = text.toLowerCase();
+    final numberWords = [
+      'zero', 'one', 'two', 'three', 'four',
+      'five', 'six', 'seven', 'eight', 'nine'
+    ];
+    
+    for (String word in numberWords) {
+      // Use word boundaries to avoid false positives (e.g., "someone", "phone")
+      final pattern = '\\b$word\\b';
+      if (RegExp(pattern, caseSensitive: false).hasMatch(lowerText)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Check if message contains any numbers (digits OR words)
+  bool _containsAnyNumbers(String text) {
+    return _containsDigits(text) || _containsNumberWords(text);
+  }
+
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty || _currentUserId == null) return;
 
     final message = _messageController.text.trim();
 
-    // Security: Block messages containing digits (prevent phone number sharing)
-    if (_containsDigits(message)) {
+    // Security: Block messages containing digits or number words (prevent phone number sharing)
+    if (_containsAnyNumbers(message)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -75,7 +100,7 @@ class _ChatScreenState extends State<ChatScreen> {
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '⚠️ Cannot send numbers! Phone numbers are not allowed for your safety.',
+                  '⚠️ Cannot send numbers! Phone numbers (including in word form) are not allowed for your safety.',
                   style: TextStyle(fontSize: 14),
                 ),
               ),
@@ -176,7 +201,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
                       widget.otherUser.name,
                       style: const TextStyle(
                         color: Colors.black87,
@@ -184,6 +212,16 @@ class _ChatScreenState extends State<ChatScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                       overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Verified Badge (Starburst)
+                        const Icon(
+                          Icons.verified,
+                          color: Color(0xFF1DA1F2),
+                          size: 18,
+                        ),
+                      ],
                     ),
                     // Online status (you can implement later)
                     // Text(
@@ -208,7 +246,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 SnackBar(
                   content: Row(
                     children: [
-                      const Icon(Icons.video_call, color: Colors.white, size: 20),
+                      Image.asset('assets/images/video.png', width: 20, height: 20, color: Colors.white),
                       const SizedBox(width: 12),
                       Text('Video call with ${widget.otherUser.name}'),
                     ],
@@ -226,7 +264,11 @@ class _ChatScreenState extends State<ChatScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF9C27B0), // solid purple
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: const [
                   BoxShadow(
@@ -238,14 +280,15 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(
-                    Icons.video_call,
+                children: [
+                  Image.asset(
+                    'assets/images/video.png',
+                    width: 18,
+                    height: 18,
                     color: Colors.white,
-                    size: 18,
                   ),
-                  SizedBox(width: 6),
-                  Text(
+                  const SizedBox(width: 6),
+                  const Text(
                     'Video Call',
                     style: TextStyle(
                       color: Colors.white,
@@ -259,96 +302,10 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           
-          // More options - Professional 3-dot menu
-          PopupMenuButton<String>(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              child: const Icon(Icons.more_vert, color: Colors.black87, size: 22),
-            ),
-            offset: const Offset(-10, 45),
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            onSelected: (value) {
-              if (value == 'view_profile') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => UserProfileViewScreen(user: widget.otherUser),
-                  ),
-                );
-              } else if (value == 'clear_chat') {
-                _showClearChatDialog();
-              }
-            },
-            itemBuilder: (context) => [
-              // View Profile Option
-              PopupMenuItem(
-                value: 'view_profile',
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF48FB1).withValues(alpha:0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(
-                        Icons.person_outline,
-                        size: 18,
-                        color: Color(0xFFF48FB1),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'View Profile',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Clear Chat Option (no divider)
-              PopupMenuItem(
-                value: 'clear_chat',
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha:0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(
-                        Icons.delete_outline_rounded,
-                        size: 18,
-                        color: Colors.red,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Clear Chat',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          // More options - 3-dot menu opens bottom sheet
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Colors.black87, size: 22),
+            onPressed: () => _showOptionsBottomSheet(context),
           ),
           const SizedBox(width: 4),
         ],
@@ -363,8 +320,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                     child: CircularProgressIndicator(
-                      // Light purple to match the updated chat accent
-                      color: Color(0xFFBA68C8),
+                      // Light pink to match app theme
+                      color: Color(0xFFFF69B4),
                     ),
                   );
                 }
@@ -385,7 +342,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.chat_bubble_outline, size: 60, color: Colors.grey[300]),
+                        Image.asset('assets/images/chat.png', width: 60, height: 60, color: Colors.grey[300]),
                         const SizedBox(height: 16),
                         Text(
                           'No messages yet',
@@ -514,7 +471,14 @@ class _ChatScreenState extends State<ChatScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: _containsDigitsWarning ? Colors.grey[400] : const Color(0xFF9C27B0),
+                      gradient: _containsDigitsWarning 
+                          ? null
+                          : const LinearGradient(
+                              colors: [Color(0xFFFF1B7C), Color(0xFF9C27B0)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                      color: _containsDigitsWarning ? Colors.grey[400] : null,
                       shape: BoxShape.circle,
                       boxShadow: _containsDigitsWarning 
                           ? null
@@ -559,7 +523,7 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 // Use a slightly darker purple for my messages, keep others white
-                color: isSentByMe ? const Color(0xFFBA68C8) : Colors.white,
+                color: isSentByMe ? const Color(0xFFFF69B4) : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -756,6 +720,384 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Show options bottom sheet
+  void _showOptionsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag Handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // View Profile Option
+              _buildBottomSheetOption(
+                icon: Icons.person_outline,
+                iconColor: const Color(0xFFF48FB1),
+                title: 'View Profile',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UserProfileViewScreen(user: widget.otherUser),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 4),
+              // Block and Report Option
+              _buildBottomSheetOption(
+                icon: Icons.block_outlined,
+                iconColor: Colors.red,
+                title: 'Block and Report',
+                onTap: () {
+                  Navigator.pop(context);
+                  _showBlockAndReportOptions(context);
+                },
+              ),
+              const SizedBox(height: 4),
+              // Clear Chat Option
+              _buildBottomSheetOption(
+                icon: Icons.delete_outline_rounded,
+                iconColor: Colors.red,
+                title: 'Clear Chat',
+                onTap: () {
+                  Navigator.pop(context);
+                  _showClearChatDialog();
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Build bottom sheet option widget
+  Widget _buildBottomSheetOption({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: iconColor,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Show block and report options
+  void _showBlockAndReportOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag Handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Block User Option
+              _buildBottomSheetOption(
+                icon: Icons.block_outlined,
+                iconColor: Colors.red,
+                title: 'Block User',
+                onTap: () {
+                  Navigator.pop(context);
+                  _blockUser(context);
+                },
+              ),
+              const SizedBox(height: 4),
+              // Report User Option
+              _buildBottomSheetOption(
+                icon: Icons.flag_outlined,
+                iconColor: Colors.orange,
+                title: 'Report User',
+                onTap: () {
+                  Navigator.pop(context);
+                  _reportUser(context);
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Block User
+  Future<void> _blockUser(BuildContext context) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Block User'),
+        content: Text('Are you sure you want to block ${widget.otherUser.name}? You won\'t be able to see their profile or receive messages from them.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final firestore = FirebaseFirestore.instance;
+                // Add user to blocked list
+                await firestore
+                    .collection('users')
+                    .doc(currentUser.uid)
+                    .collection('blocked')
+                    .doc(widget.otherUser.uid)
+                    .set({
+                  'blockedAt': FieldValue.serverTimestamp(),
+                  'blockedUserId': widget.otherUser.uid,
+                  'blockedUserName': widget.otherUser.name,
+                });
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${widget.otherUser.name} has been blocked'),
+                      backgroundColor: Colors.green,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                  // Navigate back after blocking
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                debugPrint('Error blocking user: $e');
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to block user. Please try again.'),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              'Block',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Report User
+  Future<void> _reportUser(BuildContext context) async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _ReportUserScreen(
+          reportedUserId: widget.otherUser.uid,
+          reportedUserName: widget.otherUser.name,
+        ),
+      ),
+    );
+  }
+}
+
+// Report User Screen
+class _ReportUserScreen extends StatelessWidget {
+  final String reportedUserId;
+  final String reportedUserName;
+
+  const _ReportUserScreen({
+    required this.reportedUserId,
+    required this.reportedUserName,
+  });
+
+  final List<String> _reportReasons = const [
+    'I just don\'t like it',
+    'Sexual Content',
+    'Harassment or threats',
+    'Spam',
+    'Illegal goods or services',
+    'Underage presence',
+    'Terrorist offences',
+    'Animal cruelty',
+    'Child Abuse',
+  ];
+
+  void _submitReport(BuildContext context, String reason) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      // Save report to Firestore
+      await FirebaseFirestore.instance.collection('reports').add({
+        'reportedUserId': reportedUserId,
+        'reportedUserName': reportedUserName,
+        'reporterId': currentUser.uid,
+        'reason': reason,
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'pending',
+      });
+
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Report submitted successfully. Our team will review this.'),
+            backgroundColor: Color(0xFFFF69B4),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error submitting report: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to submit report. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Why are you reporting this?',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          // Drag Handle
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Report Reasons List
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: _reportReasons.length,
+              itemBuilder: (context, index) {
+                final reason = _reportReasons[index];
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      _submitReport(context, reason);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              reason,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: Colors.black87,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

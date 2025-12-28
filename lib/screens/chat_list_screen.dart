@@ -161,7 +161,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
+                  Image.asset('assets/images/chat.png', width: 80, height: 80, color: Colors.grey[300]),
                   const SizedBox(height: 16),
                   Text(
                     'No messages yet',
@@ -397,9 +397,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     Row(
                       children: [
                         // Message icon
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          size: 14,
+                        Image.asset(
+                          'assets/images/chat.png',
+                          width: 14,
+                          height: 14,
                           color: Colors.grey[400],
                         ),
                         const SizedBox(width: 6),

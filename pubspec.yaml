@@ -1,7 +1,7 @@
 name: Chamak
 description: A live streaming mobile app built with Flutter
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+6
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -14,7 +14,10 @@ dependencies:
     sdk: flutter
   
   # Permission handler for app permissions
-  permission_handler: ^11.0.1
+  permission_handler: ^11.3.1
+  
+  # Agora Video SDK for live streaming
+  agora_rtc_engine: ^6.5.0
   
   # UI & Design
   cupertino_icons: ^1.0.6
@@ -30,6 +33,7 @@ dependencies:
   
   # Phone Number Input
   intl_phone_field: ^3.2.0
+  country_picker: ^2.0.27
   
   # OTP Input
   pinput: ^3.0.1
@@ -41,12 +45,14 @@ dependencies:
   firebase_core: ^4.2.0
   firebase_auth: ^6.1.1
   cloud_firestore: ^6.0.3
+  cloud_functions: ^6.0.4
   firebase_storage: ^13.0.3
   firebase_messaging: ^16.0.3
   flutter_local_notifications: ^18.0.1
   
   # Image Picker
   image_picker: ^1.2.0
+  image_cropper: ^8.0.2
   
   # Modern Avatar Package
   avatars: ^3.0.0
@@ -60,6 +66,18 @@ dependencies:
   intl: any
   shared_preferences: ^2.2.0
   provider: ^6.1.0
+  
+  # Share functionality
+  share_plus: ^10.1.2
+  
+  # URL Launcher for payment apps
+  url_launcher: ^6.2.0
+  
+  # QR Code Generator
+  qr_flutter: ^4.1.0
+  
+  # Path Provider for file system access
+  path_provider: ^2.1.1
 
 dev_dependencies:
   flutter_test:
@@ -77,10 +95,10 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/images/logo.png"
+  image_path: "assets/images/logopink.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/logo.png"
-  adaptive_icon_foreground_padding: "60%"
+  adaptive_icon_foreground: "assets/images/logopink.png"
+  adaptive_icon_foreground_padding: "22%"
   remove_alpha_ios: true
 
 

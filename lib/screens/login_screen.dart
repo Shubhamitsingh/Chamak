@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:country_picker/country_picker.dart';
 import 'otp_screen.dart';
 import 'splash_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_conditions_screen.dart';
 import '../generated/l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,25 +19,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
   
-  String _selectedCountryCode = '+91';
-  String _selectedCountryFlag = '🇮🇳';
+  Country _selectedCountry = Country.parse('IN'); // Default to India
   
   bool _isLoading = false;
   int _digitCount = 0;
-
-  // Available countries
-  final List<Map<String, String>> _countries = [
-    {'flag': '🇮🇳', 'name': 'India', 'code': '+91'},
-    {'flag': '🇺🇸', 'name': 'USA', 'code': '+1'},
-    {'flag': '🇬🇧', 'name': 'UK', 'code': '+44'},
-    {'flag': '🇨🇦', 'name': 'Canada', 'code': '+1'},
-    {'flag': '🇦🇺', 'name': 'Australia', 'code': '+61'},
-    {'flag': '🇦🇪', 'name': 'UAE', 'code': '+971'},
-    {'flag': '🇸🇬', 'name': 'Singapore', 'code': '+65'},
-    {'flag': '🇲🇾', 'name': 'Malaysia', 'code': '+60'},
-    {'flag': '🇵🇰', 'name': 'Pakistan', 'code': '+92'},
-    {'flag': '🇧🇩', 'name': 'Bangladesh', 'code': '+880'},
-  ];
 
   @override
   void initState() {
@@ -53,80 +41,45 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showCountryPicker() {
-    showModalBottomSheet(
+    showCountryPicker(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Select Country',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 15),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _countries.length,
-                  itemBuilder: (context, index) {
-                    final country = _countries[index];
-                    return ListTile(
-                      leading: Text(
-                        country['flag']!,
-                        style: const TextStyle(fontSize: 28),
-                      ),
-                      title: Text(
-                        country['name']!,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      trailing: Text(
-                        country['code']!,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      onTap: () {
-                        setState(() {
-                          _selectedCountryCode = country['code']!;
-                          _selectedCountryFlag = country['flag']!;
-                        });
-                        try {
-                          Navigator.pop(context);
-                        } catch (e) {
-                          debugPrint('Error closing country picker: $e');
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+      favorite: ['IN', 'US', 'GB', 'CA', 'AU', 'AE', 'SG', 'MY', 'PK', 'BD'],
+      countryListTheme: CountryListThemeData(
+        flagSize: 25,
+        backgroundColor: Colors.white,
+        textStyle: const TextStyle(
+          fontSize: 16,
+          color: Colors.black87,
+        ),
+        searchTextStyle: const TextStyle(
+          fontSize: 16,
+          color: Colors.black87,
+        ),
+        inputDecoration: InputDecoration(
+          labelText: 'Search',
+          hintText: 'Start typing to search',
+          prefixIcon: const Icon(Icons.search),
+          border: OutlineInputBorder(
+            borderSide: BorderSide(
+              color: const Color(0xFF9C27B0).withValues(alpha: 0.2),
+            ),
           ),
-        );
+          focusedBorder: const OutlineInputBorder(
+            borderSide: BorderSide(
+              color: Color(0xFF9C27B0),
+              width: 2,
+            ),
+          ),
+        ),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(25),
+        ),
+        bottomSheetHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      onSelect: (Country country) {
+        setState(() {
+          _selectedCountry = country;
+        });
       },
     );
   }
@@ -162,12 +115,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _sendOTP() async {
     if (_phoneController.text.isEmpty) {
-      _showErrorSnackBar(AppLocalizations.of(context)!.pleaseEnterYourMobileNumber);
+      _showErrorSnackBar(AppLocalizations.of(context)?.pleaseEnterYourMobileNumber ?? 'Please enter your mobile number');
       return;
     }
 
     if (!_isValidPhoneNumber(_phoneController.text)) {
-      _showErrorSnackBar(AppLocalizations.of(context)!.pleaseEnterValidMobileNumber);
+      _showErrorSnackBar(AppLocalizations.of(context)?.pleaseEnterValidMobileNumber ?? 'Please enter a valid mobile number');
       return;
     }
 
@@ -175,10 +128,34 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    final String rawNumber = _phoneController.text;
-    final String fullNumber = '$_selectedCountryCode$rawNumber';
+    // Clean phone number: remove spaces, dashes, parentheses, and other non-digit characters
+    String rawNumber = _phoneController.text.trim().replaceAll(RegExp(r'[\s\-\(\)\.]'), '');
+    
+    // Remove any non-digit characters (extra safety)
+    rawNumber = rawNumber.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // Remove leading zero if present (Indian numbers shouldn't start with 0 in E.164)
+    while (rawNumber.startsWith('0') && rawNumber.length > 1) {
+      rawNumber = rawNumber.substring(1);
+    }
+    
+    // Validate cleaned number length (Indian numbers should be 10 digits)
+    if (rawNumber.length != 10) {
+      _showErrorSnackBar('Please enter a valid 10-digit phone number');
+      setState(() { _isLoading = false; });
+      return;
+    }
+    
+    // E.164 format: +[country code][subscriber number]
+    // Example: +919876543210
+    final String fullNumber = '+${_selectedCountry.phoneCode}$rawNumber';
 
-    debugPrint('📱 Starting Phone Auth for: $fullNumber');
+    debugPrint('📱 Phone Number Details:');
+    debugPrint('   Country: ${_selectedCountry.name}');
+    debugPrint('   Country Code: +${_selectedCountry.phoneCode}');
+    debugPrint('   Raw Number (cleaned): $rawNumber');
+    debugPrint('   Full E.164 Format: $fullNumber');
+    debugPrint('   E.164 Length: ${fullNumber.length} (should be 13 for India: +91 + 10 digits)');
 
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
@@ -231,9 +208,9 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => OtpScreen(
+                      builder: (context) => OtpScreen(
                     phoneNumber: rawNumber,
-                    countryCode: _selectedCountryCode,
+                    countryCode: '+${_selectedCountry.phoneCode}',
                     verificationId: verificationId,
                     resendToken: resendToken,
                   ),
@@ -287,130 +264,6 @@ class _LoginScreenState extends State<LoginScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
       ),
-    );
-  }
-
-  void _showTermsDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Terms & Conditions',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 22,
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text(
-                  'Welcome to Chamak!',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  '1. By using this app, you agree to our terms and conditions.\n\n'
-                  '2. We collect and use your phone number for authentication purposes.\n\n'
-                  '3. Your data will be kept secure and confidential.\n\n'
-                  '4. You must be 13 years or older to use this service.\n\n'
-                  '5. We reserve the right to modify these terms at any time.\n\n'
-                  '6. You are responsible for maintaining the confidentiality of your account.\n\n'
-                  '7. We do not share your personal information with third parties without consent.',
-                  style: TextStyle(fontSize: 14, height: 1.5),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                try {
-                  Navigator.of(context).pop();
-                } catch (e) {
-                  debugPrint('Error closing dialog: $e');
-                }
-              },
-              child: const Text(
-                'Close',
-                style: TextStyle(
-                  color: Color(0xFF04B104),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showPrivacyDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Privacy Policy',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 22,
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text(
-                  'Your Privacy Matters',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  '1. We collect only necessary information to provide our services.\n\n'
-                  '2. Your phone number is used solely for authentication.\n\n'
-                  '3. We use industry-standard security measures.\n\n'
-                  '4. Your data is stored securely and encrypted.\n\n'
-                  '5. We do not sell your personal information.\n\n'
-                  '6. You can request data deletion at any time.\n\n'
-                  '7. We comply with applicable data protection laws.',
-                  style: TextStyle(fontSize: 14, height: 1.5),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Close',
-                style: TextStyle(
-                  color: Color(0xFF736EFE),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -523,12 +376,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Row(
                               children: [
                                 Text(
-                                  _selectedCountryFlag,
+                                  _selectedCountry.flagEmoji,
                                   style: const TextStyle(fontSize: 20),
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  _selectedCountryCode,
+                                  '+${_selectedCountry.phoneCode}',
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
@@ -694,7 +547,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   InkWell(
-                    onTap: _showTermsDialog,
+                    onTap: () {
+                      try {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TermsConditionsScreen(),
+                          ),
+                        );
+                      } catch (e) {
+                        debugPrint('Error navigating to terms & conditions: $e');
+                      }
+                    },
                     child: const Text(
                       'Terms',
                       style: TextStyle(
@@ -713,7 +577,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   InkWell(
-                    onTap: _showPrivacyDialog,
+                    onTap: () {
+                      try {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PrivacyPolicyScreen(),
+                          ),
+                        );
+                      } catch (e) {
+                        debugPrint('Error navigating to privacy policy: $e');
+                      }
+                    },
                     child: const Text(
                       'Privacy Policy',
                       style: TextStyle(

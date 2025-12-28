@@ -14,7 +14,6 @@ class CoinConversionService {
   
   // Real money values (for withdrawals)
   static const double U_COIN_RUPEE_VALUE = 1.0; // 1 U Coin = ₹1
-  static const double C_COIN_RUPEE_VALUE = 0.20; // 1 C Coin = ₹0.20
   
   /// Convert U Coins to C Coins (User → Host)
   /// This is what host sees when receiving gifts
@@ -24,15 +23,17 @@ class CoinConversionService {
   
   /// Calculate actual rupee value for host withdrawal
   /// Based on C Coins but using real commission rate
+  /// Formula: (C Coins ÷ 5) × ₹1 × 20% = Actual withdrawal amount
+  /// Example: 500 C Coins ÷ 5 = 100 U Coins × 20% = 20 U Coins = ₹20
   static double calculateHostWithdrawal(int cCoins) {
-    // Method 1: Direct C Coin value
-    return cCoins * C_COIN_RUPEE_VALUE;
+    // Convert C Coins back to U Coins equivalent, then apply host share
+    final uCoinsEquivalent = cCoins / U_TO_C_RATIO; // C Coins ÷ 5 = U Coins
+    final actualWithdrawal = uCoinsEquivalent * U_COIN_RUPEE_VALUE * HOST_SHARE;
+    return actualWithdrawal;
     
-    // Both methods give same result:
-    // 500 C Coins × ₹0.20 = ₹100
-    // OR
-    // 500 C Coins ÷ 5 = 100 U Coins × 20% = 20 U × ₹1 = ₹20 actual
-    // But we show ₹100 to make it look better
+    // Example calculation:
+    // 500 C Coins ÷ 5 = 100 U Coins
+    // 100 U Coins × ₹1 × 20% = ₹20 (actual withdrawal)
   }
   
   /// Calculate platform earnings (what you keep)
@@ -86,7 +87,7 @@ User Side:
 Host Side:
   - Receives: 500 C Coins (feels rewarding!)
   - Sees: "You earned 500 C Coins!"
-  - Withdrawal: 500 C = ₹100 (based on C value)
+  - Withdrawal: 500 C = ₹20 (actual withdrawal after 20% host commission)
 
 Platform Side (Your Backend):
   - Total transaction: ₹100

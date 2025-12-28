@@ -1,96 +1,114 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class CallRequestModel {
   final String requestId;
-  final String fromUserId;
-  final String fromUserName;
-  final String? fromUserPhotoUrl;
-  final String toUserId;  // Host ID
   final String streamId;
-  final DateTime requestedAt;
-  final String status;  // 'pending', 'accepted', 'rejected', 'cancelled'
-  final DateTime? acceptedAt;
-  final DateTime? rejectedAt;
-  final DateTime? cancelledAt;
+  final String callerId;
+  final String callerName;
+  final String? callerImage;
+  final String hostId;
+  final String status; // 'pending', 'accepted', 'rejected', 'cancelled', 'ended'
+  final DateTime createdAt;
+  final DateTime? respondedAt;
+  final String? callChannelName; // Agora channel for private call
+  final String? callToken; // Agora token for private call
 
   CallRequestModel({
     required this.requestId,
-    required this.fromUserId,
-    required this.fromUserName,
-    this.fromUserPhotoUrl,
-    required this.toUserId,
     required this.streamId,
-    required this.requestedAt,
+    required this.callerId,
+    required this.callerName,
+    this.callerImage,
+    required this.hostId,
     this.status = 'pending',
-    this.acceptedAt,
-    this.rejectedAt,
-    this.cancelledAt,
+    required this.createdAt,
+    this.respondedAt,
+    this.callChannelName,
+    this.callToken,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'requestId': requestId,
-      'fromUserId': fromUserId,
-      'fromUserName': fromUserName,
-      'fromUserPhotoUrl': fromUserPhotoUrl,
-      'toUserId': toUserId,
       'streamId': streamId,
-      'requestedAt': requestedAt.toIso8601String(),
+      'callerId': callerId,
+      'callerName': callerName,
+      'callerImage': callerImage,
+      'hostId': hostId,
       'status': status,
-      'acceptedAt': acceptedAt?.toIso8601String(),
-      'rejectedAt': rejectedAt?.toIso8601String(),
-      'cancelledAt': cancelledAt?.toIso8601String(),
+      'createdAt': createdAt.toIso8601String(),
+      'respondedAt': respondedAt?.toIso8601String(),
+      'callChannelName': callChannelName,
+      'callToken': callToken,
     };
   }
 
   factory CallRequestModel.fromMap(Map<String, dynamic> map) {
     return CallRequestModel(
       requestId: map['requestId'] ?? '',
-      fromUserId: map['fromUserId'] ?? '',
-      fromUserName: map['fromUserName'] ?? '',
-      fromUserPhotoUrl: map['fromUserPhotoUrl'],
-      toUserId: map['toUserId'] ?? '',
       streamId: map['streamId'] ?? '',
-      requestedAt: DateTime.parse(map['requestedAt']),
+      callerId: map['callerId'] ?? '',
+      callerName: map['callerName'] ?? '',
+      callerImage: map['callerImage'],
+      hostId: map['hostId'] ?? '',
       status: map['status'] ?? 'pending',
-      acceptedAt: map['acceptedAt'] != null 
-          ? DateTime.parse(map['acceptedAt']) 
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'])
+          : DateTime.now(),
+      respondedAt: map['respondedAt'] != null
+          ? DateTime.parse(map['respondedAt'])
           : null,
-      rejectedAt: map['rejectedAt'] != null 
-          ? DateTime.parse(map['rejectedAt']) 
+      callChannelName: map['callChannelName'],
+      callToken: map['callToken'],
+    );
+  }
+
+  factory CallRequestModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return CallRequestModel(
+      requestId: data['requestId'] ?? doc.id,
+      streamId: data['streamId'] ?? '',
+      callerId: data['callerId'] ?? '',
+      callerName: data['callerName'] ?? '',
+      callerImage: data['callerImage'],
+      hostId: data['hostId'] ?? '',
+      status: data['status'] ?? 'pending',
+      createdAt: data['createdAt'] != null
+          ? DateTime.parse(data['createdAt'])
+          : DateTime.now(),
+      respondedAt: data['respondedAt'] != null
+          ? DateTime.parse(data['respondedAt'])
           : null,
-      cancelledAt: map['cancelledAt'] != null 
-          ? DateTime.parse(map['cancelledAt']) 
-          : null,
+      callChannelName: data['callChannelName'],
+      callToken: data['callToken'],
     );
   }
 
   CallRequestModel copyWith({
     String? requestId,
-    String? fromUserId,
-    String? fromUserName,
-    String? fromUserPhotoUrl,
-    String? toUserId,
     String? streamId,
-    DateTime? requestedAt,
+    String? callerId,
+    String? callerName,
+    String? callerImage,
+    String? hostId,
     String? status,
-    DateTime? acceptedAt,
-    DateTime? rejectedAt,
-    DateTime? cancelledAt,
+    DateTime? createdAt,
+    DateTime? respondedAt,
+    String? callChannelName,
+    String? callToken,
   }) {
     return CallRequestModel(
       requestId: requestId ?? this.requestId,
-      fromUserId: fromUserId ?? this.fromUserId,
-      fromUserName: fromUserName ?? this.fromUserName,
-      fromUserPhotoUrl: fromUserPhotoUrl ?? this.fromUserPhotoUrl,
-      toUserId: toUserId ?? this.toUserId,
       streamId: streamId ?? this.streamId,
-      requestedAt: requestedAt ?? this.requestedAt,
+      callerId: callerId ?? this.callerId,
+      callerName: callerName ?? this.callerName,
+      callerImage: callerImage ?? this.callerImage,
+      hostId: hostId ?? this.hostId,
       status: status ?? this.status,
-      acceptedAt: acceptedAt ?? this.acceptedAt,
-      rejectedAt: rejectedAt ?? this.rejectedAt,
-      cancelledAt: cancelledAt ?? this.cancelledAt,
+      createdAt: createdAt ?? this.createdAt,
+      respondedAt: respondedAt ?? this.respondedAt,
+      callChannelName: callChannelName ?? this.callChannelName,
+      callToken: callToken ?? this.callToken,
     );
   }
 }
-
-
-

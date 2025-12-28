@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:country_picker/country_picker.dart';
 import '../services/database_service.dart';
 import '../services/storage_service.dart';
 import '../services/location_service.dart';
@@ -51,23 +53,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _bioController = TextEditingController();
   
   String _selectedGender = 'Male';
-  String _selectedCountry = 'India';
+  Country _selectedCountry = Country.parse('IN'); // Default to India
   String _selectedLanguage = 'Hindi';
-  
-  final List<String> _genders = ['Male', 'Female'];
-  final List<String> _countries = [
-    'India',
-    'United States',
-    'United Kingdom',
-    'Canada',
-    'Australia',
-    'Germany',
-    'France',
-    'Japan',
-    'China',
-    'Brazil',
-    'Other',
-  ];
   final List<String> _languages = [
     'Hindi',
     'English',
@@ -117,7 +104,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _selectedGender = (userData.gender == 'Male' || userData.gender == 'Female') 
               ? userData.gender! 
               : 'Male';
-          _selectedCountry = userData.country ?? 'India';
+          // Load country - try to find by name, default to India
+          if (userData.country != null && userData.country!.isNotEmpty) {
+            try {
+              // Try to find country by name
+              final countries = CountryService().getAll();
+              final found = countries.where((c) => c.name == userData.country).toList();
+              if (found.isNotEmpty) {
+                _selectedCountry = found.first;
+              }
+            } catch (e) {
+              debugPrint('Could not find country: ${userData.country}');
+            }
+          }
           _selectedLanguage = userData.language ?? 'Hindi';
           _currentPhotoURL = userData.photoURL;
           // Load cover photos from comma-separated string
@@ -193,7 +192,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                color: Color(0xFF9C27B0), // solid purple
+                color: Color(0xFFFF1B7C), // solid pink
               ),
             )
           : GestureDetector(
@@ -295,12 +294,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            color: hasImage ? Colors.grey[50] : const Color(0xFF9C27B0).withValues(alpha:0.06),
+            color: hasImage ? Colors.grey[50] : const Color(0xFFFF1B7C).withValues(alpha:0.06),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: hasImage
                   ? Colors.grey[300]!
-                  : const Color(0xFF9C27B0).withValues(alpha:0.4),
+                  : const Color(0xFFFF1B7C).withValues(alpha:0.4),
               width: 1.5,
             ),
             image: coverImage != null
@@ -326,7 +325,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       padding: const EdgeInsets.all(8),
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Color(0xFF9C27B0),
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
                       ),
                       child: const Icon(
                         Icons.add,
@@ -340,7 +343,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       style: const TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF9C27B0),
+                        color: Color(0xFFFF1B7C),
                       ),
                     ),
                   ],
@@ -380,20 +383,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             right: 0,
             child: GestureDetector(
               onTap: _changeProfilePicture,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF9C27B0),
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x4D9C27B0),
-                        blurRadius: 6,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x4DFF1B7C),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
                 child: const Icon(
                   Icons.camera_alt,
                   size: 16,
@@ -456,51 +463,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               
               const SizedBox(height: 12),
               
-              // Language Dropdown
-              _buildModernDropdownField(
-                label: 'Language',
-                icon: Icons.language_outlined,
-                iconColor: const Color(0xFF9C27B0),
-                value: _selectedLanguage,
-                items: _languages,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedLanguage = value!;
-                  });
-                },
-              ),
+              // Language Selection (Popup)
+              _buildLanguageField(),
               
               const SizedBox(height: 12),
               
-              // Gender Dropdown
-              _buildModernDropdownField(
-                label: AppLocalizations.of(context)!.gender,
-                icon: Icons.wc_outlined,
-                iconColor: const Color(0xFF4ECDC4),
-                value: _selectedGender,
-                items: _genders,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGender = value!;
-                  });
-                },
-              ),
+              // Gender Selection (Popup)
+              _buildGenderField(),
               
               const SizedBox(height: 12),
               
-              // Country Dropdown
-              _buildModernDropdownField(
-                label: AppLocalizations.of(context)!.country,
-                icon: Icons.public_outlined,
-                iconColor: const Color(0xFFFF8B60),
-                value: _selectedCountry,
-                items: _countries,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCountry = value!;
-                  });
-                },
-              ),
+              // Country Selection (Popup with Flags)
+              _buildCountryField(),
               
               const SizedBox(height: 12),
               
@@ -515,9 +489,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 label: AppLocalizations.of(context)!.bio,
                 hint: AppLocalizations.of(context)!.tellUsAboutYourself,
                 maxLines: 6,
-                maxLength: 500,
+                maxLength: 150,
                 validator: (value) {
-                  if (value != null && value.length > 500) {
+                  if (value != null && value.length > 150) {
                     return AppLocalizations.of(context)!.bioMaxLength;
                   }
                   return null;
@@ -528,6 +502,411 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               
               // Cover Photo Section
               _buildCoverPhotoField(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ========== COUNTRY FIELD (Popup with Flags) ==========
+  Widget _buildCountryField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppLocalizations.of(context)!.country,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: _showCountryPicker,
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Text(
+                  _selectedCountry.flagEmoji,
+                  style: const TextStyle(fontSize: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _selectedCountry.name,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== COUNTRY PICKER (Popup with Flags) ==========
+  void _showCountryPicker() {
+    showCountryPicker(
+      context: context,
+      showPhoneCode: false,
+      favorite: ['IN', 'US', 'GB', 'CA', 'AU', 'AE', 'SG', 'MY', 'PK', 'BD'],
+      countryListTheme: CountryListThemeData(
+        flagSize: 25,
+        backgroundColor: Colors.white,
+        textStyle: const TextStyle(
+          fontSize: 16,
+          color: Colors.black87,
+        ),
+        bottomSheetHeight: MediaQuery.of(context).size.height * 0.6,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        searchTextStyle: const TextStyle(
+          fontSize: 16,
+          color: Colors.black87,
+        ),
+        inputDecoration: InputDecoration(
+          labelText: 'Search Country',
+          hintText: 'Start typing to search',
+          prefixIcon: const Icon(Icons.search, color: Color(0xFFFF1B7C)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: const Color(0xFFFF1B7C).withOpacity(0.2)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 2),
+          ),
+        ),
+      ),
+      onSelect: (Country country) {
+        setState(() {
+          _selectedCountry = country;
+        });
+      },
+    );
+  }
+
+  // ========== GENDER FIELD (Popup) ==========
+  Widget _buildGenderField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppLocalizations.of(context)!.gender,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: _showGenderBottomSheet,
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Icon(
+                  _selectedGender == 'Male' ? Icons.male : Icons.female,
+                  color: _selectedGender == 'Male' 
+                      ? const Color(0xFF2196F3) 
+                      : const Color(0xFFE91E63),
+                  size: 18,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _selectedGender,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== GENDER BOTTOM SHEET (Popup) ==========
+  void _showGenderBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (dialogContext) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(dialogContext).viewInsets.bottom),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 16),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Select Gender',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Horizontal Gender Selection
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Row(
+                children: [
+                  // Male Container - Blue
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedGender = 'Male';
+                        });
+                        Navigator.pop(dialogContext);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2196F3).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF2196F3),
+                            width: _selectedGender == 'Male' ? 2 : 1,
+                          ),
+                        ),
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.male,
+                              color: Color(0xFF2196F3),
+                              size: 36,
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Male',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2196F3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Female Container - Pink
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedGender = 'Female';
+                        });
+                        Navigator.pop(dialogContext);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE91E63).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFE91E63),
+                            width: _selectedGender == 'Female' ? 2 : 1,
+                          ),
+                        ),
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.female,
+                              color: Color(0xFFE91E63),
+                              size: 36,
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Female',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFE91E63),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 80),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ========== LANGUAGE FIELD (Popup) ==========
+  Widget _buildLanguageField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Mother Tongue',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: _showLanguageBottomSheet,
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.language_outlined, color: Color(0xFFFF1B7C), size: 18),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _selectedLanguage,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== LANGUAGE BOTTOM SHEET (Popup) ==========
+  void _showLanguageBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (dialogContext) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(dialogContext).size.height * 0.6,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Text(
+                'Select Mother Tongue',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _languages.length,
+                itemBuilder: (context, index) {
+                  final lang = _languages[index];
+                  final isSelected = _selectedLanguage == lang;
+                  return ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                            ? const Color(0xFFFF1B7C).withOpacity(0.1)
+                            : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          lang.isNotEmpty ? lang.substring(0, 1) : '',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected 
+                                ? const Color(0xFFFF1B7C)
+                                : Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      lang,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        color: isSelected ? const Color(0xFFFF1B7C) : Colors.black87,
+                      ),
+                    ),
+                    trailing: isSelected 
+                        ? const Icon(Icons.check_circle, color: Color(0xFFFF1B7C))
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedLanguage = lang;
+                      });
+                      Navigator.pop(dialogContext);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -559,7 +938,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     height: 12,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF9C27B0),
+                      color: Color(0xFFFF1B7C),
                     ),
                   ),
                   SizedBox(width: 6),
@@ -567,7 +946,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     'Detecting...',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF9C27B0),
+                      color: Color(0xFFFF1B7C),
                     ),
                   ),
                 ],
@@ -581,10 +960,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withValues(alpha:0.08),
+                      color: const Color(0xFFFF1B7C).withValues(alpha:0.08),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: const Color(0xFF9C27B0).withValues(alpha:0.4),
+                        color: const Color(0xFFFF1B7C).withValues(alpha:0.4),
                       ),
                     ),
                     child: Row(
@@ -593,7 +972,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const Icon(
                           Icons.my_location,
                           size: 14,
-                          color: Color(0xFF9C27B0),
+                          color: Color(0xFFFF1B7C),
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -601,7 +980,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF9C27B0),
+                            color: Color(0xFFFF1B7C),
                           ),
                         ),
                       ],
@@ -618,10 +997,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF9C27B0).withValues(alpha:0.08),
+                color: const Color(0xFFFF1B7C).withValues(alpha:0.08),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF9C27B0).withValues(alpha:0.3),
+                  color: const Color(0xFFFF1B7C).withValues(alpha:0.3),
                 ),
               ),
               child: Text(
@@ -629,7 +1008,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF9C27B0),
+                  color: Color(0xFFFF1B7C),
                 ),
               ),
             ),
@@ -651,7 +1030,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
             prefixIcon: const Icon(Icons.location_city_outlined, size: 18),
             suffixIcon: _cityController.text.isNotEmpty
-                ? const Icon(Icons.check_circle, size: 18, color: Color(0xFF9C27B0))
+                ? const Icon(Icons.check_circle, size: 18, color: Color(0xFFFF1B7C))
                 : null,
             filled: true,
             fillColor: Colors.grey[50],
@@ -666,7 +1045,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF9C27B0), width: 1.5),
+              borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
             ),
           ),
         ),
@@ -722,64 +1101,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF9C27B0), width: 1.5),
+              borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Colors.red),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ========== SIMPLE DROPDOWN FIELD ==========
-  Widget _buildModernDropdownField({
-    required String label,
-    required IconData icon,
-    required Color iconColor,
-    required String value,
-    required List<String> items,
-    required void Function(String?) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          value: value,
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(item, style: const TextStyle(fontSize: 13)),
-            );
-          }).toList(),
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: iconColor, size: 18),
-            filled: true,
-            fillColor: Colors.grey[50],
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF9C27B0), width: 1.5),
             ),
           ),
         ),
@@ -794,35 +1120,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: SizedBox(
         width: double.infinity,
         height: 50,
-        child: ElevatedButton(
-          onPressed: _isSaving ? null : _saveProfile,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF9C27B0),
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: Colors.grey[400],
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: _isSaving
+                ? null
+                : const LinearGradient(
+                    colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+            color: _isSaving ? Colors.grey[400] : null,
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: _isSaving
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : const Text(
-                  'Save Changes',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isSaving ? null : _saveProfile,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Save Changes',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -881,9 +1219,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withValues(alpha:0.04),
+                      color: const Color(0xFFFF1B7C).withValues(alpha:0.04),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha:0.35)),
+                      border: Border.all(color: const Color(0xFFFF1B7C).withValues(alpha:0.35)),
                     ),
                     child: Row(
                       children: [
@@ -891,7 +1229,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            color: const Color(0xFF9C27B0),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
                           ),
                           child: const Icon(
                             Icons.camera_alt,
@@ -944,9 +1286,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withValues(alpha:0.04),
+                      color: const Color(0xFFFF1B7C).withValues(alpha:0.04),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha:0.35)),
+                      border: Border.all(color: const Color(0xFFFF1B7C).withValues(alpha:0.35)),
                     ),
                     child: Row(
                       children: [
@@ -954,7 +1296,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            color: const Color(0xFF9C27B0),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
                           ),
                           child: const Icon(
                             Icons.photo_library,
@@ -1044,21 +1390,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 
                 // Camera Option
                 InkWell(
-                  onTap: () {
+                  onTap: () async {
                     try {
                       Navigator.pop(context);
+                      // Small delay to ensure bottom sheet is fully closed
+                      await Future.delayed(const Duration(milliseconds: 300));
+                      if (mounted) {
+                        _pickImageFromCamera();
+                      }
                     } catch (e) {
                       debugPrint('Error closing dialog: $e');
                     }
-                    _pickImageFromCamera();
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withValues(alpha:0.04),
+                      color: const Color(0xFFFF1B7C).withValues(alpha:0.04),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha:0.35)),
+                      border: Border.all(color: const Color(0xFFFF1B7C).withValues(alpha:0.35)),
                     ),
                     child: Row(
                       children: [
@@ -1066,7 +1416,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            color: const Color(0xFF9C27B0),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
                           ),
                           child: const Icon(
                             Icons.camera_alt,
@@ -1107,21 +1461,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 
                 // Gallery Option
                 InkWell(
-                  onTap: () {
+                  onTap: () async {
                     try {
                       Navigator.pop(context);
+                      // Small delay to ensure bottom sheet is fully closed
+                      await Future.delayed(const Duration(milliseconds: 300));
+                      if (mounted) {
+                        _pickImageFromGallery();
+                      }
                     } catch (e) {
                       debugPrint('Error closing dialog: $e');
                     }
-                    _pickImageFromGallery();
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withValues(alpha:0.04),
+                      color: const Color(0xFFFF1B7C).withValues(alpha:0.04),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF9C27B0).withValues(alpha:0.35)),
+                      border: Border.all(color: const Color(0xFFFF1B7C).withValues(alpha:0.35)),
                     ),
                     child: Row(
                       children: [
@@ -1129,7 +1487,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            color: const Color(0xFF9C27B0),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
                           ),
                           child: const Icon(
                             Icons.photo_library,
@@ -1261,7 +1623,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
           age: int.tryParse(_ageController.text),
           gender: _selectedGender,
-          country: _selectedCountry,
+          country: _selectedCountry.name,
           city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
           language: _selectedLanguage,
         );
@@ -1301,7 +1663,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ],
               ),
-              backgroundColor: const Color(0xFF9C27B0),
+              backgroundColor: const Color(0xFFFF1B7C),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
@@ -1390,13 +1752,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         setState(() {
         _cityController.text = location['city'] ?? '';
         
-        // Update country if it exists in the dropdown
-        String country = location['country'] ?? '';
-        if (_countries.contains(country)) {
-          _selectedCountry = country;
-        } else if (country.isNotEmpty) {
-          // If country not in list, add 'Other' or keep current
-          _selectedCountry = 'Other';
+        // Update country if detected
+        String countryName = location['country'] ?? '';
+        if (countryName.isNotEmpty) {
+          try {
+            // Try to find country by name
+            final countries = CountryService().getAll();
+            final found = countries.where((c) => c.name == countryName).toList();
+            if (found.isNotEmpty) {
+              _selectedCountry = found.first;
+            }
+          } catch (e) {
+            debugPrint('Could not find country: $countryName');
+          }
         }
         
         _isGettingLocation = false;
@@ -1485,49 +1853,120 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         maxHeight: 1080,
       );
       
-      if (image != null) {
-        setState(() {
-          _profileImage = File(image.path);
-        });
+      if (image != null && mounted) {
+        // Verify file exists before cropping
+        final File imageFile = File(image.path);
+        if (!await imageFile.exists()) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error: Image file not found. Please try again.'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                ),
+                margin: EdgeInsets.all(18),
+              ),
+            );
+          }
+          return;
+        }
         
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha:0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_circle,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Profile picture updated successfully!',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+        // Open cropper directly (no separate screen)
+        final CroppedFile? croppedFile = await ImageCropper().cropImage(
+          sourcePath: imageFile.path,
+          // Square aspect ratio for profile pictures
+          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          // UI Settings for Android
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Image',
+              toolbarColor: const Color(0xFFFF1B7C),
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: true, // Lock to square for profile
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+              ],
+              backgroundColor: Colors.black,
+              activeControlsWidgetColor: const Color(0xFFFF1B7C),
+              dimmedLayerColor: Colors.black.withOpacity(0.8),
+              cropFrameColor: Colors.white,
+              cropFrameStrokeWidth: 2,
+              cropGridColor: Colors.white.withOpacity(0.5),
+              cropGridStrokeWidth: 1,
+              showCropGrid: true,
+              hideBottomControls: true, // Hide scale slider/controls
+              cropStyle: CropStyle.rectangle,
+              statusBarColor: const Color(0xFFFF1B7C),
+            ),
+            // UI Settings for iOS
+            IOSUiSettings(
+              title: 'Crop Image',
+              aspectRatioLockEnabled: true,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+              ],
+              resetAspectRatioEnabled: false,
+              rotateButtonsHidden: false,
+              rotateClockwiseButtonHidden: false,
+              hidesNavigationBar: false,
+              showCancelConfirmationDialog: true,
+              cancelButtonTitle: 'Cancel',
+              doneButtonTitle: 'Done',
+            ),
+          ],
+          // Compression settings
+          compressFormat: ImageCompressFormat.jpg,
+          compressQuality: 90,
+        );
+        
+        // Set cropped image if user completed cropping
+        if (croppedFile != null && mounted) {
+          setState(() {
+            _profileImage = File(croppedFile.path);
+          });
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha:0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_circle,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Profile picture updated successfully!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFFFF1B7C),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                margin: const EdgeInsets.all(18),
+                duration: const Duration(seconds: 2),
               ),
-              backgroundColor: const Color(0xFF9C27B0),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              margin: const EdgeInsets.all(18),
-              duration: const Duration(seconds: 2),
-            ),
-          );
+            );
+          }
         }
       }
     } catch (e) {
@@ -1556,51 +1995,120 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         maxHeight: 1080,
       );
       
-      if (image != null) {
-        if (mounted) {
-          setState(() {
-            _profileImage = File(image.path);
-          });
+      if (image != null && mounted) {
+        // Verify file exists before cropping
+        final File imageFile = File(image.path);
+        if (!await imageFile.exists()) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error: Image file not found. Please try again.'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                ),
+                margin: EdgeInsets.all(18),
+              ),
+            );
+          }
+          return;
         }
         
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha:0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_circle,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Profile picture updated successfully!',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+        // Open cropper directly (no separate screen)
+        final CroppedFile? croppedFile = await ImageCropper().cropImage(
+          sourcePath: imageFile.path,
+          // Square aspect ratio for profile pictures
+          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          // UI Settings for Android
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Image',
+              toolbarColor: const Color(0xFFFF1B7C),
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: true, // Lock to square for profile
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+              ],
+              backgroundColor: Colors.black,
+              activeControlsWidgetColor: const Color(0xFFFF1B7C),
+              dimmedLayerColor: Colors.black.withOpacity(0.8),
+              cropFrameColor: Colors.white,
+              cropFrameStrokeWidth: 2,
+              cropGridColor: Colors.white.withOpacity(0.5),
+              cropGridStrokeWidth: 1,
+              showCropGrid: true,
+              hideBottomControls: true, // Hide scale slider/controls
+              cropStyle: CropStyle.rectangle,
+              statusBarColor: const Color(0xFFFF1B7C),
+            ),
+            // UI Settings for iOS
+            IOSUiSettings(
+              title: 'Crop Image',
+              aspectRatioLockEnabled: true,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.square,
+              ],
+              resetAspectRatioEnabled: false,
+              rotateButtonsHidden: false,
+              rotateClockwiseButtonHidden: false,
+              hidesNavigationBar: false,
+              showCancelConfirmationDialog: true,
+              cancelButtonTitle: 'Cancel',
+              doneButtonTitle: 'Done',
+            ),
+          ],
+          // Compression settings
+          compressFormat: ImageCompressFormat.jpg,
+          compressQuality: 90,
+        );
+        
+        // Set cropped image if user completed cropping
+        if (croppedFile != null && mounted) {
+          setState(() {
+            _profileImage = File(croppedFile.path);
+          });
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha:0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_circle,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Profile picture updated successfully!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFFFF1B7C),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                margin: const EdgeInsets.all(18),
+                duration: const Duration(seconds: 2),
               ),
-            backgroundColor: const Color(0xFF9C27B0),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              margin: const EdgeInsets.all(18),
-              duration: const Duration(seconds: 2),
-            ),
-          );
+            );
+          }
         }
       }
     } catch (e) {
@@ -1619,6 +2127,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     }
   }
+
 
   // ========== COVER IMAGE PICKER METHODS ==========
   Future<void> _pickCoverImageFromCamera(int index) async {
@@ -1677,7 +2186,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ],
               ),
-            backgroundColor: const Color(0xFF9C27B0),
+              backgroundColor: const Color(0xFFFF1B7C),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -1761,7 +2270,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ],
               ),
-            backgroundColor: const Color(0xFF9C27B0),
+              backgroundColor: const Color(0xFFFF1B7C),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_search_screen.dart';
 import 'profile_screen.dart';
 import 'chat_list_screen.dart';
 import 'wallet_screen.dart';
-import 'live_page.dart';
+import 'agora_live_stream_screen.dart';
 import '../widgets/announcement_panel.dart';
+import '../widgets/live_chat_panel.dart';
 import '../services/live_stream_service.dart';
 import '../services/chat_service.dart';
 import '../services/event_service.dart';
@@ -858,13 +860,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: GestureDetector(
                   onTap: () {
                     if (!mounted) return;
-                    // Live streaming feature coming soon
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(AppLocalizations.of(context)!.liveStreamingComingSoon),
-                        backgroundColor: const Color(0xFF8E24AA),
-                      ),
-                    );
+                    // Navigate to live stream as audience/viewer
+                    // Use the channel name from the stream document
+                    const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
+                    
+                    debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
+                    debugPrint('📺 Channel: ${stream.channelName}');
+                      
+                      // Increment viewer count
+                    liveStreamService.joinStream(stream.streamId);
+                      
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AgoraLiveStreamScreen(
+                          channelName: stream.channelName, // Use channel name from Firebase
+                            token: token,
+                            isHost: false, // Viewer mode
+                          streamId: stream.streamId, // Pass streamId for cleanup
+                          ),
+                        ),
+                      ).then((_) {
+                        // Decrement viewer count when viewer leaves
+                      liveStreamService.leaveStream(stream.streamId);
+                    });
                   },
                   child: _buildLiveStreamCard(
                     hostName: stream.hostName,
@@ -873,6 +892,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     thumbnail: Icons.live_tv,
                     isLive: true,
                     hostPhotoUrl: stream.hostPhotoUrl,
+                    streamId: stream.streamId, // Pass streamId for chat
                   ),
                 ),
               ),
@@ -885,41 +905,121 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ========== EXPLORE CONTENT ==========
   Widget _buildExploreContent() {
-    // Sample data for 20 live hosts
-    final List<Map<String, dynamic>> liveHosts = List.generate(20, (index) {
-      final countries = ['USA', 'India', 'UK', 'Brazil', 'Japan', 'France', 'Germany', 'Italy', 'Spain', 'Canada'];
-      final languages = ['English', 'Hindi', 'Spanish', 'Portuguese', 'Japanese', 'French', 'German', 'Italian', 'Korean', 'Arabic'];
-      final names = ['Sarah', 'Mike', 'Priya', 'Carlos', 'Yuki', 'Emma', 'Hans', 'Sofia', 'Kim', 'Ahmed', 'Anna', 'John', 'Maria', 'David', 'Chen', 'Lisa', 'Raj', 'Nina', 'Alex', 'Maya'];
-      
-      return {
-        'name': names[index % names.length],
-        'country': countries[index % countries.length],
-        'language': languages[index % languages.length],
-        'viewers': (index + 1) * 123,
-        'isLive': true,
-      };
-    });
+    // Show real-time live streams from Firebase (same as Live tab)
+    final liveStreamService = LiveStreamService();
     
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: liveHosts.length,
-      itemBuilder: (context, index) {
-        final host = liveHosts[index];
-        return FadeInUp(
-          delay: Duration(milliseconds: 30 * index),
-          child: _buildExploreHostCard(
-            name: host['name'],
-            country: host['country'],
-            language: host['language'],
-            viewers: host['viewers'],
-            isLive: host['isLive'],
+    return StreamBuilder<List<LiveStreamModel>>(
+      stream: liveStreamService.getActiveLiveStreams(),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF8E24AA),
+            ),
+          );
+        }
+        
+        // Error state
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.errorLoadingStreams,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        // No data state
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.live_tv, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 20),
+                Text(
+                  AppLocalizations.of(context)!.noLiveStreamsAtMoment,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  AppLocalizations.of(context)!.beFirstToGoLive,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        // Display streams
+        final liveStreams = snapshot.data!;
+        
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.85,
           ),
+          itemCount: liveStreams.length,
+          itemBuilder: (context, index) {
+            final stream = liveStreams[index];
+            return FadeInUp(
+              delay: Duration(milliseconds: 50 * index),
+              child: GestureDetector(
+                onTap: () {
+                  if (!mounted) return;
+                  // Navigate to live stream as viewer
+                  const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
+                  
+                  debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
+                  debugPrint('📺 Channel: ${stream.channelName}');
+                    
+                    // Increment viewer count
+                  liveStreamService.joinStream(stream.streamId);
+                    
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AgoraLiveStreamScreen(
+                        channelName: stream.channelName,
+                          token: token,
+                          isHost: false, // Viewer mode
+                        streamId: stream.streamId, // Pass streamId for cleanup
+                        ),
+                      ),
+                    ).then((_) {
+                      // Decrement viewer count when viewer leaves
+                    liveStreamService.leaveStream(stream.streamId);
+                  });
+                },
+                  child: _buildLiveStreamCard(
+                    hostName: stream.hostName,
+                    title: stream.title,
+                    viewers: stream.viewerCount,
+                    thumbnail: Icons.live_tv,
+                    isLive: true,
+                    hostPhotoUrl: stream.hostPhotoUrl,
+                    streamId: stream.streamId, // Pass streamId for chat
+                  ),
+              ),
+            );
+          },
         );
       },
     );
@@ -933,35 +1033,36 @@ class _HomeScreenState extends State<HomeScreen> {
     required IconData thumbnail,
     required bool isLive,
     String? hostPhotoUrl,
+    String? streamId, // Add streamId for chat
   }) {
-    return Container(
+        return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xCC04B104),
-            Color(0xE6038103),
-          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xCC04B104),
+                      Color(0xE6038103),
+                    ],
         ),
         borderRadius: BorderRadius.all(Radius.circular(15)),
         boxShadow: [
-          BoxShadow(
-            color: Color(0x4D04B104),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+              BoxShadow(
+                color: Color(0x4D04B104),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Stack(
-        children: [
+          child: Stack(
+            children: [
           // Background Icon
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Icon(
-              thumbnail,
-              size: 100,
+                Positioned(
+                  right: -20,
+                  top: -20,
+                  child: Icon(
+                    thumbnail,
+                    size: 100,
               color: Colors.white.withValues(alpha:0.1),
             ),
           ),
@@ -978,81 +1079,85 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
+              padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.red,
                         borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.circle,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.circle,
                             size: 6,
-                            color: Colors.white,
-                          ),
+                    color: Colors.white,
+                  ),
                           const SizedBox(width: 4),
-                          Text(
-                            AppLocalizations.of(context)!.liveLabel,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                  Text(
+                    AppLocalizations.of(context)!.liveLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                               fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha:0.3),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.remove_red_eye,
-                            color: Colors.white,
-                            size: 10,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            _formatViewers(viewers),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                  ),
+                ],
+              ),
+            ),
+                    Row(
+                      children: [
+                        Container(
+              padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+              ),
+              decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha:0.3),
+                            borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.remove_red_eye,
+                    color: Colors.white,
+                                size: 10,
+                  ),
+                              const SizedBox(width: 3),
+                  Text(
+                    _formatViewers(viewers),
+                    style: const TextStyle(
+                      color: Colors.white,
+                                  fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+                      ],
                     ),
                   ],
                 ),
                 
                 // Title & Host Info
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                        style: const TextStyle(
+                          color: Colors.white,
                         fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+                          fontWeight: FontWeight.bold,
+                        ),
                       maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     const SizedBox(height: 8),
-                    Row(
+                      Row(
                       children: [
                         CircleAvatar(
                           radius: 10,
@@ -1070,21 +1175,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Color(0xFF8E24AA),
                                 )
                               : null,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
                             hostName,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 11,
+                                      fontSize: 11,
                               fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
@@ -1100,307 +1205,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ],
-                ),
-              ],
-            ),
           ),
-        ],
-      ),
-    );
-  }
-
-  // ========== EXPLORE HOST CARD (For Explore Section) ==========
-  Widget _buildExploreHostCard({
-    required String name,
-    required String country,
-    required String language,
-    required int viewers,
-    required bool isLive,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        if (!mounted) return;
-        // Live streaming feature coming soon
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.connectingToLiveStream(name)),
-            backgroundColor: const Color(0xFF8E24AA),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFFF6B9D),
-              Color(0xFFC06C84),
-              Color(0xFF6C5B7B),
             ],
           ),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Host Image Placeholder (Background Pattern)
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha:0.7),
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.person_outline,
-                      size: 80,
-                      color: Colors.white.withValues(alpha:0.2),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            
-            // Content
-            Column(
-              children: [
-                // Top Bar - LIVE Badge (Left Side)
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha:0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.circle,
-                            size: 8,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            AppLocalizations.of(context)!.liveLabel,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                
-                const Spacer(),
-                
-                // Bottom Bar - Host Info & Call Button
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha:0.6),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(15),
-                      bottomRight: Radius.circular(15),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Host Name
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      
-                      // Country, Language, and Call Button in One Row
-                      Row(
-                        children: [
-                          // Country
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha:0.2),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Flexible(
-                                    child: Text(
-                                      country,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          
-                          // Language
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha:0.2),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.language,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Flexible(
-                                    child: Text(
-                                      language,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          
-                          // Call Button
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF8E24AA), Color(0xFF5E35B1)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(6),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF8E24AA).withValues(alpha:0.4),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.phone,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            
-            // Viewers Count (Top Right)
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 3,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha:0.6),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.remove_red_eye,
-                      color: Colors.white,
-                      size: 10,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      _formatViewers(viewers),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1417,24 +1226,24 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFFEC4899), Color(0xFFEF4444)],
                 ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
                     color: const Color(0xFFEC4899).withValues(alpha:0.4),
-                    blurRadius: 20,
-                    spreadRadius: 5,
-                  ),
-                ],
-              ),
-              child: const Icon(
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
                 Icons.favorite_rounded,
-                color: Colors.white,
+                        color: Colors.white,
                 size: 50,
               ),
             ),
@@ -1443,7 +1252,7 @@ class _HomeScreenState extends State<HomeScreen> {
               AppLocalizations.of(context)!.followingTabTitle,
               style: const TextStyle(
                 fontSize: 24,
-                fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
@@ -1451,8 +1260,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               AppLocalizations.of(context)!.followingTabDescription,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
+                    style: TextStyle(
+                      fontSize: 15,
                 color: Colors.grey[600],
                 height: 1.5,
               ),
@@ -1465,390 +1274,123 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ========== NEW HOSTS CONTENT ==========
   Widget _buildNewHostsContent() {
-    // Sample data for newly joined hosts (last 7 days)
-    final List<Map<String, dynamic>> newHosts = List.generate(12, (index) {
-      final countries = ['USA', 'India', 'UK', 'Brazil', 'Japan', 'France', 'Germany', 'Italy', 'Spain', 'Canada'];
-      final languages = ['English', 'Hindi', 'Spanish', 'Portuguese', 'Japanese', 'French', 'German', 'Italian', 'Korean', 'Arabic'];
-      final names = ['Sarah', 'Mike', 'Priya', 'Carlos', 'Yuki', 'Emma', 'Hans', 'Sofia', 'Kim', 'Ahmed', 'Anna', 'John'];
-      
-      return {
-        'name': names[index % names.length],
-        'country': countries[index % countries.length],
-        'language': languages[index % languages.length],
-        'joinedDays': index + 1, // Days since joined
-        'isLive': index % 3 == 0, // Some are live
-      };
-    });
+    // Show real-time live streams (same as Live and Explore tabs)
+    final liveStreamService = LiveStreamService();
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEF4444), Color(0xFFEC4899)],
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.fiber_new_rounded,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.newlyJoinedHosts,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      AppLocalizations.of(context)!.discoverNewTalent,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[600],
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    return StreamBuilder<List<LiveStreamModel>>(
+      stream: liveStreamService.getActiveLiveStreams(),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF8E24AA),
+            ),
+          );
+        }
         
-        // Grid of New Hosts
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(10, 2, 10, 12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 0.75,
-            ),
-            itemCount: newHosts.length,
-            itemBuilder: (context, index) {
-              final host = newHosts[index];
-              return FadeInUp(
-                delay: Duration(milliseconds: 30 * index),
-                child: _buildNewHostCard(
-                  name: host['name'],
-                  country: host['country'],
-                  language: host['language'],
-                  joinedDays: host['joinedDays'],
-                  isLive: host['isLive'],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // New Host Card Widget
-  Widget _buildNewHostCard({
-    required String name,
-    required String country,
-    required String language,
-    required int joinedDays,
-    required bool isLive,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.connectingToLiveStream(name)),
-            backgroundColor: const Color(0xFF8E24AA),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFEF4444),
-              Color(0xFFEC4899),
-              Color(0xFF8B5CF6),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Background Pattern
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha:0.7),
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.person_outline,
-                      size: 80,
-                      color: Colors.white.withValues(alpha:0.2),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            
-            // Content
-            Column(
+        // Error state
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Top Badges
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // NEW Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha:0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          AppLocalizations.of(context)!.newLabel,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      
-                      // LIVE Badge (if live)
-                      if (isLive)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha:0.3),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.circle,
-                                size: 8,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                AppLocalizations.of(context)!.liveLabel,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
+                Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.errorLoadingStreams,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        // No data state
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.live_tv, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 20),
+                Text(
+                  AppLocalizations.of(context)!.noLiveStreamsAtMoment,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
                   ),
                 ),
-                
-                const Spacer(),
-                
-                // Bottom Info
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha:0.6),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(15),
-                      bottomRight: Radius.circular(15),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Host Name
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      
-                      // Joined Days Ago
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 12,
-                            color: Colors.yellow[300],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            joinedDays == 1
-                                ? AppLocalizations.of(context)!.joinedToday
-                                : AppLocalizations.of(context)!.joinedDaysAgo(joinedDays.toString()),
-                            style: TextStyle(
-                              color: Colors.yellow[300],
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      
-                      // Country and Language
-                      Row(
-                        children: [
-                          // Country
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha:0.2),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Flexible(
-                                    child: Text(
-                                      country,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          
-                          // Language
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha:0.2),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.language,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Flexible(
-                                    child: Text(
-                                      language,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                const SizedBox(height: 10),
+                Text(
+                  AppLocalizations.of(context)!.beFirstToGoLive,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          );
+        }
+        
+        // Display streams
+        final liveStreams = snapshot.data!;
+        
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.85,
+          ),
+          itemCount: liveStreams.length,
+          itemBuilder: (context, index) {
+            final stream = liveStreams[index];
+            return FadeInUp(
+              delay: Duration(milliseconds: 50 * index),
+              child: GestureDetector(
+                onTap: () {
+                  if (!mounted) return;
+                  // Navigate to live stream as viewer
+                  const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
+                  
+                  debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
+                  debugPrint('📺 Channel: ${stream.channelName}');
+                    
+                    // Increment viewer count
+                  liveStreamService.joinStream(stream.streamId);
+                    
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AgoraLiveStreamScreen(
+                        channelName: stream.channelName,
+                          token: token,
+                          isHost: false, // Viewer mode
+                        streamId: stream.streamId, // Pass streamId for cleanup
+                        ),
+                      ),
+                    ).then((_) {
+                      // Decrement viewer count when viewer leaves
+                    liveStreamService.leaveStream(stream.streamId);
+                  });
+                },
+                  child: _buildLiveStreamCard(
+                    hostName: stream.hostName,
+                    title: stream.title,
+                    viewers: stream.viewerCount,
+                    thumbnail: Icons.live_tv,
+                    isLive: true,
+                    hostPhotoUrl: stream.hostPhotoUrl,
+                    streamId: stream.streamId, // Pass streamId for chat
+                  ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1945,6 +1487,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ========== START LIVE STREAM ==========
+  // Open chat panel for live stream
+  void _openChatPanel(String streamId) {
+    final currentUser = _auth.currentUser;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => LiveChatPanel(
+        liveStreamId: streamId,
+        isHost: false, // Always false when opening from home screen
+        currentUserId: currentUser?.uid,
+        currentUserName: currentUser?.displayName,
+        currentUserImage: currentUser?.photoURL,
+      ),
+    );
+  }
+
   Future<void> _startLiveStream() async {
     if (!mounted) return;
     
@@ -1990,41 +1550,74 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Create live stream in Firebase and get stream ID
       final liveStreamService = LiveStreamService();
-      final streamId = await liveStreamService.createLiveStream(
+      final firestore = FirebaseFirestore.instance;
+      
+      // For testing: Use fixed channel name "chamakz" (must match token generation)
+      // For production: Use dynamic channel name based on streamId
+      const channelName = 'chamakz'; // Fixed channel name for testing
+      
+      // Create stream with the channel name
+      final streamId = firestore.collection('live_streams').doc().id;
+      final stream = LiveStreamModel(
+        streamId: streamId,
+        channelName: channelName, // Use fixed channel name for testing
         hostId: currentUser.uid,
         hostName: hostName,
         hostPhotoUrl: hostPhotoUrl,
         title: AppLocalizations.of(context)!.liveStream,
+        viewerCount: 0,
+        startedAt: DateTime.now(),
+        isActive: true,
       );
-
+      
+      // Save to Firebase
+      await liveStreamService.createStream(stream);
+      
+      debugPrint('✅ Live stream created in Firebase: $streamId');
+      debugPrint('📺 Channel name: $channelName');
+      debugPrint('📺 Stream ID: $streamId');
+      debugPrint('📺 Stream will appear in home page grid');
+      
       if (!mounted) return;
+      
+      // Token for Agora
+      // Token generated for channel: "chamakz", UID: 0
+      // Generate new token at: Agora Console > Your Project > Generate Temp Token
+      const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
+      
+      debugPrint('🔑 Token: ${token.isEmpty ? "EMPTY (tokenless mode)" : "PROVIDED (${token.length} chars)"}');
+      debugPrint('📋 Token preview: ${token.isEmpty ? "N/A" : token.substring(0, 20)}...');
+      debugPrint('⚠️ If token fails, check:');
+      debugPrint('   1. Token was generated for channel: "$channelName"');
+      debugPrint('   2. Token was generated with UID: 0');
+      debugPrint('   3. Token is not expired');
+      debugPrint('   4. App Certificate status in Agora Console');
 
-      // Generate unique liveID
-      final liveID = 'live_${streamId.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}';
-
-      // Close loading dialog
-      if (mounted) {
-        try {
-          navigator.pop();
-        } catch (e) {
-          debugPrint('Error closing dialog: $e');
+        // Close loading dialog
+        if (mounted) {
+          try {
+            navigator.pop();
+          } catch (e) {
+            debugPrint('Error closing dialog: $e');
+          }
         }
-      }
 
-      // Navigate to LivePage as Host
-      if (mounted) {
-        try {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LivePage(
-                liveID: liveID,
-                isHost: true, // Host mode
+        // Navigate to Agora Live Streaming Screen as Host
+        if (mounted) {
+          try {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AgoraLiveStreamScreen(
+                  channelName: channelName,
+                  token: token,
+                  isHost: true, // Host mode
+                  streamId: streamId, // Pass streamId for cleanup
+                ),
               ),
-            ),
-          );
-        } catch (e) {
-          debugPrint('Navigation error: $e');
+            );
+          } catch (e) {
+            debugPrint('Navigation error: $e');
         }
       }
     } catch (e) {

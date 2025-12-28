@@ -483,7 +483,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                           debugPrint('Error navigating to chat screen: $e');
                         }
                       },
-                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                      icon: Image.asset('assets/images/chat.png', width: 16, height: 16, color: const Color(0xFF00BCD4)),
                       label: Text(
                         AppLocalizations.of(context)!.chat,
                         style: const TextStyle(

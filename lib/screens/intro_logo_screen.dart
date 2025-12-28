@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'splash_screen.dart';
 import 'home_screen.dart';
+import 'set_profile_screen.dart';
 
 class IntroLogoScreen extends StatefulWidget {
   const IntroLogoScreen({super.key});
@@ -18,7 +20,7 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
   late Animation<double> _scaleAnimation;
   late Animation<int> _typewriterAnimation;
   
-  final String _fullText = "Chamak";
+  final String _fullText = "Chamakz";
 
   @override
   void initState() {
@@ -99,16 +101,50 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
       }
 
       if (currentUser != null && currentUser.phoneNumber != null) {
-        // Already logged in → go straight to Home
+        // Already logged in → check profile completion
         if (mounted) {
           try {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => HomeScreen(
-                  phoneNumber: currentUser!.phoneNumber!,
+            // Check if profile is completed
+            final userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .get();
+            
+            final profileCompleted = userDoc.data()?['profileCompleted'] ?? false;
+            final phoneNumber = currentUser.phoneNumber!;
+            // Extract country code and phone number
+            // Phone format: +919876543210 (country code + phone)
+            String countryCode = '+91'; // Default
+            String phoneOnly = phoneNumber;
+            if (phoneNumber.startsWith('+')) {
+              // Try to extract country code (usually 1-3 digits after +)
+              final match = RegExp(r'^\+(\d{1,3})(\d+)$').firstMatch(phoneNumber);
+              if (match != null) {
+                countryCode = '+${match.group(1)}';
+                phoneOnly = match.group(2)!;
+              }
+            }
+            
+            if (profileCompleted) {
+              // Profile completed → Go to Home
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => HomeScreen(
+                    phoneNumber: phoneNumber,
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+              // Profile not completed → Go to Set Profile
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => SetProfileScreen(
+                    phoneNumber: phoneOnly,
+                    countryCode: countryCode,
+                  ),
+                ),
+              );
+            }
           } catch (e) {
             debugPrint('Navigation error: $e');
             // Fallback: navigate to splash screen
@@ -163,14 +199,14 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
               child: RotationTransition(
                 turns: _rotationAnimation,
                 child: Image.asset(
-                  'assets/images/logo.png',
+                  'assets/images/pinklogo.png',
                   width: 140,
                   height: 140,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
                   errorBuilder: (context, error, stackTrace) {
-                    print('❌ Error loading logo: $error');
-                    print('❌ Stack trace: $stackTrace');
+                    debugPrint('❌ Error loading logo: $error');
+                    debugPrint('❌ Stack trace: $stackTrace');
                     // Return a neutral placeholder instead of green phone icon
                     return Container(
                       width: 140,

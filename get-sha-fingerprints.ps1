@@ -1,120 +1,92 @@
-# PowerShell Script to Get SHA Fingerprints
-# Run this script to get your SHA-1 and SHA-256 fingerprints
+# Get SHA Fingerprints for Firebase
+# This script will help you get SHA-1 and SHA-256 fingerprints
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Getting SHA Fingerprints for Firebase" -ForegroundColor Cyan
+Write-Host "Getting SHA Fingerprints for Firebase" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Check if Java is installed
-$javaPath = Get-Command java -ErrorAction SilentlyContinue
+# Method 1: Try to find Java and use keytool
+$javaPaths = @(
+    "$env:JAVA_HOME\bin\keytool.exe",
+    "C:\Program Files\Java\*\bin\keytool.exe",
+    "C:\Program Files (x86)\Java\*\bin\keytool.exe",
+    "$env:LOCALAPPDATA\Android\Sdk\jbr\bin\keytool.exe"
+)
 
-if (-not $javaPath) {
-    Write-Host "❌ Java is not installed or not in PATH" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Please install Java JDK or use one of these methods:" -ForegroundColor Yellow
-    Write-Host "1. Install Java JDK from: https://adoptium.net/" -ForegroundColor Yellow
-    Write-Host "2. Use Android Studio (recommended):" -ForegroundColor Yellow
-    Write-Host "   - Open Android Studio" -ForegroundColor Yellow
-    Write-Host "   - Open project: chamak/android" -ForegroundColor Yellow
-    Write-Host "   - Gradle → app → Tasks → android → signingReport" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "3. Or use Flutter build command:" -ForegroundColor Yellow
-    Write-Host "   flutter build apk --debug" -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
-}
-
-Write-Host "✅ Java found!" -ForegroundColor Green
-Write-Host ""
-
-# Get debug keystore path
-$keystorePath = "$env:USERPROFILE\.android\debug.keystore"
-
-if (-not (Test-Path $keystorePath)) {
-    Write-Host "❌ Debug keystore not found at: $keystorePath" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "The debug keystore will be created automatically when you:" -ForegroundColor Yellow
-    Write-Host "1. Build your Flutter app for the first time, OR" -ForegroundColor Yellow
-    Write-Host "2. Run: flutter build apk --debug" -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
-}
-
-Write-Host "✅ Debug keystore found!" -ForegroundColor Green
-Write-Host "Location: $keystorePath" -ForegroundColor Gray
-Write-Host ""
-
-# Get SHA fingerprints
-Write-Host "Getting SHA fingerprints..." -ForegroundColor Cyan
-Write-Host ""
-
-try {
-    $output = keytool -list -v -keystore $keystorePath -alias androiddebugkey -storepass android -keypass android 2>&1
-    
-    # Extract SHA-1
-    $sha1Match = $output | Select-String -Pattern "SHA1:\s+([A-F0-9:]+)" | ForEach-Object { $_.Matches.Groups[1].Value }
-    
-    # Extract SHA-256
-    $sha256Match = $output | Select-String -Pattern "SHA256:\s+([A-F0-9:]+)" | ForEach-Object { $_.Matches.Groups[1].Value }
-    
-    if ($sha1Match -and $sha256Match) {
-        Write-Host "========================================" -ForegroundColor Green
-        Write-Host "  ✅ SHA Fingerprints Found!" -ForegroundColor Green
-        Write-Host "========================================" -ForegroundColor Green
-        Write-Host ""
-        Write-Host "SHA-1:" -ForegroundColor Yellow
-        Write-Host $sha1Match -ForegroundColor White
-        Write-Host ""
-        Write-Host "SHA-256:" -ForegroundColor Yellow
-        Write-Host $sha256Match -ForegroundColor White
-        Write-Host ""
-        Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host "  Next Steps:" -ForegroundColor Cyan
-        Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Host "1. Copy both SHA fingerprints above" -ForegroundColor Yellow
-        Write-Host "2. Go to Firebase Console:" -ForegroundColor Yellow
-        Write-Host "   https://console.firebase.google.com/project/chamak-39472/settings/general" -ForegroundColor Cyan
-        Write-Host "3. Scroll to 'Your apps' → Android app (com.chamak.app)" -ForegroundColor Yellow
-        Write-Host "4. Click 'Add fingerprint' → Paste SHA-1 → Save" -ForegroundColor Yellow
-        Write-Host "5. Click 'Add fingerprint' → Paste SHA-256 → Save" -ForegroundColor Yellow
-        Write-Host "6. Download new google-services.json" -ForegroundColor Yellow
-        Write-Host "7. Replace: android/app/google-services.json" -ForegroundColor Yellow
-        Write-Host ""
-        
-        # Save to file
-        $fingerprintsFile = "SHA_FINGERPRINTS.txt"
-        @"
-SHA Fingerprints for Firebase Console
-Generated: $(Get-Date)
-
-SHA-1:
-$sha1Match
-
-SHA-256:
-$sha256Match
-
-Next Steps:
-1. Go to Firebase Console → Project Settings
-2. Add both SHA fingerprints
-3. Download new google-services.json
-4. Replace android/app/google-services.json
-"@ | Out-File -FilePath $fingerprintsFile -Encoding UTF8
-        
-        Write-Host "✅ Fingerprints saved to: $fingerprintsFile" -ForegroundColor Green
-        Write-Host ""
-    } else {
-        Write-Host "❌ Could not extract SHA fingerprints from output" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Full output:" -ForegroundColor Yellow
-        Write-Host $output -ForegroundColor Gray
+$keytoolPath = $null
+foreach ($path in $javaPaths) {
+    $found = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($found) {
+        $keytoolPath = $found.FullName
+        break
     }
-} catch {
-    Write-Host "❌ Error getting SHA fingerprints: $_" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Try using Android Studio instead:" -ForegroundColor Yellow
-    Write-Host "Gradle → app → Tasks → android → signingReport" -ForegroundColor Yellow
 }
 
+if ($keytoolPath) {
+    Write-Host "✅ Found keytool at: $keytoolPath" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Getting Debug Keystore SHA Fingerprints..." -ForegroundColor Yellow
+    Write-Host ""
+    
+    $debugKeystore = "$env:USERPROFILE\.android\debug.keystore"
+    
+    if (Test-Path $debugKeystore) {
+        Write-Host "Debug Keystore Location: $debugKeystore" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "SHA Fingerprints:" -ForegroundColor Yellow
+        Write-Host "----------------------------------------" -ForegroundColor Gray
+        
+        & $keytoolPath -list -v -keystore $debugKeystore -alias androiddebugkey -storepass android -keypass android 2>&1 | Select-String -Pattern "SHA1:|SHA256:" | ForEach-Object {
+            $line = $_.Line.Trim()
+            Write-Host $line -ForegroundColor Green
+        }
+        
+        Write-Host ""
+        Write-Host "Full Certificate Info:" -ForegroundColor Yellow
+        & $keytoolPath -list -v -keystore $debugKeystore -alias androiddebugkey -storepass android -keypass android
+    } else {
+        Write-Host "❌ Debug keystore not found at: $debugKeystore" -ForegroundColor Red
+        Write-Host "Creating debug keystore..." -ForegroundColor Yellow
+        
+        # Create debug keystore directory if it doesn't exist
+        $androidDir = "$env:USERPROFILE\.android"
+        if (-not (Test-Path $androidDir)) {
+            New-Item -ItemType Directory -Path $androidDir -Force | Out-Null
+        }
+        
+        Write-Host "Please run Flutter build first to create debug keystore:" -ForegroundColor Yellow
+        Write-Host "  flutter build apk --debug" -ForegroundColor Cyan
+    }
+} else {
+    Write-Host "❌ keytool not found in common locations" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Alternative Methods:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Method 1: Use Flutter to get SHA" -ForegroundColor Cyan
+    Write-Host "  flutter build apk --debug" -ForegroundColor White
+    Write-Host "  (Check build output for SHA fingerprints)" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Method 2: Find Java installation" -ForegroundColor Cyan
+    Write-Host "  Java is usually at:" -ForegroundColor White
+    Write-Host "    C:\Program Files\Java\jdk-*\bin\keytool.exe" -ForegroundColor Gray
+    Write-Host "    or" -ForegroundColor Gray
+    Write-Host "    C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Method 3: Use Android Studio" -ForegroundColor Cyan
+    Write-Host "  1. Open Android Studio" -ForegroundColor White
+    Write-Host "  2. Open your project" -ForegroundColor White
+    Write-Host "  3. Gradle → Tasks → android → signingReport" -ForegroundColor White
+    Write-Host "  4. Run signingReport" -ForegroundColor White
+}
 
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "Next Steps:" -ForegroundColor Cyan
+Write-Host "1. Copy SHA-1 and SHA-256 from above" -ForegroundColor White
+Write-Host "2. Go to Firebase Console" -ForegroundColor White
+Write-Host "3. Project Settings → Your apps → com.chamakz.app" -ForegroundColor White
+Write-Host "4. Add fingerprint → Paste SHA-1" -ForegroundColor White
+Write-Host "5. Add fingerprint → Paste SHA-256" -ForegroundColor White
+Write-Host "6. Download updated google-services.json" -ForegroundColor White
+Write-Host "========================================" -ForegroundColor Cyan

@@ -12,7 +12,6 @@ import 'app_localizations_ml.dart';
 import 'app_localizations_mr.dart';
 import 'app_localizations_ta.dart';
 import 'app_localizations_te.dart';
-import 'app_localizations_ur.dart';
 
 // ignore_for_file: type=lint
 
@@ -1713,8 +1712,6 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsTa();
     case 'te':
       return AppLocalizationsTe();
-    case 'ur':
-      return AppLocalizationsUr();
   }
 
   throw FlutterError(

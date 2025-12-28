@@ -15,4 +15,29 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    
+    <!-- Custom theme for UCrop Activity with taller toolbar -->
+    <style name="UCropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Increase toolbar height for better visibility -->
+        <item name="actionBarSize">70dp</item>
+        <item name="android:actionBarSize">70dp</item>
+        <!-- Toolbar text color -->
+        <item name="android:textColorPrimary">@android:color/white</item>
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">#9C27B0</item>
+        <!-- Center toolbar content vertically -->
+        <item name="android:gravity">center_vertical</item>
+        <!-- Toolbar padding for better centering -->
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:paddingBottom">6dp</item>
+    </style>
+    
+    <!-- Custom style for UCrop toolbar title to center it -->
+    <style name="UCropToolbarTitle" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_gravity">center</item>
+    </style>
 </resources>

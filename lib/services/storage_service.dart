@@ -12,10 +12,17 @@ class StorageService {
   // Upload profile picture
   Future<String?> uploadProfilePicture(File imageFile) async {
     try {
-      if (currentUserId == null) {
+      // Check authentication
+      final user = _auth.currentUser;
+      if (user == null) {
         print('❌ No authenticated user found');
         throw Exception('User not authenticated. Please login again.');
       }
+      
+      final userId = user.uid;
+      print('✅ Authenticated user: $userId');
+      print('✅ User email: ${user.email}');
+      print('✅ User phone: ${user.phoneNumber}');
 
       // Verify file exists
       if (!await imageFile.exists()) {
@@ -23,19 +30,26 @@ class StorageService {
         throw Exception('Image file not found. Please try selecting the image again.');
       }
 
-      print('📤 Uploading profile picture for user: $currentUserId');
+      final fileSize = await imageFile.length();
+      print('📤 Uploading profile picture for user: $userId');
       print('📁 File path: ${imageFile.path}');
-      print('📊 File size: ${await imageFile.length()} bytes');
+      print('📊 File size: $fileSize bytes');
+      
+      if (fileSize == 0) {
+        print('❌ Image file is empty');
+        throw Exception('Image file is empty. Please select a valid image.');
+      }
 
       // Create a reference to the file location
-      final String fileName = 'profile_$currentUserId.jpg';
+      final String fileName = 'profile_$userId.jpg';
       final Reference storageRef = _storage
           .ref()
           .child('profile_pictures')
-          .child(currentUserId!)
+          .child(userId)
           .child(fileName);
 
-      print('🎯 Storage path: profile_pictures/$currentUserId/$fileName');
+      print('🎯 Storage path: profile_pictures/$userId/$fileName');
+      print('🔐 Checking storage permissions...');
 
       // Upload the file with timeout
       final UploadTask uploadTask = storageRef.putFile(
@@ -61,21 +75,58 @@ class StorageService {
       
       print('✅ Upload complete, getting download URL...');
       
-      // Get download URL
-      final String downloadURL = await snapshot.ref.getDownloadURL();
+      // Wait a moment for Firebase to process the file
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
+      // Get download URL with retry logic
+      String downloadURL = '';
+      int retries = 3;
+      
+      for (int i = 0; i < retries; i++) {
+        try {
+          downloadURL = await snapshot.ref.getDownloadURL();
+          
+          // Verify the URL is accessible by getting metadata
+          final metadata = await snapshot.ref.getMetadata();
+          print('✅ File metadata verified: ${metadata.size} bytes');
+          print('🔗 Download URL: $downloadURL');
+          break;
+        } catch (e) {
+          print('⚠️ Attempt ${i + 1}/$retries failed: $e');
+          if (i < retries - 1) {
+            await Future.delayed(const Duration(milliseconds: 500));
+          } else {
+            // Last attempt - get URL anyway even if metadata fails
+            downloadURL = await snapshot.ref.getDownloadURL();
+            print('🔗 Download URL (without metadata verification): $downloadURL');
+          }
+        }
+      }
       
       print('✅ Profile picture uploaded successfully');
-      print('🔗 Download URL: $downloadURL');
       
       return downloadURL;
     } catch (e) {
       print('❌ Error uploading profile picture: $e');
+      print('❌ Error type: ${e.runtimeType}');
+      print('❌ Error details: ${e.toString()}');
+      
       if (e.toString().contains('object-not-found')) {
         throw Exception('Firebase Storage is not properly configured. Please contact support.');
-      } else if (e.toString().contains('permission-denied')) {
-        throw Exception('Permission denied. Please make sure you are logged in.');
+      } else if (e.toString().contains('permission-denied') || e.toString().contains('unauthorized')) {
+        print('⚠️ Permission denied - checking authentication...');
+        final user = _auth.currentUser;
+        if (user == null) {
+          throw Exception('You are not logged in. Please login and try again.');
+        } else {
+          print('⚠️ User is authenticated but storage rules are blocking upload');
+          print('⚠️ User ID: ${user.uid}');
+          throw Exception('Storage permission denied. Please check Firebase Storage rules or contact support.');
+        }
       } else if (e.toString().contains('unauthenticated')) {
         throw Exception('Authentication required. Please logout and login again.');
+      } else if (e.toString().contains('network') || e.toString().contains('timeout')) {
+        throw Exception('Network error. Please check your internet connection and try again.');
       }
       rethrow;
     }
@@ -89,10 +140,17 @@ class StorageService {
         return;
       }
 
-      // Validate the URL is a Firebase Storage URL
-      if (!photoURL.contains('firebasestorage.googleapis.com')) {
+      // Validate the URL is a Firebase Storage URL (check for both correct and typo versions)
+      if (!photoURL.contains('firebasestorage.googleapis.com') && 
+          !photoURL.contains('ffirebasestorage.googleapis.com')) {
         print('⚠️ Not a valid Firebase Storage URL, skipping delete');
         return;
+      }
+      
+      // Fix typo in URL if present
+      if (photoURL.contains('ffirebasestorage')) {
+        photoURL = photoURL.replaceAll('ffirebasestorage', 'firebasestorage');
+        print('🔧 Fixed typo in URL');
       }
 
       print('🗑️ Deleting profile picture: $photoURL');
@@ -111,7 +169,7 @@ class StorageService {
     }
   }
 
-  // Update profile picture (delete old, upload new)
+  // Update profile picture (upload new first, then delete old)
   Future<String?> updateProfilePicture({
     required File newImageFile,
     String? oldPhotoURL,
@@ -130,14 +188,26 @@ class StorageService {
       
       print('✅ New profile picture uploaded successfully: $newPhotoURL');
       
+      // Wait a bit to ensure new file is fully accessible before deleting old one
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
       // Then try to delete old picture if it exists and is different
       if (oldPhotoURL != null && 
           oldPhotoURL.isNotEmpty && 
-          oldPhotoURL != newPhotoURL) {
+          oldPhotoURL != newPhotoURL &&
+          oldPhotoURL.contains('firebasestorage.googleapis.com')) {
         try {
           print('🗑️ Attempting to delete old profile picture...');
-          await deleteProfilePicture(oldPhotoURL);
-          print('✅ Old profile picture deleted');
+          print('🗑️ Old URL: $oldPhotoURL');
+          print('🗑️ New URL: $newPhotoURL');
+          
+          // Make sure we're not deleting the new file
+          if (!oldPhotoURL.contains(newPhotoURL.split('?')[0])) {
+            await deleteProfilePicture(oldPhotoURL);
+            print('✅ Old profile picture deleted');
+          } else {
+            print('⚠️ Skipping delete - URLs match');
+          }
         } catch (e) {
           print('⚠️ Could not delete old profile picture (this is OK): $e');
           // This is fine - old image might not exist or might be in use
@@ -350,6 +420,42 @@ class StorageService {
       return downloadURL;
     } catch (e) {
       print('❌ Error uploading chat image: $e');
+      return null;
+    }
+  }
+
+  // Upload payment proof screenshot
+  Future<String?> uploadPaymentProof(File imageFile, String requestId) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        print('❌ No authenticated user found');
+        throw Exception('User not authenticated. Please login again.');
+      }
+      final userId = user.uid;
+      final String fileName = 'payment_proof_${requestId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final Reference storageRef = _storage
+          .ref()
+          .child('payment_proofs')
+          .child(userId)
+          .child(fileName);
+
+      final UploadTask uploadTask = storageRef.putFile(
+        imageFile,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {
+            'uploadedBy': userId,
+            'requestId': requestId,
+            'uploadedAt': DateTime.now().toIso8601String(),
+          },
+        ),
+      );
+      final TaskSnapshot snapshot = await uploadTask;
+      final String downloadURL = await snapshot.ref.getDownloadURL();
+      return downloadURL;
+    } catch (e) {
+      print('❌ Error uploading payment proof: $e');
       return null;
     }
   }

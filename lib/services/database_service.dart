@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
@@ -28,8 +29,13 @@ class DatabaseService {
 
       print('📝 Creating/Updating user in Firestore: $userId');
 
-      // Check if user already exists
-      DocumentSnapshot userDoc = await _usersCollection.doc(userId).get();
+      // Check if user already exists with timeout
+      DocumentSnapshot userDoc = await _usersCollection.doc(userId).get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Database operation timed out. Please check your internet connection.');
+        },
+      );
 
       if (userDoc.exists) {
         // User exists → Update last login
@@ -76,7 +82,12 @@ class DatabaseService {
           updateData['photoURL'] = generated;
         }
         
-        await _usersCollection.doc(userId).update(updateData);
+        await _usersCollection.doc(userId).update(updateData).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            throw TimeoutException('Database update timed out. Please check your internet connection.');
+          },
+        );
         print('✅ Last login updated successfully');
       } else {
         // New user → Create profile
@@ -101,7 +112,12 @@ class DatabaseService {
           'coins': 0, // Legacy field (kept for compatibility)
           'uCoins': 0, // User Coins - initialized to 0
           'cCoins': 0, // Host Coins - initialized to 0
-        });
+        }).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            throw TimeoutException('Database creation timed out. Please check your internet connection.');
+          },
+        );
         print('✅ User profile created successfully in Firestore!');
         print('   Initialized: uCoins = 0, cCoins = 0');
       }

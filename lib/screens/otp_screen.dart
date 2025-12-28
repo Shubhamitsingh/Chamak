@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:pinput/pinput.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'home_screen.dart';
+import 'set_profile_screen.dart';
 import '../services/database_service.dart';
 import '../generated/l10n/app_localizations.dart';
 
@@ -81,7 +83,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   Future<void> _verifyOTP() async {
     if (_otpController.text.length < 6) {
-      _showErrorSnackBar(AppLocalizations.of(context)!.pleaseEnterCompleteOTP);
+      _showErrorSnackBar(AppLocalizations.of(context)?.pleaseEnterCompleteOTP ?? 'Please enter complete OTP');
       return;
     }
 
@@ -117,7 +119,11 @@ class _OtpScreenState extends State<OtpScreen> {
       } catch (dbError) {
         debugPrint('❌ Database save error: $dbError');
         debugPrint('❌ Error details: ${dbError.runtimeType}');
-        // Continue to home screen even if database save fails
+        // Show error to user but allow them to proceed
+        if (mounted) {
+          _showErrorSnackBar('Warning: Could not save profile data. Please try again later.');
+        }
+        // Continue even if database save fails
         // User is authenticated, just database save failed
       }
 
@@ -128,15 +134,64 @@ class _OtpScreenState extends State<OtpScreen> {
       if (!mounted) return;
       
       try {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+        // Check if profile is completed
+        final userId = userCredential.user?.uid;
+        if (userId != null) {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+          
+          final profileCompleted = userDoc.data()?['profileCompleted'] ?? false;
+          
+          if (profileCompleted) {
+            // Profile already completed → Go to Home
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => HomeScreen(
+                  phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+                ),
+              ),
+            );
+          } else {
+            // Profile not completed → Go to Set Profile
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => SetProfileScreen(
+                  phoneNumber: widget.phoneNumber,
+                  countryCode: widget.countryCode,
+                ),
+              ),
+            );
+          }
+        } else {
+          // Fallback: Go to Set Profile if user ID is null
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => SetProfileScreen(
+                phoneNumber: widget.phoneNumber,
+                countryCode: widget.countryCode,
+              ),
             ),
-          ),
-        );
+          );
+        }
       } catch (e) {
         debugPrint('Navigation error: $e');
+        // Fallback navigation
+        if (mounted) {
+          try {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => SetProfileScreen(
+                  phoneNumber: widget.phoneNumber,
+                  countryCode: widget.countryCode,
+                ),
+              ),
+            );
+          } catch (fallbackError) {
+            debugPrint('Fallback navigation error: $fallbackError');
+          }
+        }
       }
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ Firebase OTP verification failed: ${e.code} - ${e.message}');

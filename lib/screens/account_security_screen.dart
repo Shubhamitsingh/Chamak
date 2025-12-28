@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:country_picker/country_picker.dart';
 import 'otp_screen.dart';
 import 'kyc_verification_screen.dart';
 import '../services/database_service.dart';
@@ -164,30 +166,37 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
   void _showUpdatePhoneDialog() {
     final TextEditingController phoneController = TextEditingController();
     
-    // Available countries
-    final List<Map<String, String>> countries = [
-      {'flag': '🇮🇳', 'name': 'India', 'code': '+91'},
-      {'flag': '🇺🇸', 'name': 'USA', 'code': '+1'},
-      {'flag': '🇬🇧', 'name': 'UK', 'code': '+44'},
-      {'flag': '🇨🇦', 'name': 'Canada', 'code': '+1'},
-      {'flag': '🇦🇺', 'name': 'Australia', 'code': '+61'},
-      {'flag': '🇦🇪', 'name': 'UAE', 'code': '+971'},
-      {'flag': '🇸🇬', 'name': 'Singapore', 'code': '+65'},
-      {'flag': '🇲🇾', 'name': 'Malaysia', 'code': '+60'},
-      {'flag': '🇵🇰', 'name': 'Pakistan', 'code': '+92'},
-      {'flag': '🇧🇩', 'name': 'Bangladesh', 'code': '+880'},
-    ];
-    
-    // Extract current country code from phone number (default to +91)
-    String currentCountryCode = '+91';
-    String currentCountryFlag = '🇮🇳';
+    // Extract current country from phone number (default to India)
+    Country currentCountry = Country.parse('IN');
     if (widget.phoneNumber.isNotEmpty) {
       // Try to detect country code from existing phone number
-      for (var country in countries) {
-        if (widget.phoneNumber.startsWith(country['code']!)) {
-          currentCountryCode = country['code']!;
-          currentCountryFlag = country['flag']!;
-          break;
+      // The phone number format should be like: +91XXXXXXXXXX
+      String phoneNum = widget.phoneNumber.startsWith('+') 
+          ? widget.phoneNumber.substring(1) 
+          : widget.phoneNumber;
+      
+      // Common country codes to check
+      final commonCountryCodes = {
+        '91': 'IN',   // India
+        '1': 'US',    // USA (also Canada)
+        '44': 'GB',   // UK
+        '61': 'AU',   // Australia
+        '971': 'AE',  // UAE
+        '65': 'SG',   // Singapore
+        '60': 'MY',   // Malaysia
+        '92': 'PK',   // Pakistan
+        '880': 'BD',  // Bangladesh
+      };
+      
+      // Try to match country code
+      for (var entry in commonCountryCodes.entries) {
+        if (phoneNum.startsWith(entry.key)) {
+          try {
+            currentCountry = Country.parse(entry.value);
+            break;
+          } catch (e) {
+            debugPrint('Error parsing country: $e');
+          }
         }
       }
     }
@@ -200,9 +209,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
         builder: (dialogContext) {
           return _PhoneUpdateDialog(
             phoneController: phoneController,
-            countries: countries,
-            currentCountryCode: currentCountryCode,
-            currentCountryFlag: currentCountryFlag,
+            currentCountry: currentCountry,
             parentContext: context,
           );
         },
@@ -627,47 +634,51 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
     try {
       showDialog(
         context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutBack,
-          builder: (context, value, child) {
-            return Transform.scale(scale: value, child: child);
-          },
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.75,
-              maxWidth: 400,
-            ),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white,
-                  Color(0xFFFFF5F5),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.red.withValues(alpha:0.2),
-                  blurRadius: 25,
-                  spreadRadius: 3,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          // Use dialogContext to avoid conflicts
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Transform.scale(scale: value, child: child);
+              },
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                  maxWidth: 400,
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white,
+                        Color(0xFFFFF5F5),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withValues(alpha:0.2),
+                        blurRadius: 25,
+                        spreadRadius: 3,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     Container(
                       width: 65,
                       height: 65,
@@ -693,7 +704,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         size: 36,
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     Text(
                       AppLocalizations.of(context)!.deleteAccount,
                       style: const TextStyle(
@@ -703,40 +714,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha:0.05),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.red.withValues(alpha:0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: Colors.red.shade700,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              AppLocalizations.of(context)!.deleteAccountWarning,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.red.shade800,
-                                fontWeight: FontWeight.w600,
-                                height: 1.3,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     Text(
                       AppLocalizations.of(context)!.typeDeleteToConfirm,
                       style: const TextStyle(
@@ -745,7 +723,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     TextField(
                       controller: confirmController,
                       textAlign: TextAlign.center,
@@ -778,19 +756,51 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 18),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () {
-                              Navigator.pop(context);
-                              confirmController.dispose();
+                              // Clear and unfocus first
+                              confirmController.clear();
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              
+                              // Use post-frame callback to ensure unfocus completes before closing
+                              SchedulerBinding.instance.addPostFrameCallback((_) {
+                                try {
+                                  // Close dialog after unfocus is complete
+                                  if (Navigator.canPop(dialogContext)) {
+                                    Navigator.pop(dialogContext);
+                                  }
+                                  // Dispose controller after dialog is fully closed
+                                  Future.delayed(const Duration(milliseconds: 400), () {
+                                    try {
+                                      confirmController.dispose();
+                                    } catch (e) {
+                                      // Ignore dispose errors - controller will be GC'd
+                                      debugPrint('Controller dispose error (ignored): $e');
+                                    }
+                                  });
+                                } catch (e) {
+                                  debugPrint('Error closing dialog: $e');
+                                  // Fallback: dispose after delay
+                                  Future.delayed(const Duration(milliseconds: 400), () {
+                                    try {
+                                      confirmController.dispose();
+                                    } catch (e2) {
+                                      debugPrint('Fallback dispose error: $e2');
+                                    }
+                                  });
+                                }
+                              });
                             },
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                               backgroundColor: Colors.white,
                               side: BorderSide(color: Colors.grey[300]!, width: 2),
+                              minimumSize: const Size(0, 44),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -798,10 +808,13 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                             child: Text(
                               AppLocalizations.of(context)!.cancel,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black54,
                               ),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -829,9 +842,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                               onPressed: () {
                                 if (confirmController.text == 'DELETE') {
                                   try {
-                                    Navigator.pop(context);
+                                    Navigator.pop(dialogContext);
                                     confirmController.dispose();
                                     try {
+                                      // Use the original context from the state
                                       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                                     } catch (e) {
                                       debugPrint('Error navigating to login after account deletion: $e');
@@ -849,7 +863,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                                   }
                                 } else {
                                   if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(dialogContext).showSnackBar(
                                     SnackBar(
                                       content: Text(AppLocalizations.of(context)!.pleaseTypeDeleteToConfirm),
                                       backgroundColor: Colors.orange,
@@ -857,29 +871,24 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                                   );
                                 }
                               },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                              elevation: 0,
+                              minimumSize: const Size(0, 44),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.delete_forever, size: 20, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    AppLocalizations.of(context)!.deletePermanently,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
+                            ),
+                              child: Text(
+                                AppLocalizations.of(context)!.confirm,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           ),
@@ -891,8 +900,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
               ),
             ),
           ),
-        ),
-      ),
+            ),
+          ),
+        );
+        },
       );
     } catch (e) {
       debugPrint('Error showing delete account dialog: $e');
@@ -1012,16 +1023,12 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
 
 class _PhoneUpdateDialog extends StatefulWidget {
   final TextEditingController phoneController;
-  final List<Map<String, String>> countries;
-  final String currentCountryCode;
-  final String currentCountryFlag;
+  final Country currentCountry;
   final BuildContext parentContext;
   
   const _PhoneUpdateDialog({
     required this.phoneController,
-    required this.countries,
-    required this.currentCountryCode,
-    required this.currentCountryFlag,
+    required this.currentCountry,
     required this.parentContext,
   });
   
@@ -1030,96 +1037,58 @@ class _PhoneUpdateDialog extends StatefulWidget {
 }
 
 class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
-  late String selectedCountryCode;
-  late String selectedCountryFlag;
+  late Country selectedCountry;
   
   @override
   void initState() {
     super.initState();
-    selectedCountryCode = widget.currentCountryCode;
-    selectedCountryFlag = widget.currentCountryFlag;
+    selectedCountry = widget.currentCountry;
   }
   
   void _showCountryPicker() {
     if (!mounted) return;
     try {
-      showModalBottomSheet(
+      showCountryPicker(
         context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                AppLocalizations.of(context)!.selectCountry,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 15),
-              SizedBox(
-                height: 300,
-                child: ListView.builder(
-                  itemCount: widget.countries.length,
-                  itemBuilder: (context, index) {
-                    final country = widget.countries[index];
-                    return ListTile(
-                      leading: Text(
-                        country['flag']!,
-                        style: const TextStyle(fontSize: 28),
-                      ),
-                      title: Text(
-                        country['name']!,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      trailing: Text(
-                        country['code']!,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      onTap: () {
-                        if (!mounted) return;
-                        setState(() {
-                          selectedCountryCode = country['code']!;
-                          selectedCountryFlag = country['flag']!;
-                        });
-                        try {
-                          Navigator.pop(context);
-                        } catch (e) {
-                          debugPrint('Error closing country picker: $e');
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+        favorite: ['IN', 'US', 'GB', 'CA', 'AU', 'AE', 'SG', 'MY', 'PK', 'BD'],
+        countryListTheme: CountryListThemeData(
+          flagSize: 25,
+          backgroundColor: Colors.white,
+          textStyle: const TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
           ),
-        );
-      },
+          searchTextStyle: const TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
+          ),
+          inputDecoration: InputDecoration(
+            labelText: AppLocalizations.of(context)!.selectCountry,
+            hintText: 'Start typing to search',
+            prefixIcon: const Icon(Icons.search),
+            border: OutlineInputBorder(
+              borderSide: BorderSide(
+                color: const Color(0xFF9C27B0).withValues(alpha: 0.2),
+              ),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0xFF9C27B0),
+                width: 2,
+              ),
+            ),
+          ),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(25),
+          ),
+          bottomSheetHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        onSelect: (Country country) {
+          if (!mounted) return;
+          setState(() {
+            selectedCountry = country;
+          });
+        },
       );
     } catch (e) {
       debugPrint('Error showing country picker: $e');
@@ -1209,12 +1178,12 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                selectedCountryFlag,
+                                selectedCountry.flagEmoji,
                                 style: const TextStyle(fontSize: 20),
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                selectedCountryCode,
+                                '+${selectedCountry.phoneCode}',
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -1321,9 +1290,32 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
                             return;
                           }
                           
-                          // Get the new phone number
-                          final newPhone = widget.phoneController.text;
-                          final fullPhoneNumber = '$selectedCountryCode$newPhone';
+                          // Get and clean the new phone number
+                          // Clean phone number: remove spaces, dashes, and other non-digit characters
+                          String newPhone = widget.phoneController.text.trim().replaceAll(RegExp(r'[\s\-\(\)\.]'), '');
+                          newPhone = newPhone.replaceAll(RegExp(r'[^\d]'), '');
+                          
+                          // Remove leading zero if present
+                          while (newPhone.startsWith('0') && newPhone.length > 1) {
+                            newPhone = newPhone.substring(1);
+                          }
+                          
+                          // Validate cleaned number length
+                          if (newPhone.length < 10) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(AppLocalizations.of(context)!.pleaseEnterValidPhoneNumber),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          
+                          // E.164 format: +[country code][subscriber number]
+                          final fullPhoneNumber = '+${selectedCountry.phoneCode}$newPhone';
+                          
+                          debugPrint('📱 Phone Update - E.164 Format: $fullPhoneNumber');
                           
                           // Get parent context reference
                           final parentContext = widget.parentContext;
@@ -1365,7 +1357,7 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
                                   final dbService = DatabaseService();
                                   await dbService.updatePhoneNumber(
                                     phoneNumber: newPhone,
-                                    countryCode: selectedCountryCode,
+                                    countryCode: '+${selectedCountry.phoneCode}',
                                   );
                                   
                                   debugPrint('✅ Phone number auto-verified and updated in database');
@@ -1420,7 +1412,7 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
                                       MaterialPageRoute(
                                         builder: (context) => OtpScreen(
                                           phoneNumber: newPhone,
-                                          countryCode: selectedCountryCode,
+                                          countryCode: '+${selectedCountry.phoneCode}',
                                           verificationId: verificationId,
                                           resendToken: resendToken,
                                         ),

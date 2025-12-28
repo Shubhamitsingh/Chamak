@@ -217,6 +217,19 @@ class FollowService {
   // Get following count
   Future<int> getFollowingCount(String userId) async {
     try {
+      // First try to get from user document field (more reliable)
+      final userDoc = await _retryFirestoreOperation(
+        () => _firestore.collection('users').doc(userId).get(),
+      );
+
+      if (userDoc.exists) {
+        final followingCount = userDoc.data()?['followingCount'] as int?;
+        if (followingCount != null) {
+          return followingCount;
+        }
+      }
+
+      // Fallback: Count subcollection if field doesn't exist
       final snapshot = await _retryFirestoreOperation(
         () => _firestore
             .collection('users')

@@ -302,6 +302,18 @@ class AppLocalizationsMl extends AppLocalizations {
   String get likeAndFavourite => 'ലൈക്കും പ്രിയപ്പെട്ടതും';
 
   @override
+  String get followedStreamsLive => 'Followed Streams Live';
+
+  @override
+  String get recommendedLive => 'Recommended Live';
+
+  @override
+  String get officialMessage => 'Official Message';
+
+  @override
+  String get firstTimeProfileVisit => 'First-Time Profile Visit';
+
+  @override
   String get id => 'ഐഡി';
 
   @override
@@ -673,7 +685,7 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get faqWithdrawEarningsAnswer =>
-      'Open My Earning from Profile menu. Enter withdrawal amount, provide your UPI ID or bank details, and submit. Minimum withdrawal is ₹50.';
+      'Open My Earning from Profile menu. Enter withdrawal amount, provide your UPI ID or bank details, and submit. Minimum withdrawal is ₹20 (500 C Coins).';
 
   @override
   String get faqDeleteAccount => 'How do I delete my account?';
@@ -916,7 +928,7 @@ class AppLocalizationsMl extends AppLocalizations {
   String get withdrawalAmountINR => 'Withdrawal Amount (INR)';
 
   @override
-  String get minimumWithdrawal50 => 'Minimum withdrawal: ₹50';
+  String get minimumWithdrawal50 => 'Minimum withdrawal: ₹20 (500 C Coins)';
 
   @override
   String get invalidAmount => 'Invalid amount';
@@ -1131,9 +1143,64 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get privacyPolicyContent =>
-      'We respect your privacy and are committed to protecting your personal data. This policy describes how we collect, use, and share your information.\n\n1. Information Collection\n2. Data Usage\n3. Data Sharing\n4. Security Measures\n5. Your Rights\n\nLast updated: January 2025';
+      'Privacy Policy – Chamakz\n\n1. APPLICATION SCOPE OF THIS PRIVACY POLICY\n\nBy using Chamakz, you agree that we may access, collect, store, use, and share your information as described in this Privacy Policy. If you do not agree with this Privacy Policy, please do not use Chamakz.\n\nThis Privacy Policy forms part of the Chamakz Terms of Service. Any terms used here have the same meaning as defined in the Terms of Service.\n\nWe may update or revise this Privacy Policy from time to time. If material changes are made, we will notify you through the app, website, or email. By continuing to use Chamakz after changes become effective, you agree to the updated policy.\n\nChamakz may contain links to third-party websites or services. This Privacy Policy does not apply to third-party services. We are not responsible for how third parties use your information.\n\n2. INFORMATION YOU PROVIDE AND WE COLLECT\n\nTo provide Chamakz services, we may access, collect, store, and use the following information:\n\n2.1 Information You Provide While Using Chamakz\n\nAccount Information:\n• Name, gender, date of birth, age, city/area, profile photo, social media account information, and any tags or details you add.\n\nProfile Information (visible to other users):\n• Photos, gender, city/area, and any content you upload.\n\nUsage Information:\n• Device and connection details\n• IP address\n• Device capability, bandwidth\n• Page views and interaction statistics\n• Network type\n• Geographical usage data\n\nTechnical Information:\n• Mobile carrier\n• IP address\n• Location/country/region/time zone\n• Device version & identification number\n• Operating system\n• App settings\n• Likes, dislikes, and in-app interactions\n\n2.2 Sensitive Personal Information\n\nTo enable certain features (e.g., live streaming, video calling), we may request access to:\n• Microphone – for audio input during calls.\n• Camera – for profile photos and real-time video.\n• Location – to show your region for personalized content.\n\nWe access these only with your explicit permission.\n\nWe do not use sensitive personal information for marketing without your consent.\n\n2.3 Children\'s Information\n\nChamakz is not intended for users under 18 years of age. We do not knowingly collect personal data from anyone under 18. If we discover such data, we will delete it immediately.\n\n3. HOW WE USE YOUR INFORMATION\n\nWe may use your information for the following purposes:\n• To provide and operate Chamakz services (current and future features).\n• To improve and personalize your app experience, including content recommendations.\n• To respond to inquiries and provide customer support.\n• To analyze usage trends and app performance.\n• To maintain safety and prevent misuse.\n• To verify identity and prevent fraud/illegal activity.\n• To enforce our Terms of Service and policies.\n\nAny messages, photos, videos, or content you share in Chamakz may be stored on our servers. If you share them publicly or with other users, we may not be able to remove them once distributed.\n\n3.2 Transfer & Storage of Information\n\nOur servers may operate in multiple countries. Your information may be stored or processed outside your jurisdiction.\n\nBy using Chamakz, you consent to this data transfer.\n\n3.3 Sharing of Information\n\nA. Sharing within Chamakz\n• Public profile information is visible to any user.\n• Your online status or activity may be visible to others.\n\nB. Sharing with Third-Party Partners\n\nYou agree that we may share your information with:\n\nAnalytics Partners:\nShared in aggregated or anonymous form for research and performance analysis.\n\nService Providers:\nCompanies that help us operate our services (hosting, analytics, communication tools). They may access your data only to perform tasks on our behalf.\n\nLaw Enforcement:\nIf required by law, legal processes, or to protect our users or platform.\n\nNew Owners (Business Transfer):\nIf Chamakz is acquired, merged, or reorganized, your data may be transferred to the new operator.\n\nWe never sell personal information to third parties.\n\n3.4 Security Measures\n\nWe use administrative, technical, and physical safeguards to protect your data. However, no system is 100% secure. If a data breach occurs, we will notify you as required by law.\n\nWhen sharing information with third parties, we ensure they follow confidentiality and security obligations.\n\n4. ACCESSING & MANAGING YOUR INFORMATION\n\nYou may access and edit your profile any time.\n\nIf you believe information on your Chamakz profile is incorrect, you may request correction by contacting us.\n\nIf you delete your account:\n• You will lose access to your data, messages, and history.\n• Some content may remain visible if shared with other users.\n• We may retain data as required by law (fraud prevention, disputes, legal compliance).\n\nRequests that are technically impossible or legally restricted may not be fulfilled.\n\n5. CONTACT US\n\nIf you have questions about this Privacy Policy or privacy matters, you may contact us at:\n\n📩 Email: info@chamakz.app';
 
   @override
   String get termsConditionsContent =>
       'By using Chamak Live, you agree to these terms and conditions.\n\n1. Account Registration\n2. User Conduct\n3. Content Guidelines\n4. Payment Terms\n5. Termination\n\nLast updated: January 2025';
+
+  @override
+  String get earnMoney => 'Earn Money';
+
+  @override
+  String get promotion => 'Promotion';
+
+  @override
+  String get shareAndEarnRewards => 'Share & Earn Rewards';
+
+  @override
+  String get customShareTemplate => 'Custom share template';
+
+  @override
+  String get currentDownlineRate => 'Current Downline Rate';
+
+  @override
+  String gameRate(int rate) {
+    return 'Game $rate%';
+  }
+
+  @override
+  String giftRate(int rate) {
+    return 'Gift $rate%';
+  }
+
+  @override
+  String get downlineRateWarning =>
+      'When rate is 0%, the downline have no earnings.';
+
+  @override
+  String get shareURL => 'Share URL';
+
+  @override
+  String get saveQRCode => 'Save QR Code';
+
+  @override
+  String get appLinkCopied => 'App link copied to clipboard!';
+
+  @override
+  String get qrCodeSaved => 'QR code saved to gallery!';
+
+  @override
+  String get imageUploaded => 'Image uploaded successfully!';
+
+  @override
+  String rewardEarned(int coins) {
+    return 'You earned $coins coins!';
+  }
+
+  @override
+  String get selectImage => 'Select Image';
+
+  @override
+  String get takePhoto => 'Take Photo';
 }

@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
+import 'package:animate_do/animate_do.dart';
 import 'dart:math' as math;
 import '../services/coin_popup_service.dart';
-import '../screens/wallet_screen.dart';
+import '../screens/payment_screen.dart';
 
-/// Beautiful coin purchase popup with orange/red gradient theme
+/// Beautiful coin purchase popup with bottom sheet design matching the exclusive offer style
 class CoinPurchasePopup {
   final CoinPopupService _popupService = CoinPopupService();
   
   // Check if in test mode
   bool get isTestMode => CoinPopupService.TEST_MODE;
   
-  /// Show the coin purchase dialog
+  /// Show the coin purchase dialog as bottom sheet
   Future<void> show(BuildContext context, {String? specialOffer}) async {
     // Record that popup was shown
     await _popupService.recordPopupShown();
     
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha:0.7),
-      builder: (context) => _CoinPurchaseDialog(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (context) => _CoinPurchaseBottomSheet(
         specialOffer: specialOffer,
         popupService: _popupService,
       ),
@@ -28,428 +29,468 @@ class CoinPurchasePopup {
   }
 }
 
-class _CoinPurchaseDialog extends StatefulWidget {
+class _CoinPurchaseBottomSheet extends StatefulWidget {
   final String? specialOffer;
   final CoinPopupService popupService;
   
-  const _CoinPurchaseDialog({
+  const _CoinPurchaseBottomSheet({
     this.specialOffer,
     required this.popupService,
   });
 
   @override
-  State<_CoinPurchaseDialog> createState() => _CoinPurchaseDialogState();
+  State<_CoinPurchaseBottomSheet> createState() => _CoinPurchaseBottomSheetState();
 }
 
-class _CoinPurchaseDialogState extends State<_CoinPurchaseDialog>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _sparkleController;
+class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with TickerProviderStateMixin {
+  // Featured offer - can be customized
+  final int discountPercent = 50;
+  final int coins = 13000;
+  final double originalPrice = 1499.00;
+  final double discountedPrice = 999.00;
+
+  late AnimationController _pulseController;
+  late AnimationController _starburstController;
 
   @override
   void initState() {
     super.initState();
-    _sparkleController = AnimationController(
-      duration: const Duration(seconds: 2),
+    _pulseController = AnimationController(
       vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _starburstController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
     )..repeat();
   }
 
   @override
   void dispose() {
-    _sparkleController.dispose();
+    _pulseController.dispose();
+    _starburstController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final badgeSize = 110.0; // Starburst badge size
     
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
-      child: Container(
-        height: size.height * 0.55,
-        constraints: const BoxConstraints(maxWidth: 340),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFF6B35), // Bright orange
-              Color(0xFFFF5722), // Orange-red
-              Color(0xFFE91E63), // Red-pink
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:0.3),
-              blurRadius: 20,
-              spreadRadius: 5,
+    return SlideInUp(
+      duration: const Duration(milliseconds: 400),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          // Main popup container
+          Container(
+            height: screenHeight * 0.50, // 50% of screen height
+            margin: EdgeInsets.only(top: badgeSize * 0.5),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF2D2D3A),
+                  const Color(0xFF1A1A24),
+                  Colors.black,
+                ],
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
             ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Floating background coins
-            ...List.generate(8, (index) {
-              return Positioned(
-                left: (size.width * 0.3) * (index % 4) / 3,
-                top: 100 + (index * 60.0) % 300,
-                child: TweenAnimationBuilder<double>(
-                  duration: Duration(seconds: 3 + (index % 3)),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Transform.translate(
-                      offset: Offset(
-                        math.sin(value * 2 * math.pi) * 20,
-                        math.cos(value * 2 * math.pi) * 15,
-                      ),
-                      child: Opacity(
-                        opacity: 0.3,
-                        child: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.monetization_on,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            }),
-            
-            // Content
-            Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Top Section - Close button and offer
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const SizedBox(width: 40), // Spacer
-                      // 75% Off text
-                      Column(
-                        children: [
-                          const Text(
-                            '75% Off !!',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 1,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black54,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Flat ₹60 off',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 1.5,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black54,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      // Close button
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha:0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ],
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 32,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                
-                // Middle Section - Coins and amount
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Coin stacks with sparkles
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Coin stacks
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _buildCoinStack(0),
-                              const SizedBox(width: 10),
-                              _buildCoinStack(0.2),
-                              const SizedBox(width: 10),
-                              _buildCoinStack(0.4),
-                            ],
-                          ),
-                          // Sparkle effects
-                          ...List.generate(6, (index) {
-                            return Positioned(
-                              left: size.width * 0.15 + (index % 3) * 60,
-                              top: 80 + (index % 2) * 40,
-                              child: RotationTransition(
-                                turns: _sparkleController,
-                                child: Icon(
-                                  Icons.star,
-                                  color: Colors.yellow.withValues(alpha:0.8),
-                                  size: 20,
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 12),
-                      
-                      // 150 coins text
-                      const Text(
-                        '150 coins',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: 2,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black54,
-                              blurRadius: 10,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 8),
-                      
-                      // Price with strikethrough
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            '@ ₹79',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withValues(alpha:0.9),
-                              decoration: TextDecoration.lineThrough,
-                              decorationColor: Colors.white,
-                              decorationThickness: 2,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            '₹19',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 1,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black54,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  
+                  // Space for the badge that overlaps
+                  SizedBox(height: badgeSize * 0.55),
+                  
+                  // Title
+                  const Text(
+                    'Exclusive Offer!',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                ),
-                
-                // Bottom Section - Add Coins button
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const WalletScreen(
-                            phoneNumber: '',
-                            showBackButton: true,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha:0.2),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'Add Coins',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.black87,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Subtitle
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'Make a new purchase and take advantage of this insane offer!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.8),
+                        height: 1.2,
                       ),
                     ),
                   ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Coin Display
+                  _buildCoinDisplay(),
+                  
+                  const SizedBox(height: 18),
+                  
+                  // Price Display
+                  _buildPriceDisplay(),
+                  
+                  const Spacer(),
+                  
+                  // Purchase Button
+                  _buildPurchaseButton(),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Later Button
+                  _buildLaterButton(),
+                  
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+          
+          // Starburst Sale Badge - 50% outside popup
+          Positioned(
+            top: 0,
+            child: _buildStarburstBadge(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarburstBadge() {
+    // Consistent pink color for badge
+    const badgeColor = Color(0xFFE91E63);
+    
+    return AnimatedBuilder(
+      animation: _starburstController,
+      builder: (context, child) {
+        return SizedBox(
+          width: 110,
+          height: 110,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Outer glow
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: badgeColor.withOpacity(0.5),
+                      blurRadius: 25,
+                      spreadRadius: 4,
+                    ),
+                  ],
                 ),
-              ],
+              ),
+              // Starburst shape only
+              CustomPaint(
+                size: const Size(110, 110),
+                painter: StarburstPainter(
+                  rotation: _starburstController.value * 2 * math.pi,
+                  color: badgeColor,
+                ),
+              ),
+              // Text directly on starburst (no inner circle)
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '%$discountPercent',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1,
+                    ),
+                  ),
+                  const Text(
+                    'Sale',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCoinDisplay() {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final scale = 1.0 + (_pulseController.value * 0.05);
+        return Transform.scale(
+          scale: scale,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Gold coin image (same as wallet grid)
+              Image.asset(
+                'assets/images/coin3.png',
+                width: 38,
+                height: 38,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 8),
+              // Coin amount
+              Text(
+                '$coins',
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceDisplay() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Original price (crossed out)
+        Text(
+          '₹${originalPrice.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.5),
+            decoration: TextDecoration.lineThrough,
+            decorationColor: Colors.white.withOpacity(0.5),
+            decorationThickness: 2,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // "discounted to" text
+        Text(
+          'discounted to',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Discounted price
+        Text(
+          '₹${discountedPrice.toStringAsFixed(2)}',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPurchaseButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        width: double.infinity,
+        height: 50,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFD54F),
+              Color(0xFFFFC107),
+              Color(0xFFFFB300),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFC107).withOpacity(0.6),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            final String packageId = 'exclusive_${coins}_${discountedPrice.toInt()}';
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PaymentScreen(
+                  coins: coins,
+                  amount: discountedPrice.toInt(),
+                  packageId: packageId,
+                ),
+              ),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            foregroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+          ),
+          child: const Text(
+            'Purchase Coins',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCoinStack(double offset) {
-    return Transform.translate(
-      offset: Offset(0, offset * 15),
-      child: Container(
-        width: 50,
-        height: 65,
-        child: Stack(
-          children: [
-            // Bottom coin
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFD700).withValues(alpha:0.6),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.monetization_on,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-            ),
-            // Middle coin
-            Positioned(
-              bottom: 12,
-              left: 4,
-              right: 4,
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFFFE55C), Color(0xFFFFB800)],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFD700).withValues(alpha:0.6),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.monetization_on,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-            ),
-            // Top coin
-            Positioned(
-              bottom: 24,
-              left: 8,
-              right: 8,
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFD700).withValues(alpha:0.6),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.monetization_on,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
-          ],
+  Widget _buildLaterButton() {
+    return TextButton(
+      onPressed: () => Navigator.pop(context),
+      style: TextButton.styleFrom(
+        minimumSize: Size.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        'Later',
+        style: TextStyle(
+          fontSize: 13,
+          color: Colors.white.withOpacity(0.7),
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
+  }
+}
+
+// Custom painter for the starburst shape with rounded corners
+class StarburstPainter extends CustomPainter {
+  final double rotation;
+  final Color color;
+
+  StarburstPainter({
+    required this.rotation,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = size.width / 2;
+    final innerRadius = outerRadius * 0.80;
+    final points = 11; // 11 corners
+
+    final path = Path();
+    
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(rotation);
+    canvas.translate(-center.dx, -center.dy);
+
+    // Calculate all points first
+    List<Offset> allPoints = [];
+    for (int i = 0; i < points * 2; i++) {
+      final radius = i.isEven ? outerRadius : innerRadius;
+      final angle = (i * math.pi / points) - math.pi / 2;
+      final x = center.dx + radius * math.cos(angle);
+      final y = center.dy + radius * math.sin(angle);
+      allPoints.add(Offset(x, y));
+    }
+
+    // Draw rounded starburst using quadratic bezier curves
+    final roundness = 0.3; // Controls how rounded the corners are
+    
+    path.moveTo(
+      allPoints[0].dx,
+      allPoints[0].dy,
+    );
+
+    for (int i = 0; i < allPoints.length; i++) {
+      final current = allPoints[i];
+      final next = allPoints[(i + 1) % allPoints.length];
+      final afterNext = allPoints[(i + 2) % allPoints.length];
+      
+      // Calculate control point for smooth curve
+      final midX = current.dx + (next.dx - current.dx) * (1 - roundness);
+      final midY = current.dy + (next.dy - current.dy) * (1 - roundness);
+      
+      final endX = next.dx + (afterNext.dx - next.dx) * roundness;
+      final endY = next.dy + (afterNext.dy - next.dy) * roundness;
+      
+      path.lineTo(midX, midY);
+      path.quadraticBezierTo(next.dx, next.dy, endX, endY);
+    }
+    
+    path.close();
+
+    // Draw shadow
+    final shadowPaint = Paint()
+      ..color = color.withOpacity(0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawPath(path, shadowPaint);
+
+    // Draw gradient fill
+    final gradient = RadialGradient(
+      colors: [
+        color,
+        color.withOpacity(0.8),
+      ],
+    );
+    final paint = Paint()
+      ..shader = gradient.createShader(
+        Rect.fromCircle(center: center, radius: outerRadius),
+      );
+    canvas.drawPath(path, paint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(StarburstPainter oldDelegate) {
+    return oldDelegate.rotation != rotation;
   }
 }

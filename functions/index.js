@@ -7,6 +7,7 @@ const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onCall} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const {setGlobalOptions} = require("firebase-functions/v2");
+const {RtcTokenBuilder, RtcRole} = require("agora-token");
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -234,5 +235,162 @@ exports.testNotification = onCall({}, async (request) => {
   } catch (error) {
     console.error("❌ Error sending test notification:", error);
     throw new Error(error.message);
+  }
+});
+
+/**
+ * Generate Agora Token for Live Streaming
+ * 
+ * This function generates a secure Agora token for users to join channels.
+ * Tokens are generated server-side using App Secret (never exposed to client).
+ * 
+ * Required parameters:
+ * - channelName: The Agora channel name (string)
+ * - uid: User ID (number, 0 for auto-assign)
+ * - role: "host" or "audience" (string, default: "host")
+ * 
+ * Returns:
+ * - token: Generated Agora token (string)
+ * - expiresAt: Token expiration timestamp (number)
+ */
+exports.generateAgoraToken = onCall(
+  {
+    secrets: ["AGORA_APP_ID", "AGORA_APP_CERTIFICATE"],
+  },
+  async (request) => {
+  // Require authentication
+  if (!request.auth) {
+    throw new Error("User must be authenticated");
+  }
+
+  const {channelName, uid, role = "host"} = request.data;
+
+  // Validate required parameters
+  if (!channelName || typeof channelName !== "string") {
+    throw new Error("channelName is required and must be a string");
+  }
+
+  // Handle uid: can be undefined, null, or a non-negative number
+  // Flutter may send null instead of undefined
+  if (uid !== undefined && uid !== null && (typeof uid !== "number" || uid < 0)) {
+    throw new Error("uid must be a non-negative number, null, or undefined");
+  }
+
+  // Get Agora credentials from environment variables
+  // These will be set using: firebase functions:secrets:set AGORA_APP_ID
+  // Or set in Firebase Console: Functions → Configuration → Environment Variables
+  let appId = process.env.AGORA_APP_ID;
+  let appCertificate = process.env.AGORA_APP_CERTIFICATE;
+
+  if (!appId || !appCertificate) {
+    console.error("❌ Agora credentials not configured");
+    throw new Error(
+      "Agora credentials not configured. " +
+      "Please set AGORA_APP_ID and AGORA_APP_CERTIFICATE in Firebase Functions config."
+    );
+  }
+
+  // Trim whitespace and newlines (common issue with secrets)
+  appId = appId.trim();
+  appCertificate = appCertificate.trim();
+  
+  console.log(`🔍 After trimming:`);
+  console.log(`   App ID length: ${appId.length}`);
+  console.log(`   Certificate length: ${appCertificate.length}`);
+
+  // Debug logging (remove sensitive data in production)
+  console.log(`🔑 Using App ID: ${appId.substring(0, 8)}...`);
+  console.log(`🔑 Using Certificate: ${appCertificate.substring(0, 8)}...`);
+  console.log(`📋 Channel: ${channelName}, UID: ${uid}, Role: ${role}`);
+
+  try {
+    // Determine user role
+    // host = broadcaster (can publish video/audio)
+    // audience = subscriber (can only receive)
+    const userRole = role === "host" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+
+    // Calculate expiration time (24 hours from now)
+    const expirationTimeInSeconds = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+
+    // Use provided UID or 0 (Agora will auto-assign)
+    // Handle both undefined and null from Flutter
+    const userId = (uid !== undefined && uid !== null) ? uid : 0;
+
+    // Generate token
+    console.log(`🔑 Generating token with:`);
+    console.log(`   App ID: ${appId.substring(0, 8)}... (full length: ${appId.length})`);
+    console.log(`   Certificate: ${appCertificate.substring(0, 8)}... (full length: ${appCertificate.length})`);
+    console.log(`   Channel: ${channelName} (length: ${channelName.length})`);
+    console.log(`   UID: ${userId} (type: ${typeof userId})`);
+    console.log(`   Role: ${userRole === RtcRole.PUBLISHER ? 'PUBLISHER' : 'SUBSCRIBER'} (value: ${userRole})`);
+    console.log(`   Expiration: ${expirationTimeInSeconds} (type: ${typeof expirationTimeInSeconds})`);
+    
+    // Validate inputs before calling token builder
+    if (!appId || appId.length === 0) {
+      throw new Error('App ID is empty or invalid');
+    }
+    if (!appCertificate || appCertificate.length === 0) {
+      throw new Error('App Certificate is empty or invalid');
+    }
+    if (!channelName || channelName.length === 0) {
+      throw new Error('Channel name is empty or invalid');
+    }
+    if (typeof userId !== 'number' || userId < 0) {
+      throw new Error(`Invalid UID: ${userId} (type: ${typeof userId})`);
+    }
+    if (typeof expirationTimeInSeconds !== 'number' || expirationTimeInSeconds <= 0) {
+      throw new Error(`Invalid expiration: ${expirationTimeInSeconds} (type: ${typeof expirationTimeInSeconds})`);
+    }
+    
+    console.log(`✅ All parameters validated, calling buildTokenWithUid...`);
+    
+    // Try-catch around token generation to catch any errors
+    let token;
+    try {
+      token = RtcTokenBuilder.buildTokenWithUid(
+        appId,
+        appCertificate,
+        channelName,
+        userId,
+        userRole,
+        expirationTimeInSeconds
+      );
+    } catch (tokenError) {
+      console.error(`❌ Token builder threw error:`, tokenError);
+      console.error(`   Error message: ${tokenError.message}`);
+      console.error(`   Error stack: ${tokenError.stack}`);
+      throw new Error(`Token builder error: ${tokenError.message}`);
+    }
+    
+    console.log(`📦 Token builder returned:`);
+    console.log(`   Value: ${token}`);
+    console.log(`   Type: ${typeof token}`);
+    console.log(`   Is null: ${token === null}`);
+    console.log(`   Is undefined: ${token === undefined}`);
+    console.log(`   Length: ${token ? token.length : 'N/A'}`);
+
+    console.log(`✅ Token generated:`);
+    console.log(`   Token length: ${token ? token.length : 'NULL/UNDEFINED'}`);
+    console.log(`   Token preview: ${token ? token.substring(0, 20) : 'NULL/UNDEFINED'}...`);
+    console.log(`   Token type: ${typeof token}`);
+    console.log(`   Token is empty: ${!token || token.length === 0}`);
+
+    if (!token || token.length === 0) {
+      throw new Error('Token generation returned empty or null token');
+    }
+
+    return {
+      success: true,
+      token: token,
+      channelName: channelName,
+      uid: userId,
+      role: role,
+      expiresAt: expirationTimeInSeconds,
+      expiresIn: expirationTimeInSeconds - currentTimestamp, // seconds until expiration
+    };
+  } catch (error) {
+    console.error("❌ Error generating Agora token:", error);
+    throw new Error(`Failed to generate token: ${error.message}`);
   }
 });

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -47,10 +48,20 @@ void main() async {
     ),
   );
   
+  // Listen to auth state changes to handle logout scenarios
+  FirebaseAuth.instance.authStateChanges().listen((User? user) {
+    if (user == null) {
+      // User logged out - this will be handled by navigation in screens
+      debugPrint('🔐 Auth state changed: User logged out');
+    } else {
+      debugPrint('🔐 Auth state changed: User logged in - ${user.uid}');
+    }
+  });
+  
   // Initialize Notification Service in background (non-blocking)
   // This allows the app to show UI immediately while notifications initialize
   NotificationService().initialize().catchError((error) {
-    print('⚠️ Notification service initialization error: $error');
+    debugPrint('⚠️ Notification service initialization error: $error');
     // Don't block app startup if notifications fail
   });
 }
@@ -67,6 +78,13 @@ class LiveVibeApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: _buildTheme(),
           locale: languageProvider.locale,
+          builder: (context, child) {
+            // Wrap with white background to prevent any flash
+            return Container(
+              color: Colors.white,
+              child: child ?? const SizedBox(),
+            );
+          },
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
@@ -91,13 +109,6 @@ class LiveVibeApp extends StatelessWidget {
               }
             }
             return supportedLocales.first; // Default to English
-          },
-          builder: (context, child) {
-            // Wrap with white background to prevent any flash
-            return Container(
-              color: Colors.white,
-              child: child ?? const SizedBox(),
-            );
           },
           home: const IntroLogoScreen(),
           routes: {

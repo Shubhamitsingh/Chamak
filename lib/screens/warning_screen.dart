@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
-import 'package:Chamak/generated/l10n/app_localizations.dart';
 
 class WarningScreen extends StatefulWidget {
   const WarningScreen({super.key});
@@ -10,76 +8,62 @@ class WarningScreen extends StatefulWidget {
 }
 
 class _WarningScreenState extends State<WarningScreen>
-    with TickerProviderStateMixin {
-  // Mock data - Replace with real data from Firebase
-  final int currentWarnings = 0;
-  final int maxWarnings = 5;
-
-  late AnimationController _pulseController;
-  late AnimationController _slideController;
-  late Animation<double> _pulseAnimation;
-  late Animation<Offset> _slideAnimation;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    
-    // Pulse animation for warning indicator
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
-    
-    // Slide animation for rules
-    _slideController = AnimationController(
+    _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
     );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _slideController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-
-    // Start animations
-    _slideController.forward();
+    _animationController.forward();
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
-    _slideController.dispose();
+    _animationController.dispose();
     super.dispose();
-  }
-
-  Color _getWarningColor() {
-    if (currentWarnings == 0) return const Color(0xFF10B981); // Green
-    if (currentWarnings < 3) return const Color(0xFFF59E0B); // Orange
-    return const Color(0xFFEF4444); // Red
-  }
-
-  Color _getWarningLightColor() {
-    if (currentWarnings == 0) return const Color(0xFF10B981).withValues(alpha: 0.1);
-    if (currentWarnings < 3) return const Color(0xFFF59E0B).withValues(alpha: 0.1);
-    return const Color(0xFFEF4444).withValues(alpha: 0.1);
   }
 
   @override
   Widget build(BuildContext context) {
+    final rules = [
+      {
+        'text': 'Talk to everyone with respect',
+        'icon': Icons.favorite_outline,
+        'color': const Color(0xFFFF1B7C),
+      },
+      {
+        'text': 'Do not ask anyone for Instagram or WhatsApp details',
+        'icon': Icons.chat_bubble_outline,
+        'color': const Color(0xFFFF69B4),
+      },
+      {
+        'text': 'Do not use abusive language and be polite',
+        'icon': Icons.block_outlined,
+        'color': const Color(0xFFFF1B7C),
+      },
+      {
+        'text': 'Do not falsely report anyone',
+        'icon': Icons.flag_outlined,
+        'color': const Color(0xFFFF69B4),
+      },
+      {
+        'text': 'No impersonation or fake profiles',
+        'icon': Icons.person_off_outlined,
+        'color': const Color(0xFFFF1B7C),
+      },
+    ];
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
@@ -88,7 +72,7 @@ class _WarningScreenState extends State<WarningScreen>
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.arrow_back_ios_new,
@@ -104,517 +88,178 @@ class _WarningScreenState extends State<WarningScreen>
             }
           },
         ),
-        title: Text(
-          AppLocalizations.of(context)!.warningForPermanentBlock,
-          style: const TextStyle(
+        title: const Text(
+          'Warning',
+          style: TextStyle(
             color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            letterSpacing: -0.5,
           ),
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-        child: Column(
-          children: [
-            // Warning Counter Card
-            _buildWarningCounter(),
-            
-            const SizedBox(height: 24),
-            
-            // Rules Section
-            SlideTransition(
-              position: _slideAnimation,
-              child: FadeTransition(
-                opacity: _slideController,
-                child: _buildRulesSection(),
-              ),
-            ),
-            
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWarningCounter() {
-    final double progress = currentWarnings / maxWarnings;
-    final warningColor = _getWarningColor();
-    final warningLightColor = _getWarningLightColor();
-    
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: progress),
-      duration: const Duration(milliseconds: 1500),
-      curve: Curves.easeOutCubic,
-      builder: (context, animatedProgress, child) {
-        return Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white,
-                warningLightColor,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: warningColor.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-                spreadRadius: 0,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Animated Circular Progress with Pulse Effect
-              AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: currentWarnings >= 3 ? _pulseAnimation.value : 1.0,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Outer glow effect for high warnings
-                        if (currentWarnings >= 3)
-                          Container(
-                            width: 180,
-                            height: 180,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: warningColor.withValues(alpha: 0.3),
-                                  blurRadius: 30,
-                                  spreadRadius: 5,
-                                ),
-                              ],
+              // Header Section
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF1B7C).withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.shield_outlined,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Follow these guidelines',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
-                        
-                        // Background circle
-                        Container(
-                          width: 170,
-                          height: 170,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.grey[50],
+                          SizedBox(height: 4),
+                          Text(
+                            'To maintain a safe community',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white70,
+                            ),
                           ),
-                        ),
-                        
-                        // Progress indicator
-                        SizedBox(
-                          width: 170,
-                          height: 170,
-                          child: Stack(
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Rules List
+              ...rules.asMap().entries.map((entry) {
+                final index = entry.key;
+                final rule = entry.value;
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(milliseconds: 400 + (index * 100)),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - value)),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.grey[200]!,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Background circle
                               Container(
+                                width: 40,
+                                height: 40,
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.grey[100],
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      rule['color'] as Color,
+                                      (rule['color'] as Color).withOpacity(0.7),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    rule['icon'] as IconData,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
-                              // Animated progress
-                              Transform.rotate(
-                                angle: -math.pi / 2,
-                                child: CircularProgressIndicator(
-                                  value: animatedProgress,
-                                  strokeWidth: 14,
-                                  backgroundColor: Colors.grey[200],
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    warningColor,
-                                  ),
-                                  strokeCap: StrokeCap.round,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${index + 1}.',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: rule['color'] as Color,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      rule['text'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        color: Colors.black87,
+                                        height: 1.5,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        
-                        // Center content
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TweenAnimationBuilder<int>(
-                              tween: IntTween(begin: 0, end: currentWarnings),
-                              duration: const Duration(milliseconds: 1500),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, animatedValue, child) {
-                                return Text(
-                                  '${animatedValue.toString().padLeft(2, '0')}/${maxWarnings.toString().padLeft(2, '0')}',
-                                  style: TextStyle(
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.bold,
-                                    color: warningColor,
-                                    letterSpacing: -1,
-                                    height: 1.1,
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              AppLocalizations.of(context)!.currentWarnings,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 28),
-              
-              // Warning Status Card with Animation
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 800),
-                curve: Curves.easeOut,
-                builder: (context, opacity, child) {
-                  return Opacity(
-                    opacity: opacity,
-                    child: Transform.translate(
-                      offset: Offset(0, 20 * (1 - opacity)),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: warningLightColor,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: warningColor.withValues(alpha: 0.3),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: warningColor.withValues(alpha: 0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: warningColor.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                currentWarnings == 0
-                                    ? Icons.check_circle_rounded
-                                    : currentWarnings < 3
-                                        ? Icons.info_rounded
-                                        : Icons.warning_rounded,
-                                color: warningColor,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    currentWarnings == 0
-                                        ? AppLocalizations.of(context)!.greatNoWarnings
-                                        : currentWarnings < 3
-                                            ? AppLocalizations.of(context)!.followCommunityGuidelines
-                                            : AppLocalizations.of(context)!.riskOfPermanentBlock,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: warningColor,
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                  if (currentWarnings > 0) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      AppLocalizations.of(context)!.warningsRemaining(maxWarnings - currentWarnings),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey[600],
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildRulesSection() {
-    final rules = [
-      {
-        'number': '01',
-        'title': AppLocalizations.of(context)!.rule01Hindi,
-        'subtitle': AppLocalizations.of(context)!.rule01English,
-        'icon': Icons.gavel_rounded,
-      },
-      {
-        'number': '02',
-        'title': AppLocalizations.of(context)!.rule02Hindi,
-        'subtitle': AppLocalizations.of(context)!.rule02English,
-        'icon': Icons.people_outline_rounded,
-      },
-      {
-        'number': '03',
-        'title': AppLocalizations.of(context)!.rule03Hindi,
-        'subtitle': AppLocalizations.of(context)!.rule03English,
-        'icon': Icons.block_rounded,
-      },
-      {
-        'number': '04',
-        'title': AppLocalizations.of(context)!.rule04Hindi,
-        'subtitle': AppLocalizations.of(context)!.rule04English,
-        'icon': Icons.security_rounded,
-      },
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.shield_rounded,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.toAvoidWarnings,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppLocalizations.of(context)!.followTheseGuidelines,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 28),
-          
-          // Rules List with staggered animations
-          ...rules.asMap().entries.map((entry) {
-            final index = entry.key;
-            final rule = entry.value;
-            return TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 600 + (index * 100)),
-              curve: Curves.easeOutCubic,
-              builder: (context, opacity, child) {
-                return Opacity(
-                  opacity: opacity,
-                  child: Transform.translate(
-                    offset: Offset(0, 30 * (1 - opacity)),
-                    child: Column(
-                      children: [
-                        _buildRuleItem(
-                          number: rule['number'] as String,
-                          title: rule['title'] as String,
-                          subtitle: rule['subtitle'] as String,
-                          icon: rule['icon'] as IconData,
-                          index: index,
-                        ),
-                        if (index < rules.length - 1)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: Divider(
-                              height: 1,
-                              thickness: 1,
-                              color: Colors.grey[200],
-                              indent: 48,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                    );
+                  },
                 );
-              },
-            );
-          }).toList(),
-        ],
+              }).toList(),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
       ),
-    );
-  }
-
-  Widget _buildRuleItem({
-    required String number,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required int index,
-  }) {
-    final gradientColors = [
-      [const Color(0xFFEF4444), const Color(0xFFDC2626)],
-      [const Color(0xFFF59E0B), const Color(0xFFD97706)],
-      [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)],
-      [const Color(0xFF06B6D4), const Color(0xFF0891B2)],
-    ];
-    
-    final colors = gradientColors[index % gradientColors.length];
-    
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Number badge with icon
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: colors,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: colors[0].withValues(alpha: 0.4),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Icon
-              Icon(
-                icon,
-                color: Colors.white.withValues(alpha: 0.3),
-                size: 28,
-              ),
-              // Number
-              Text(
-                number,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  height: 1.4,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                  height: 1.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

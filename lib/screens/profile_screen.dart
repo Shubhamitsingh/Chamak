@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'edit_profile_screen.dart';
 import 'wallet_screen.dart';
@@ -39,6 +41,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ChatService _chatService = ChatService();
   final EventService _eventService = EventService();
   final AnnouncementTrackingService _trackingService = AnnouncementTrackingService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Image slider variables
   late PageController _pageController;
@@ -212,27 +216,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           final UserModel user = snapshot.data!;
           
-          // Check if user data actually changed (deduplication)
-          bool dataChanged = _cachedUser == null ||
-              _cachedUser!.userId != user.userId ||
-              _cachedUser!.numericUserId != user.numericUserId ||
-              _cachedUser!.displayName != user.displayName ||
-              _cachedUser!.photoURL != user.photoURL ||
-              _cachedUser!.followersCount != user.followersCount ||
-              _cachedUser!.followingCount != user.followingCount ||
-              _cachedUser!.level != user.level ||
-              _cachedUser!.gender != user.gender ||
-              _cachedUser!.city != user.city ||
-              _cachedUser!.country != user.country ||
-              _cachedUser!.language != user.language;
+          // Always update cache with latest data (especially for coin changes)
+          // This ensures real-time updates for coin balances
+          _cachedUser = user;
           
-          // Only update cache and rebuild if data actually changed
-          if (dataChanged) {
-            _cachedUser = user;
-          }
-          
-          // Always return content (even if cached)
-          return _buildProfileContent(_cachedUser!);
+          // Always return content with latest user data
+          return _buildProfileContent(user);
         },
       ),
     );
@@ -265,23 +254,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ========== PROFILE HEADER (HORIZONTAL LAYOUT) ==========
   Widget _buildProfileHeader(UserModel user) {
-    return Container(
+    return Padding(
       key: ValueKey('profile_header_${user.userId}'), // Key prevents animation restart
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(30),
-            bottomRight: Radius.circular(30),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:0.08),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
         child: Column(
           children: [
             // Profile Section - Horizontal Layout
@@ -303,12 +278,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? CircleAvatar(
                           radius: 42,
                           backgroundColor: Colors.white,
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundImage: NetworkImage(user.photoURL!),
-                            onBackgroundImageError: (exception, stackTrace) {
-                              debugPrint('Error loading profile image: $exception');
-                            },
+                          child: ClipOval(
+                            child: Image.network(
+                              user.photoURL!,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              cacheWidth: 160,
+                              cacheHeight: 160,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF9C27B0),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                debugPrint('Error loading profile image: $error');
+                                debugPrint('Failed URL: ${user.photoURL}');
+                                return Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF9C27B0),
+                                  ),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 40,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         )
                       : CircleAvatar(
@@ -317,28 +321,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: CircleAvatar(
                             radius: 40,
                             backgroundColor: const Color(0xFFF5F5F5),
-                            child: ClipOval(
-                              child: Image.network(
-                                'https://api.dicebear.com/7.x/avataaars/png?seed=${user.numericUserId}&backgroundColor=b6e3f4,c0aede,d1d4f9&size=80&randomizeIds=true',
-                                width: 80,
-                                height: 80,
-                                fit: BoxFit.cover,
-                                cacheWidth: 80,
-                                cacheHeight: 80,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Color(0xFF9C27B0), // purple fallback
-                                    ),
-                                    child: const Icon(
-                                      Icons.person,
-                                      size: 45,
-                                      color: Colors.white,
-                                    ),
-                                  );
-                                },
-                              ),
+                            child: Image.network(
+                              'https://api.dicebear.com/7.x/avataaars/png?seed=${user.numericUserId}&backgroundColor=b6e3f4,c0aede,d1d4f9&size=80&randomizeIds=true',
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              cacheWidth: 80,
+                              cacheHeight: 80,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF9C27B0),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                debugPrint('Error loading default avatar: $error');
+                                return Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF9C27B0), // purple fallback
+                                  ),
+                                  child: const Icon(
+                                    Icons.person,
+                                    size: 45,
+                                    color: Colors.white,
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),
@@ -564,6 +578,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                       ).then((_) {
+                        // Clear cache to force refresh of user data
+                        if (mounted) {
+                          setState(() {
+                            _cachedUser = null;
+                          });
+                        }
                         // Resume slider when returning
                         if (mounted) {
                           _startAutoScroll();
@@ -772,78 +792,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ========== MAIN OPTIONS MENU ==========
   Widget _buildMainOptionsMenu(UserModel user) {
-    return Container(
+    return Padding(
       key: ValueKey('options_menu_${user.userId}'), // Key prevents animation restart
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
           children: [
-            _buildMenuOption(
-              icon: Icons.account_balance_wallet_rounded,
-              title: AppLocalizations.of(context)!.wallet,
-              subtitle: AppLocalizations.of(context)!.balanceRechargeWithdrawal,
-              color: const Color(0xFFFFB800),
-              showCoinIcon: true,
-              onTap: () {
-                if (!mounted) return;
-                _stopAutoScroll(); // Stop slider when navigating
-                try {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WalletScreen(
-                        phoneNumber: widget.phoneNumber,
-                        isHost: false, // TODO: Implement host status
-                      ),
-                    ),
-                  ).then((_) {
-                    // Resume slider when returning
-                    if (mounted) {
-                      _startAutoScroll();
+            // Wallet with Real-time Coin Balance (checks both wallets and users collections)
+            StreamBuilder<DocumentSnapshot>(
+              stream: _auth.currentUser != null
+                  ? _firestore.collection('users').doc(_auth.currentUser!.uid).snapshots()
+                  : Stream<DocumentSnapshot>.empty(),
+              builder: (context, userCoinSnapshot) {
+                // Also listen to wallets collection for real-time updates
+                return StreamBuilder<DocumentSnapshot>(
+                  stream: _auth.currentUser != null
+                      ? _firestore.collection('wallets').doc(_auth.currentUser!.uid).snapshots()
+                      : Stream<DocumentSnapshot>.empty(),
+                  builder: (context, walletSnapshot) {
+                    // Get real-time coin balance - ALWAYS prioritize users collection (PRIMARY SOURCE OF TRUTH)
+                    // This is the same logic as wallet_screen.dart to ensure consistency
+                    int uCoinsBalance = 0;
+                    
+                    // PRIMARY: Always use users collection uCoins (it's always updated during deductions)
+                    if (userCoinSnapshot.hasData && userCoinSnapshot.data!.exists) {
+                      final userData = userCoinSnapshot.data!.data() as Map<String, dynamic>?;
+                      if (userData != null) {
+                        final userUCoins = (userData['uCoins'] as int?) ?? 0;
+                        final userCoins = (userData['coins'] as int?) ?? 0;
+                        
+                        // ALWAYS use uCoins as primary (it's always updated during deductions)
+                        // Only use coins if uCoins is 0 and coins has value (legacy data)
+                        uCoinsBalance = userUCoins > 0 ? userUCoins : (userCoins > 0 ? userCoins : 0);
+                      }
                     }
-                  });
-                } catch (e) {
-                  debugPrint('Navigation error: $e');
-                }
+                    
+                    // SECONDARY: Only use wallets collection if users collection doesn't exist or hasn't loaded yet
+                    if (uCoinsBalance == 0 && walletSnapshot.hasData && walletSnapshot.data!.exists) {
+                      final walletData = walletSnapshot.data!.data() as Map<String, dynamic>?;
+                      if (walletData != null) {
+                        final walletBalance = (walletData['balance'] as int?) ?? 
+                                             (walletData['coins'] as int?) ?? 0;
+                        uCoinsBalance = walletBalance;
+                      }
+                    }
+                    
+                    // Final fallback to cached user data if streams haven't loaded yet
+                    if (uCoinsBalance == 0 && (!userCoinSnapshot.hasData || !userCoinSnapshot.data!.exists)) {
+                      uCoinsBalance = user.uCoins;
+                    }
+                    
+                    return _buildMenuOption(
+                      icon: Icons.account_balance_wallet_rounded,
+                      title: AppLocalizations.of(context)!.wallet,
+                      subtitle: AppLocalizations.of(context)!.balanceRechargeWithdrawal,
+                      color: const Color(0xFFFFB800),
+                      showCoinIcon: true,
+                      coinBalance: uCoinsBalance, // Real-time coin balance
+                      onTap: () {
+                        if (!mounted) return;
+                        _stopAutoScroll(); // Stop slider when navigating
+                        try {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WalletScreen(
+                                phoneNumber: widget.phoneNumber,
+                                isHost: false, // TODO: Implement host status
+                              ),
+                            ),
+                          ).then((_) {
+                            // Resume slider when returning
+                            if (mounted) {
+                              _startAutoScroll();
+                            }
+                          });
+                        } catch (e) {
+                          debugPrint('Navigation error: $e');
+                        }
+                      },
+                    );
+                  },
+                );
               },
             ),
             _buildDivider(),
             
-            _buildMenuOption(
-              icon: Icons.monetization_on_rounded,
-              title: AppLocalizations.of(context)!.myEarning,
-              subtitle: AppLocalizations.of(context)!.earningsWithdrawals,
-              color: const Color(0xFF10B981),
-              onTap: () {
-                if (!mounted) return;
-                _stopAutoScroll();
-                try {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MyEarningScreen(
-                        phoneNumber: widget.phoneNumber,
-                      ),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      _startAutoScroll();
-                    }
-                  });
-                } catch (e) {
-                  debugPrint('Navigation error: $e');
+            // My Earning with Real-time Coin Balance
+            StreamBuilder<DocumentSnapshot>(
+              stream: _auth.currentUser != null
+                  ? _firestore.collection('users').doc(_auth.currentUser!.uid).snapshots()
+                  : Stream<DocumentSnapshot>.empty(),
+              builder: (context, coinSnapshot) {
+                // Get real-time coin balance from Firestore
+                int cCoinsBalance = user.cCoins; // Default to user's balance
+                if (coinSnapshot.hasData && coinSnapshot.data!.exists) {
+                  final data = coinSnapshot.data!.data() as Map<String, dynamic>?;
+                  if (data != null && data.containsKey('cCoins')) {
+                    cCoinsBalance = data['cCoins'] as int? ?? user.cCoins;
+                  }
                 }
+                
+                return _buildMenuOption(
+                  icon: Icons.monetization_on_rounded,
+                  title: AppLocalizations.of(context)!.myEarning,
+                  subtitle: AppLocalizations.of(context)!.earningsWithdrawals,
+                  color: const Color(0xFF10B981),
+                  showCoin2Icon: true,
+                  coinBalance: cCoinsBalance, // Real-time coin balance
+                  onTap: () {
+                    if (!mounted) return;
+                    _stopAutoScroll();
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MyEarningScreen(
+                            phoneNumber: widget.phoneNumber,
+                          ),
+                        ),
+                      ).then((_) {
+                        if (mounted) {
+                          _startAutoScroll();
+                        }
+                      });
+                    } catch (e) {
+                      debugPrint('Navigation error: $e');
+                    }
+                  },
+                );
               },
             ),
             _buildDivider(),
@@ -1152,6 +1230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
             ),
           ],
+        ),
       ),
     );
   }
@@ -1164,10 +1243,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onTap,
     int? badgeCount,
     bool showCoinIcon = false,
+    bool showCoin2Icon = false,
+    int? coinBalance, // Coin balance to display
   }) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       leading: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1243,28 +1324,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Coin Star Icon (only for Wallet)
+          // Coin Balance Display (for Wallet with coinBalance)
+          if (showCoinIcon && coinBalance != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Text(
+                _formatCoinBalance(coinBalance),
+                style: TextStyle(
+                  color: Colors.grey[800],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          // Coin Icon (only for Wallet)
           if (showCoinIcon)
             Container(
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFFD700), Color(0xFFFFB800)],
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFB800).withValues(alpha:0.3),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+              child: Image.asset(
+                'assets/images/coin3.png',
+                width: 20,
+                height: 20,
+                fit: BoxFit.contain,
               ),
-              child: const Icon(
-                Icons.star,
-                color: Colors.white,
-                size: 11,
+            ),
+          // Coin Balance Display (for My Earning with coinBalance)
+          if (showCoin2Icon && coinBalance != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Text(
+                _formatCoinBalance(coinBalance),
+                style: TextStyle(
+                  color: Colors.grey[800],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          // Coin2 Icon (only for My Earning)
+          if (showCoin2Icon)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: Image.asset(
+                'assets/images/coin2.png',
+                width: 20,
+                height: 20,
+                fit: BoxFit.contain,
               ),
             ),
           // Forward Arrow
@@ -1285,6 +1392,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       color: Colors.grey[200],
       indent: 70,
     );
+  }
+
+  // Format coin balance with comma separators for readability
+  String _formatCoinBalance(int balance) {
+    // Add comma separators for thousands
+    final balanceStr = balance.toString();
+    final buffer = StringBuffer();
+    
+    for (int i = 0; i < balanceStr.length; i++) {
+      if (i > 0 && (balanceStr.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(balanceStr[i]);
+    }
+    
+    return buffer.toString();
   }
 
 }

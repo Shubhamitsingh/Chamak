@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
+import 'set_profile_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       
       if (currentUser != null && currentUser.phoneNumber != null) {
-        // User is logged in - navigate to home automatically
+        // User is logged in - check profile completion
         debugPrint('✅ User already logged in: ${currentUser.phoneNumber}');
         debugPrint('👤 User UID: ${currentUser.uid}');
         
@@ -37,13 +39,47 @@ class _SplashScreenState extends State<SplashScreen> {
         
         if (mounted) {
           try {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => HomeScreen(
-                  phoneNumber: currentUser.phoneNumber!,
+            // Check if profile is completed
+            final userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .get();
+            
+            final profileCompleted = userDoc.data()?['profileCompleted'] ?? false;
+            final phoneNumber = currentUser.phoneNumber!;
+            // Extract country code and phone number
+            // Phone format: +919876543210 (country code + phone)
+            String countryCode = '+91'; // Default
+            String phoneOnly = phoneNumber;
+            if (phoneNumber.startsWith('+')) {
+              // Try to extract country code (usually 1-3 digits after +)
+              final match = RegExp(r'^\+(\d{1,3})(\d+)$').firstMatch(phoneNumber);
+              if (match != null) {
+                countryCode = '+${match.group(1)}';
+                phoneOnly = match.group(2)!;
+              }
+            }
+            
+            if (profileCompleted) {
+              // Profile completed → Go to Home
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => HomeScreen(
+                    phoneNumber: phoneNumber,
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+              // Profile not completed → Go to Set Profile
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => SetProfileScreen(
+                    phoneNumber: phoneOnly,
+                    countryCode: countryCode,
+                  ),
+                ),
+              );
+            }
           } catch (e) {
             debugPrint('Navigation error: $e');
             // Stay on splash screen - user can click button
@@ -132,7 +168,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 SizedBox(height: size.height * 0.08),
                 const Text(
-                    'Chamak',
+                    'Chamakz',
                     style: TextStyle(
                       fontSize: 48,
                       fontWeight: FontWeight.bold,

@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../services/admin_service.dart';
+import '../services/support_chat_service.dart';
+import '../services/withdrawal_service.dart';
+import '../services/storage_service.dart';
+import '../models/withdrawal_request_model.dart';
+import 'admin_support_chat_screen.dart';
 
 /// Admin Panel Screen for managing user coins
 class AdminPanelScreen extends StatefulWidget {
@@ -10,8 +18,12 @@ class AdminPanelScreen extends StatefulWidget {
   State<AdminPanelScreen> createState() => _AdminPanelScreenState();
 }
 
-class _AdminPanelScreenState extends State<AdminPanelScreen> {
+class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerProviderStateMixin {
   final AdminService _adminService = AdminService();
+  final SupportChatService _supportChatService = SupportChatService();
+  final WithdrawalService _withdrawalService = WithdrawalService();
+  final StorageService _storageService = StorageService();
+  final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _coinsController = TextEditingController();
   final TextEditingController _reasonController = TextEditingController();
@@ -22,16 +34,21 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   List<Map<String, dynamic>> _searchResults = [];
   Map<String, dynamic>? _selectedUser;
   List<Map<String, dynamic>> _adminActions = [];
+  
+  // Tab controller for Add Coins and Support Chats
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _checkAdminStatus();
     _loadAdminActions();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     _coinsController.dispose();
     _reasonController.dispose();
@@ -257,36 +274,106 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Panel - Add U Coins'),
+        title: const Text('Admin Panel'),
         backgroundColor: const Color(0xFF04B104),
         foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search User Section
-            _buildSearchSection(),
-
-            const SizedBox(height: 24),
-
-            // Selected User Info
-            if (_selectedUser != null) ...[
-              _buildSelectedUserCard(),
-              const SizedBox(height: 24),
-            ],
-
-            // Add Coins Section
-            if (_selectedUser != null) ...[
-              _buildAddCoinsSection(),
-              const SizedBox(height: 24),
-            ],
-
-            // Admin Actions History
-            _buildAdminActionsSection(),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.account_balance_wallet, size: 20),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text('Add Coins'),
+                ],
+              ),
+            ),
+            Tab(
+              icon: StreamBuilder<int>(
+                stream: _supportChatService.getAdminUnreadCount(),
+                builder: (context, snapshot) {
+                  final unreadCount = snapshot.data ?? 0;
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.support_agent, size: 20),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: -8,
+                          top: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              child: const Text('Support Chats'),
+            ),
+            Tab(
+              icon: const Icon(Icons.payment, size: 20),
+              child: const Text('Payments'),
+            ),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Add Coins Tab
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Search User Section
+                _buildSearchSection(),
+
+                const SizedBox(height: 24),
+
+                // Selected User Info
+                if (_selectedUser != null) ...[
+                  _buildSelectedUserCard(),
+                  const SizedBox(height: 24),
+                ],
+
+                // Add Coins Section
+                if (_selectedUser != null) ...[
+                  _buildAddCoinsSection(),
+                  const SizedBox(height: 24),
+                ],
+
+                // Admin Actions History
+                _buildAdminActionsSection(),
+              ],
+            ),
+          ),
+          // Support Chats Tab
+          _buildSupportChatsTab(),
+          _buildPaymentsTab(),
+        ],
       ),
     );
   }
@@ -702,5 +789,669 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       return 'Unknown';
     }
   }
+
+  // ========== SUPPORT CHATS TAB ==========
+  Widget _buildSupportChatsTab() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _supportChatService.getAllSupportChats(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF04B104),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Something went wrong',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Unable to load support chats. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final chats = snapshot.data ?? [];
+
+        if (chats.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.support_agent_outlined, size: 80, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text(
+                  'No Support Chats',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Support chats from users will appear here',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[400],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: chats.length,
+          itemBuilder: (context, index) {
+            final chat = chats[index];
+                    final unreadCount = ((chat['unreadCount'] as Map<String, dynamic>)['admin'] as int?) ?? 0;
+            final hasUnread = unreadCount > 0;
+            
+            return _buildSupportChatCard(chat, hasUnread, unreadCount);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSupportChatCard(Map<String, dynamic> chat, bool hasUnread, int unreadCount) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: hasUnread ? const Color(0xFF04B104).withValues(alpha: 0.05) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasUnread 
+              ? const Color(0xFF04B104).withValues(alpha: 0.3)
+              : Colors.grey[200]!,
+          width: hasUnread ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: hasUnread
+                ? const Color(0xFF04B104).withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+            builder: (context) => AdminSupportChatScreen(
+              chatId: chat['chatId'],
+              userId: chat['userId'],
+              numericUserId: chat['numericUserId'] ?? '',
+              userName: chat['userName'],
+              userPhone: chat['userPhone'],
+            ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // User Avatar
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: const Color(0xFF04B104),
+                    child: Text(
+                      (chat['userName'] as String? ?? 'U')[0].toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (hasUnread)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF04B104),
+                          shape: BoxShape.circle,
+                          border: Border.fromBorderSide(
+                            BorderSide(color: Colors.white, width: 2),
+                          ),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              const SizedBox(width: 14),
+
+              // Chat Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                      // User Name and Status
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            chat['userName'] ?? 'Unknown User',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(chat['status']).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            chat['status']?.toUpperCase() ?? 'OPEN',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: _getStatusColor(chat['status']),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Numeric User ID and Phone Number
+                    Row(
+                      children: [
+                        // Numeric User ID (for easy admin identification)
+                        if (chat['numericUserId'] != null && (chat['numericUserId'] as String).isNotEmpty) ...[
+                          Icon(Icons.badge_outlined, size: 14, color: const Color(0xFF04B104)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'ID: ${chat['numericUserId']}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF04B104),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(width: 1, height: 12, color: Colors.grey[300]),
+                          const SizedBox(width: 12),
+                        ],
+                        // Phone Number
+                        Expanded(
+                          child: Text(
+                            chat['userPhone'] ?? 'No phone',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Last Message
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            chat['lastMessage']?.isNotEmpty == true
+                                ? chat['lastMessage']
+                                : 'No messages yet',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: chat['lastMessage']?.isNotEmpty == true
+                                  ? Colors.grey[700]
+                                  : Colors.grey[400],
+                              fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatTimestamp(chat['lastMessageTime']),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Chat Icon
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF04B104).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Image.asset(
+                  'assets/images/chat.png',
+                  width: 22,
+                  height: 22,
+                  color: const Color(0xFF04B104),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status) {
+      case 'open':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'closed':
+        return Colors.grey;
+      default:
+        return Colors.green;
+    }
+  }
+
+  // ========== PAYMENTS TAB ==========
+  Widget _buildPaymentsTab() {
+    return StreamBuilder<List<WithdrawalRequestModel>>(
+      stream: _withdrawalService.getAllWithdrawalRequests(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final requests = snapshot.data ?? [];
+        if (requests.isEmpty) {
+          return const Center(child: Text('No withdrawal requests yet.'));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: requests.length,
+          itemBuilder: (context, index) {
+            final request = requests[index];
+            return _buildWithdrawalRequestCard(request);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildWithdrawalRequestCard(WithdrawalRequestModel request) {
+    Color statusColor;
+    String statusText;
+    switch (request.status) {
+      case 'pending':
+        statusColor = Colors.orange;
+        statusText = 'Pending';
+        break;
+      case 'approved':
+        statusColor = Colors.blue;
+        statusText = 'Approved';
+        break;
+      case 'paid':
+        statusColor = Colors.green;
+        statusText = 'Paid';
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusText = request.status;
+    }
+
+    final inrAmount = request.amount * 0.04;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Request ID: ${request.id.substring(0, 8)}...',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Amount: C ${request.amount} (≈ ₹${inrAmount.toStringAsFixed(2)})',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Method: ${request.withdrawalMethod}',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Requested: ${_formatDate(request.requestDate)}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor, width: 1),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Payment Details
+            if (request.paymentDetails.isNotEmpty) ...[
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                'Payment Details:',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              ...request.paymentDetails.entries.map((entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${entry.key}: ',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        Expanded(
+                          child: Text(
+                            entry.value.toString(),
+                            style: TextStyle(color: Colors.grey[700]),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+              const SizedBox(height: 16),
+            ],
+            // Action Buttons
+            Row(
+              children: [
+                if (request.status == 'pending')
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : () => _approveWithdrawal(request.id),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Approve'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                if (request.status == 'pending') const SizedBox(width: 8),
+                if (request.status == 'approved')
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : () => _markAsPaidDialog(request),
+                      icon: const Icon(Icons.payment, size: 18),
+                      label: const Text('Mark as Paid'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                if (request.status == 'paid' && request.paymentProofURL != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _viewPaymentProof(request.paymentProofURL!),
+                      icon: const Icon(Icons.image, size: 18),
+                      label: const Text('View Proof'),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _approveWithdrawal(String requestId) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+      final adminId = FirebaseAuth.instance.currentUser?.uid;
+      if (adminId == null) {
+        _showError('Admin not authenticated');
+        return;
+      }
+      final success = await _withdrawalService.approveWithdrawalRequest(requestId, adminId);
+      if (success) {
+        _showSuccess('Withdrawal request approved!');
+      } else {
+        _showError('Failed to approve withdrawal request');
+      }
+    } catch (e) {
+      _showError('Error: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _markAsPaidDialog(WithdrawalRequestModel request) async {
+    File? selectedImage;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Mark as Paid'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Upload payment proof screenshot:'),
+                const SizedBox(height: 12),
+                if (selectedImage != null)
+                  Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Image.file(selectedImage!, fit: BoxFit.contain),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final image = await _imagePicker.pickImage(source: ImageSource.gallery);
+                      if (image != null) {
+                        setDialogState(() {
+                          selectedImage = File(image.path);
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Select Image'),
+                  ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: selectedImage == null
+                      ? null
+                      : () async {
+                          Navigator.pop(context); // Close dialog
+                          await _markAsPaid(request, selectedImage!);
+                        },
+                  child: const Text('Mark as Paid'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _markAsPaid(WithdrawalRequestModel request, File paymentProof) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+      final adminId = FirebaseAuth.instance.currentUser?.uid;
+      if (adminId == null) {
+        _showError('Admin not authenticated');
+        return;
+      }
+      // Upload payment proof
+      final proofURL = await _storageService.uploadPaymentProof(paymentProof, request.id);
+      if (proofURL == null) {
+        _showError('Failed to upload payment proof');
+        return;
+      }
+      // Mark as paid
+      final success = await _withdrawalService.markAsPaid(request.id, adminId, proofURL);
+      if (success) {
+        _showSuccess('Payment marked as paid!');
+      } else {
+        _showError('Failed to mark payment as paid');
+      }
+    } catch (e) {
+      _showError('Error: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _viewPaymentProof(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      color: Colors.white,
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          SizedBox(height: 12),
+                          Text('Failed to load image'),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              top: 20,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
 }
+
 

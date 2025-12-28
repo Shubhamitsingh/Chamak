@@ -352,7 +352,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                           debugPrint('Error navigating to contact support: $e');
                         }
                       },
-                      icon: const Icon(Icons.message_outlined, size: 18),
+                      icon: Image.asset('assets/images/chat.png', width: 18, height: 18, color: Colors.white),
                       label: Text(
                         AppLocalizations.of(context)!.contactSupport,
                         style: const TextStyle(
