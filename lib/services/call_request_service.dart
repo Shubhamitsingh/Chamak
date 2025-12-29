@@ -18,34 +18,38 @@ class CallRequestService {
     required String hostId,
   }) async {
     try {
-      // Check if user has enough coins (1000 coins per minute minimum)
-      final hasEnoughCoins = await _coinDeductionService.hasEnoughCoins(callerId);
+      // Check if user has enough coins (1000 coins per minute minimum) (with timeout)
+      final hasEnoughCoins = await _coinDeductionService.hasEnoughCoins(callerId)
+          .timeout(const Duration(seconds: 10));
       if (!hasEnoughCoins) {
-        final balance = await _coinDeductionService.getUserBalance(callerId);
+        final balance = await _coinDeductionService.getUserBalance(callerId)
+            .timeout(const Duration(seconds: 10));
         throw Exception('Insufficient balance. You need at least 1000 coins to start a call. Your balance: $balance coins');
       }
       
-      // Check if host is already in a call
-      final isHostBusy = await _liveStreamService.isHostInCall(streamId);
+      // Check if host is already in a call (with timeout)
+      final isHostBusy = await _liveStreamService.isHostInCall(streamId)
+          .timeout(const Duration(seconds: 10));
       if (isHostBusy) {
         throw Exception('Host is currently busy in a private call');
       }
 
-      // Check for existing pending request from this caller
+      // Check for existing pending request from this caller (with timeout)
       final existingRequest = await _firestore
           .collection(_collection)
           .where('streamId', isEqualTo: streamId)
           .where('callerId', isEqualTo: callerId)
           .where('status', isEqualTo: 'pending')
           .limit(1)
-          .get();
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 10));
 
       if (existingRequest.docs.isNotEmpty) {
         // Request already exists
         return existingRequest.docs.first.id;
       }
 
-      // Create new call request
+      // Create new call request (with timeout)
       final requestId = _firestore.collection(_collection).doc().id;
       final request = CallRequestModel(
         requestId: requestId,
@@ -58,7 +62,8 @@ class CallRequestService {
         createdAt: DateTime.now(),
       );
 
-      await _firestore.collection(_collection).doc(requestId).set(request.toMap());
+      await _firestore.collection(_collection).doc(requestId).set(request.toMap())
+          .timeout(const Duration(seconds: 10));
       print('✅ Call request sent: $requestId');
       
       // Auto-cleanup: Delete request after 5 minutes if not responded
@@ -92,16 +97,17 @@ class CallRequestService {
     required String callToken,
   }) async {
     try {
-      // Update call request status
+      // Update call request status (with timeout)
       await _firestore.collection(_collection).doc(requestId).update({
         'status': 'accepted',
         'respondedAt': DateTime.now().toIso8601String(),
         'callChannelName': callChannelName,
         'callToken': callToken,
-      });
+      }).timeout(const Duration(seconds: 10));
 
-      // Update live stream status
-      await _liveStreamService.setHostInCall(streamId, callerId);
+      // Update live stream status (with timeout)
+      await _liveStreamService.setHostInCall(streamId, callerId)
+          .timeout(const Duration(seconds: 10));
       
       print('✅ Call request accepted: $requestId');
     } catch (e) {
@@ -116,7 +122,7 @@ class CallRequestService {
       await _firestore.collection(_collection).doc(requestId).update({
         'status': 'rejected',
         'respondedAt': DateTime.now().toIso8601String(),
-      });
+      }).timeout(const Duration(seconds: 10));
       print('✅ Call request rejected: $requestId');
     } catch (e) {
       print('❌ Error rejecting call request: $e');
@@ -144,14 +150,15 @@ class CallRequestService {
     required String streamId,
   }) async {
     try {
-      // Update call request status
+      // Update call request status (with timeout)
       await _firestore.collection(_collection).doc(requestId).update({
         'status': 'ended',
         'respondedAt': DateTime.now().toIso8601String(),
-      });
+      }).timeout(const Duration(seconds: 10));
 
-      // Make host available again
-      await _liveStreamService.setHostAvailable(streamId);
+      // Make host available again (with timeout)
+      await _liveStreamService.setHostAvailable(streamId)
+          .timeout(const Duration(seconds: 10));
       
       print('✅ Call ended: $requestId');
     } catch (e) {

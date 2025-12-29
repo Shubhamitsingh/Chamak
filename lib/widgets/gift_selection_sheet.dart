@@ -156,7 +156,9 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
           final userData = userDoc.data() as Map<String, dynamic>?;
           final uCoins = (userData?['uCoins'] as int?) ?? 0;
           final coins = (userData?['coins'] as int?) ?? 0;
-          userBalance = uCoins >= coins ? uCoins : coins;
+          // ALWAYS use uCoins as primary (it's always updated during deductions)
+          // Only use coins if uCoins is 0 and coins has value (legacy data)
+          userBalance = uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
         }
       }
       
@@ -261,7 +263,9 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
                       final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
                       final uCoins = (userData?['uCoins'] as int?) ?? 0;
                       final coins = (userData?['coins'] as int?) ?? 0;
-                      userBalance = uCoins >= coins ? uCoins : coins;
+                      // ALWAYS use uCoins as primary (it's always updated during deductions)
+                      // Only use coins if uCoins is 0 and coins has value (legacy data)
+                      userBalance = uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
                     }
 
                     return GridView.builder(
@@ -356,7 +360,9 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
                             final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
                             final uCoins = (userData?['uCoins'] as int?) ?? 0;
                             final coins = (userData?['coins'] as int?) ?? 0;
-                            userBalance = uCoins >= coins ? uCoins : coins;
+                            // ALWAYS use uCoins as primary (it's always updated during deductions)
+                            // Only use coins if uCoins is 0 and coins has value (legacy data)
+                            userBalance = uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
                           }
 
                           return GestureDetector(

@@ -30,8 +30,8 @@ class _CallRequestDialogState extends State<CallRequestDialog> with TickerProvid
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat();
-    // Auto-reject after 30 seconds if no response
-    Future.delayed(const Duration(seconds: 30), () {
+    // Auto-reject after 60 seconds if no response (increased from 30s for better UX)
+    Future.delayed(const Duration(seconds: 60), () {
       if (mounted && !_isResponding) {
         widget.onReject();
         Navigator.of(context).pop();

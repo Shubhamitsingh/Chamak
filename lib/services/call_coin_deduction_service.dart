@@ -14,11 +14,15 @@ class CallCoinDeductionService {
   /// Check if user has enough coins to start a call
   Future<bool> hasEnoughCoins(String userId) async {
     try {
-      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userDoc = await _firestore.collection('users').doc(userId)
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 10));
       final uCoins = (userDoc.data()?['uCoins'] as int?) ?? 0;
       
-      // Also check wallet collection
-      final walletDoc = await _firestore.collection('wallets').doc(userId).get();
+      // Also check wallet collection (with timeout)
+      final walletDoc = await _firestore.collection('wallets').doc(userId)
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 10));
       final walletBalance = walletDoc.exists
           ? ((walletDoc.data()?['balance'] as int?) ?? 
              (walletDoc.data()?['coins'] as int?) ?? 0)
@@ -37,11 +41,15 @@ class CallCoinDeductionService {
   /// Get user's current coin balance
   Future<int> getUserBalance(String userId) async {
     try {
-      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userDoc = await _firestore.collection('users').doc(userId)
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 10));
       final uCoins = (userDoc.data()?['uCoins'] as int?) ?? 0;
       
-      // Also check wallet collection
-      final walletDoc = await _firestore.collection('wallets').doc(userId).get();
+      // Also check wallet collection (with timeout)
+      final walletDoc = await _firestore.collection('wallets').doc(userId)
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 10));
       final walletBalance = walletDoc.exists
           ? ((walletDoc.data()?['balance'] as int?) ?? 
              (walletDoc.data()?['coins'] as int?) ?? 0)
@@ -123,16 +131,8 @@ class CallCoinDeductionService {
         );
       }
       
-      // 3. Add C Coins to host's earnings
-      final hostUserRef = _firestore.collection('users').doc(hostId);
-      batch.update(
-        hostUserRef,
-        {
-          'cCoins': FieldValue.increment(cCoinsToCredit),
-        },
-      );
-      
-      // 4. Update host's earnings summary
+      // 3. Update host's earnings summary (SINGLE SOURCE OF TRUTH)
+      // NOTE: Only update earnings.totalCCoins, not users.cCoins (to avoid duplicate field issues)
       final earningsRef = _firestore.collection('earnings').doc(hostId);
       batch.set(
         earningsRef,
@@ -257,16 +257,8 @@ class CallCoinDeductionService {
         );
       }
       
-      // 3. Credit to host
-      final hostUserRef = _firestore.collection('users').doc(hostId);
-      batch.update(
-        hostUserRef,
-        {
-          'cCoins': FieldValue.increment(cCoinsToCredit),
-        },
-      );
-      
-      // 4. Update host earnings
+      // 3. Update host earnings (SINGLE SOURCE OF TRUTH)
+      // NOTE: Only update earnings.totalCCoins, not users.cCoins (to avoid duplicate field issues)
       final earningsRef = _firestore.collection('earnings').doc(hostId);
       batch.set(
         earningsRef,

@@ -176,15 +176,15 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
         'uCoins': FieldValue.increment(-giftCost),
       });
 
-      // Add C coins to recipient (host/user receiving gift)
-      await _firestore.collection('users').doc(widget.user.uid).update({
-        'cCoins': FieldValue.increment(giftCost),
-      });
-
-      // Update earnings for recipient
+      // Update earnings for recipient (SINGLE SOURCE OF TRUTH)
+      // NOTE: Only update earnings.totalCCoins, not users.cCoins (to avoid duplicate field issues)
+      // Convert U Coins to C Coins: giftCost × 5 = C Coins
+      final cCoinsToCredit = giftCost * 5; // 1 U Coin = 5 C Coins
       final earningsRef = _firestore.collection('earnings').doc(widget.user.uid);
       await earningsRef.set({
-        'totalCCoins': FieldValue.increment(giftCost),
+        'userId': widget.user.uid,
+        'totalCCoins': FieldValue.increment(cCoinsToCredit),
+        'totalGiftsReceived': FieldValue.increment(1),
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 

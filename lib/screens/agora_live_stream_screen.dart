@@ -1982,22 +1982,45 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       // Use unique channel name for private calls (based on request ID)
       final callChannelName = 'private_call_${request.requestId}';
       
-      // Generate token dynamically for private call
+      // Generate token dynamically for private call with retry logic
       final tokenService = AgoraTokenService();
-      final callToken = await tokenService.getHostToken(
-        channelName: callChannelName,
-      );
+      late String callToken;
+      int retries = 3;
+      bool tokenGenerated = false;
+      
+      for (int i = 0; i < retries; i++) {
+        try {
+          callToken = await tokenService.getHostToken(
+            channelName: callChannelName,
+          ).timeout(const Duration(seconds: 15));
+          tokenGenerated = true;
+          debugPrint('✅ Generated token for private call (attempt ${i + 1}/$retries): $callChannelName');
+          break;
+        } catch (e) {
+          debugPrint('⚠️ Token generation attempt ${i + 1}/$retries failed: $e');
+          if (i == retries - 1) {
+            // Last attempt failed, throw error
+            throw Exception('Failed to generate call token after $retries attempts: $e');
+          }
+          // Wait before retry with exponential backoff (1s, 2s, 4s)
+          await Future.delayed(Duration(seconds: 1 << i));
+        }
+      }
+      
+      if (!tokenGenerated) {
+        throw Exception('Failed to generate call token');
+      }
       
       debugPrint('📞 Generated token for private call: $callChannelName');
       
-      // Update call request with channel info
+      // Update call request with channel info (with timeout)
       await _callRequestService.acceptCallRequest(
         requestId: request.requestId,
         streamId: request.streamId,
         callerId: request.callerId,
         callChannelName: callChannelName,
         callToken: callToken,
-      );
+      ).timeout(const Duration(seconds: 10));
 
       // Navigate to private call screen
       if (mounted) {
@@ -2150,17 +2173,19 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       final currentUser = _auth.currentUser;
       if (currentUser == null) return;
 
-      // Get stream info to get host ID
-      final stream = await _liveStreamService.getLiveStreamOnce(widget.streamId!);
+      // Get stream info to get host ID (with timeout)
+      final stream = await _liveStreamService.getLiveStreamOnce(widget.streamId!)
+          .timeout(const Duration(seconds: 10));
       if (stream == null) {
         throw Exception('Stream not found');
       }
 
-      // Get user data for caller name and image
+      // Get user data for caller name and image (with timeout)
       final databaseService = DatabaseService();
-      final userData = await databaseService.getUserData(currentUser.uid);
+      final userData = await databaseService.getUserData(currentUser.uid)
+          .timeout(const Duration(seconds: 10));
 
-      // Send call request (coin validation already done in service)
+      // Send call request (coin validation already done in service) (with timeout)
       String requestId;
       try {
         requestId = await _callRequestService.sendCallRequest(
@@ -2169,7 +2194,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
           callerName: userData?.name ?? 'User',
           callerImage: userData?.photoURL,
           hostId: stream.hostId,
-        );
+        ).timeout(const Duration(seconds: 15));
       } catch (e) {
         // Handle coin validation error
         setState(() => _isCallRequestPending = false);
@@ -2227,11 +2252,31 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
               _currentCallRequestId = null;
             });
           } else {
-            // Generate new token dynamically (fallback) - async handling
+            // Generate new token dynamically (fallback) - async handling with retry
             final callChannelName = 'private_call_${request.requestId}';
             final tokenService = AgoraTokenService();
             
-            tokenService.getHostToken(channelName: callChannelName).then((callToken) {
+            // Retry logic for token generation
+            Future<String> generateTokenWithRetry() async {
+              int retries = 3;
+              for (int i = 0; i < retries; i++) {
+                try {
+                  final token = await tokenService.getHostToken(channelName: callChannelName)
+                      .timeout(const Duration(seconds: 15));
+                  return token;
+                } catch (e) {
+                  debugPrint('⚠️ Token generation attempt ${i + 1}/$retries failed: $e');
+                  if (i == retries - 1) {
+                    throw Exception('Failed to generate call token after $retries attempts: $e');
+                  }
+                  // Wait before retry with exponential backoff
+                  await Future.delayed(Duration(seconds: 1 << i));
+                }
+              }
+              throw Exception('Failed to generate call token');
+            }
+            
+            generateTokenWithRetry().then((callToken) {
               if (!mounted) return;
               
               debugPrint('📞 Generated new token for call');
@@ -2259,10 +2304,15 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
             }).catchError((error) {
               debugPrint('❌ Error generating token for call: $error');
               if (mounted) {
+                setState(() {
+                  _isCallRequestPending = false;
+                  _currentCallRequestId = null;
+                });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Failed to join call: $error'),
+                    content: Text('Failed to join call: ${error.toString()}'),
                     backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 4),
                   ),
                 );
               }
@@ -4544,19 +4594,12 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.9),
+                              color: Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.3),
                                 width: 1,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
                             ),
                             child: Row(
                               children: [

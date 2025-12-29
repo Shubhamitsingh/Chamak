@@ -882,17 +882,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildDivider(),
             
             // My Earning with Real-time Coin Balance
+            // NOTE: Use earnings.totalCCoins (SINGLE SOURCE OF TRUTH) instead of users.cCoins
             StreamBuilder<DocumentSnapshot>(
               stream: _auth.currentUser != null
-                  ? _firestore.collection('users').doc(_auth.currentUser!.uid).snapshots()
+                  ? _firestore.collection('earnings').doc(_auth.currentUser!.uid).snapshots()
                   : Stream<DocumentSnapshot>.empty(),
-              builder: (context, coinSnapshot) {
-                // Get real-time coin balance from Firestore
-                int cCoinsBalance = user.cCoins; // Default to user's balance
-                if (coinSnapshot.hasData && coinSnapshot.data!.exists) {
-                  final data = coinSnapshot.data!.data() as Map<String, dynamic>?;
-                  if (data != null && data.containsKey('cCoins')) {
-                    cCoinsBalance = data['cCoins'] as int? ?? user.cCoins;
+              builder: (context, earningsSnapshot) {
+                // Get real-time C Coins balance from earnings collection (SINGLE SOURCE OF TRUTH)
+                int cCoinsBalance = 0;
+                if (earningsSnapshot.hasData && earningsSnapshot.data!.exists) {
+                  final data = earningsSnapshot.data!.data() as Map<String, dynamic>?;
+                  if (data != null && data.containsKey('totalCCoins')) {
+                    cCoinsBalance = data['totalCCoins'] as int? ?? 0;
                   }
                 }
                 
@@ -902,7 +903,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: AppLocalizations.of(context)!.earningsWithdrawals,
                   color: const Color(0xFF10B981),
                   showCoin2Icon: true,
-                  coinBalance: cCoinsBalance, // Real-time coin balance
+                  coinBalance: cCoinsBalance, // Real-time C Coins balance from earnings collection
                   onTap: () {
                     if (!mounted) return;
                     _stopAutoScroll();

@@ -81,6 +81,7 @@ class WithdrawalService {
   }
 
   // Approve a withdrawal request
+  // NOTE: C Coins are deducted when marked as paid, not when approved
   Future<bool> approveWithdrawalRequest(String requestId, String adminId) async {
     try {
       await _firestore.collection('withdrawal_requests').doc(requestId).update({
@@ -96,18 +97,53 @@ class WithdrawalService {
   }
 
   // Mark a withdrawal request as paid and upload payment proof
+  // Deducts C Coins from earnings.totalCCoins (SINGLE SOURCE OF TRUTH)
   Future<bool> markAsPaid(String requestId, String adminId, String paymentProofURL, {String? adminNotes}) async {
     try {
-      await _firestore.collection('withdrawal_requests').doc(requestId).update({
-        'status': 'paid',
-        'paidDate': FieldValue.serverTimestamp(),
-        'paymentProofURL': paymentProofURL,
-        'adminNotes': adminNotes,
-        'approvedBy': adminId, // Ensure approvedBy is set if not already
-      });
+      // Get withdrawal request to get userId and amount
+      final requestDoc = await _firestore.collection('withdrawal_requests').doc(requestId).get();
+      if (!requestDoc.exists) {
+        print('❌ Withdrawal request not found: $requestId');
+        return false;
+      }
+      
+      final requestData = requestDoc.data()!;
+      final userId = requestData['userId'] as String;
+      final amount = requestData['amount'] as int; // Amount in C Coins
+      
+      // Use batch write to atomically update withdrawal status and deduct C Coins
+      final batch = _firestore.batch();
+      
+      // 1. Update withdrawal request status
+      batch.update(
+        _firestore.collection('withdrawal_requests').doc(requestId),
+        {
+          'status': 'paid',
+          'paidDate': FieldValue.serverTimestamp(),
+          'paymentProofURL': paymentProofURL,
+          'adminNotes': adminNotes,
+          'approvedBy': adminId, // Ensure approvedBy is set if not already
+        },
+      );
+      
+      // 2. Deduct C Coins from earnings collection (SINGLE SOURCE OF TRUTH)
+      final earningsRef = _firestore.collection('earnings').doc(userId);
+      batch.set(
+        earningsRef,
+        {
+          'totalCCoins': FieldValue.increment(-amount), // Deduct C Coins
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      
+      // Commit batch (all updates atomic)
+      await batch.commit();
+      
+      print('✅ Withdrawal marked as paid: Deducted $amount C Coins from user $userId');
       return true;
     } catch (e) {
-      print('Error marking withdrawal request as paid: $e');
+      print('❌ Error marking withdrawal request as paid: $e');
       return false;
     }
   }

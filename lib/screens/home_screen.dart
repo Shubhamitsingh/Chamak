@@ -3,6 +3,7 @@ import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'user_search_screen.dart';
 import 'profile_screen.dart';
 import 'chat_list_screen.dart';
@@ -20,6 +21,7 @@ import '../models/live_stream_model.dart';
 import '../models/announcement_model.dart';
 import '../widgets/coin_purchase_popup.dart';
 import '../services/location_permission_service.dart';
+import '../services/agora_token_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final String phoneNumber;
@@ -390,7 +392,9 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Get user data to check coin balance
       final userData = await _databaseService.getUserData(currentUser.uid);
-      final userCoins = userData?.coins ?? 0;
+      // Use uCoins as primary (it's always updated during deductions)
+      // Only use coins if uCoins is 0 and coins has value (legacy data)
+      final userCoins = (userData?.uCoins ?? 0) > 0 ? (userData?.uCoins ?? 0) : (userData?.coins ?? 0);
       
       // Check if popup should be shown
       final shouldShow = await _popupService.shouldShowPopup(
@@ -892,32 +896,52 @@ class _HomeScreenState extends State<HomeScreen> {
             final stream = liveStreams[index];
             return RepaintBoundary(
               child: GestureDetector(
-                onTap: () {
+                onTap: () async {
                   if (!mounted) return;
                   // Navigate to live stream as audience/viewer
-                  // Use the channel name from the stream document
-                  const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
-                  
+                  // Generate token dynamically using AgoraTokenService
                   debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
                   debugPrint('📺 Channel: ${stream.channelName}');
+                  
+                  try {
+                    final tokenService = AgoraTokenService();
+                    final token = await tokenService.getAudienceToken(
+                      channelName: stream.channelName,
+                      uid: 0,
+                    );
+                    debugPrint('✅ Generated audience token: ${token.length} chars');
+                    
+                    if (!mounted) return;
                     
                     // Increment viewer count
-                  liveStreamService.joinStream(stream.streamId);
+                    liveStreamService.joinStream(stream.streamId);
                     
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => AgoraLiveStreamScreen(
-                        channelName: stream.channelName, // Use channel name from Firebase
+                          channelName: stream.channelName, // Use channel name from Firebase
                           token: token,
                           isHost: false, // Viewer mode
-                        streamId: stream.streamId, // Pass streamId for cleanup
+                          streamId: stream.streamId, // Pass streamId for cleanup
                         ),
                       ),
                     ).then((_) {
                       // Decrement viewer count when viewer leaves
-                    liveStreamService.leaveStream(stream.streamId);
-                  });
+                      liveStreamService.leaveStream(stream.streamId);
+                    });
+                  } catch (e) {
+                    debugPrint('❌ Error generating token: $e');
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to join stream: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  }
                 },
                   child: _buildLiveStreamCard(
                     hostName: stream.hostName,
@@ -1016,31 +1040,52 @@ class _HomeScreenState extends State<HomeScreen> {
             return FadeInUp(
               delay: Duration(milliseconds: 50 * index),
               child: GestureDetector(
-                onTap: () {
+                onTap: () async {
                   if (!mounted) return;
                   // Navigate to live stream as viewer
-                  const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
-                  
+                  // Generate token dynamically using AgoraTokenService
                   debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
                   debugPrint('📺 Channel: ${stream.channelName}');
+                  
+                  try {
+                    final tokenService = AgoraTokenService();
+                    final token = await tokenService.getAudienceToken(
+                      channelName: stream.channelName,
+                      uid: 0,
+                    );
+                    debugPrint('✅ Generated audience token: ${token.length} chars');
+                    
+                    if (!mounted) return;
                     
                     // Increment viewer count
-                  liveStreamService.joinStream(stream.streamId);
+                    liveStreamService.joinStream(stream.streamId);
                     
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => AgoraLiveStreamScreen(
-                        channelName: stream.channelName,
+                          channelName: stream.channelName,
                           token: token,
                           isHost: false, // Viewer mode
-                        streamId: stream.streamId, // Pass streamId for cleanup
+                          streamId: stream.streamId, // Pass streamId for cleanup
                         ),
                       ),
                     ).then((_) {
                       // Decrement viewer count when viewer leaves
-                    liveStreamService.leaveStream(stream.streamId);
-                  });
+                      liveStreamService.leaveStream(stream.streamId);
+                    });
+                  } catch (e) {
+                    debugPrint('❌ Error generating token: $e');
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to join stream: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  }
                 },
                   child: _buildLiveStreamCard(
                     hostName: stream.hostName,
@@ -1071,207 +1116,433 @@ class _HomeScreenState extends State<HomeScreen> {
     String? streamId, // Add streamId for chat
     String? hostId, // Add hostId to fetch user data
   }) {
-        return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xCC04B104),
-                      Color(0xE6038103),
-                    ],
-        ),
-        borderRadius: BorderRadius.all(Radius.circular(15)),
-        boxShadow: [
-              BoxShadow(
-                color: Color(0x4D04B104),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-          // Background Icon
-                Positioned(
-                  right: -20,
-                  top: -20,
-                  child: Icon(
-                    thumbnail,
-                    size: 100,
-              color: Colors.white.withValues(alpha:0.1),
-            ),
-          ),
-          
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Live Badge & Viewers (Top)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-              padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                        borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.circle,
-                            size: 6,
-                    color: Colors.white,
-                  ),
-                          const SizedBox(width: 4),
-                  Text(
-                    AppLocalizations.of(context)!.liveLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-                    Row(
-                      children: [
-                        Container(
-              padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-              ),
-              decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha:0.3),
-                            borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.remove_red_eye,
-                    color: Colors.white,
-                                size: 10,
-                  ),
-                              const SizedBox(width: 3),
-                  Text(
-                    _formatViewers(viewers),
-                    style: const TextStyle(
-                      color: Colors.white,
-                                  fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-                      ],
-                    ),
-                  ],
-                ),
-                
-                // Age + Language + Call Icon (Bottom - Horizontal Row)
-                hostId != null
-                    ? StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(hostId)
-                            .snapshots(),
-                        builder: (context, userSnapshot) {
-                          if (userSnapshot.connectionState == ConnectionState.waiting) {
-                            return const SizedBox.shrink();
-                          }
-                          
-                          final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
-                          final age = userData?['age'];
-                          final language = userData?['language'] ?? 'English';
-                          
-                          return Row(
-                            children: [
-                              // Age (only number, no icon)
-                              if (age != null) ...[
-                                Text(
-                                  '$age',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                              ],
-                              // Language (no icon)
-                              Flexible(
-                                child: Text(
-                                  language,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const Spacer(),
-                              // Video Icon
-                              Image.asset(
-                                'assets/images/video.png',
-                                width: 26,
-                                height: 26,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.videocam_rounded,
-                                    color: Colors.white,
-                                    size: 26,
-                                  );
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      )
-                    : Row(
-                        children: [
-                          // Fallback if no hostId (no icon)
-                          Text(
-                            'English',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const Spacer(),
-                          // Video Icon
-                          Image.asset(
-                            'assets/images/video.png',
-                            width: 26,
-                            height: 26,
-                            fit: BoxFit.contain,
+    // Default gradient background (fallback) - Pink and White gradient
+    final defaultDecoration = BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFFFF1B7C), // Pink
+          Colors.white,      // White
+        ],
+      ),
+      borderRadius: const BorderRadius.all(Radius.circular(15)),
+    );
+
+    return Container(
+      decoration: defaultDecoration,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.all(Radius.circular(15)),
+        child: hostId != null
+            ? StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(hostId)
+                    .snapshots(),
+                builder: (context, userSnapshot) {
+                  String? coverImageUrl;
+                  
+                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                    final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                    final coverURL = userData?['coverURL'] as String?;
+                    
+                    // Get first cover image URL if available
+                    if (coverURL != null && coverURL.isNotEmpty) {
+                      final coverImages = coverURL.split(',').where((url) => url.trim().isNotEmpty).toList();
+                      if (coverImages.isNotEmpty) {
+                        coverImageUrl = coverImages[0].trim();
+                      }
+                    }
+                  }
+                  
+                  // If cover image exists, show it, otherwise show gradient
+                  return Stack(
+                    children: [
+                      // Background: Cover Image or Gradient
+                      if (coverImageUrl != null && coverImageUrl.isNotEmpty)
+                        Positioned.fill(
+                          child: Image.network(
+                            coverImageUrl,
+                            fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.videocam_rounded,
-                                color: Colors.white,
-                                size: 26,
-                              );
+                              // Fallback to gradient if image fails to load
+                              return Container(decoration: defaultDecoration);
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              // Show gradient while loading
+                              return Container(decoration: defaultDecoration);
                             },
                           ),
-                        ],
+                        )
+                      else
+                        Container(decoration: defaultDecoration),
+                      
+                      // Gradient overlay for better text visibility
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.4),
+                            ],
+                          ),
+                        ),
                       ),
-            ],
-          ),
-          ),
-        ],
+                      
+                      // Content
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Live Badge & Viewers (Top)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.circle,
+                                        size: 6,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        AppLocalizations.of(context)!.liveLabel,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.3),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.remove_red_eye,
+                                            color: Colors.white,
+                                            size: 10,
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            _formatViewers(viewers),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            
+                            // Language + Country + Video Icon (Bottom - Horizontal Row)
+                            userSnapshot.hasData && userSnapshot.data!.exists
+                                ? Builder(
+                                    builder: (context) {
+                                      final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                                      final language = userData?['language'] ?? 'English';
+                                      final country = userData?['country'];
+                                      
+                                      return Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          // Language (no icon)
+                                          Expanded(
+                                            flex: 1,
+                                            child: Text(
+                                              language,
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(alpha: 0.9),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.start,
+                                            ),
+                                          ),
+                                          // Country (if available) or empty space
+                                          Expanded(
+                                            flex: 1,
+                                            child: country != null && country.toString().isNotEmpty
+                                                ? Text(
+                                                    country.toString(),
+                                                    style: TextStyle(
+                                                      color: Colors.white.withValues(alpha: 0.9),
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    textAlign: TextAlign.center,
+                                                  )
+                                                : const SizedBox.shrink(),
+                                          ),
+                                          // Video Icon in Pink Circle
+                                          Expanded(
+                                            flex: 1,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFFFF1B7C), // Pink color
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Center(
+                                                  child: Image.asset(
+                                                    'assets/images/video.png',
+                                                    width: 20,
+                                                    height: 20,
+                                                    fit: BoxFit.contain,
+                                                    errorBuilder: (context, error, stackTrace) {
+                                                      return const Icon(
+                                                        Icons.videocam_rounded,
+                                                        color: Colors.white,
+                                                        size: 20,
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // Fallback if no user data
+                                      Expanded(
+                                        flex: 1,
+                                        child: Text(
+                                          'English',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.9),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          textAlign: TextAlign.start,
+                                        ),
+                                      ),
+                                      // Empty space for country
+                                      const Expanded(
+                                        flex: 1,
+                                        child: SizedBox.shrink(),
+                                      ),
+                                      // Video Icon in Pink Circle
+                                      Expanded(
+                                        flex: 1,
+                                        child: Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFFF1B7C), // Pink color
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Center(
+                                              child: Image.asset(
+                                                'assets/images/video.png',
+                                                width: 20,
+                                                height: 20,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (context, error, stackTrace) {
+                                                  return const Icon(
+                                                    Icons.videocam_rounded,
+                                                    color: Colors.white,
+                                                    size: 20,
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              )
+            : Stack(
+                children: [
+                  // Default gradient background when no hostId
+                  Container(decoration: defaultDecoration),
+                  
+                  // Content
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Live Badge & Viewers (Top)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.circle,
+                                    size: 6,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    AppLocalizations.of(context)!.liveLabel,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.remove_red_eye,
+                                        color: Colors.white,
+                                        size: 10,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        _formatViewers(viewers),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        
+                        // Language + Country + Video Icon (Bottom - Horizontal Row)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Fallback if no hostId
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                'English',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.start,
+                              ),
+                            ),
+                            // Empty space for country
+                            const Expanded(
+                              flex: 1,
+                              child: SizedBox.shrink(),
+                            ),
+                            // Video Icon in Pink Circle
+                            Expanded(
+                              flex: 1,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFFF1B7C), // Pink color
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Image.asset(
+                                      'assets/images/video.png',
+                                      width: 20,
+                                      height: 20,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(
+                                          Icons.videocam_rounded,
+                                          color: Colors.white,
+                                          size: 20,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -1413,31 +1684,52 @@ class _HomeScreenState extends State<HomeScreen> {
           itemBuilder: (context, index) {
             final stream = liveStreams[index];
             return GestureDetector(
-              onTap: () {
+              onTap: () async {
                 if (!mounted) return;
                 // Navigate to live stream as viewer
-                const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
-                
+                // Generate token dynamically using AgoraTokenService
                 debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
                 debugPrint('📺 Channel: ${stream.channelName}');
+                
+                try {
+                  final tokenService = AgoraTokenService();
+                  final token = await tokenService.getAudienceToken(
+                    channelName: stream.channelName,
+                    uid: 0,
+                  );
+                  debugPrint('✅ Generated audience token: ${token.length} chars');
+                  
+                  if (!mounted) return;
                   
                   // Increment viewer count
-                liveStreamService.joinStream(stream.streamId);
+                  liveStreamService.joinStream(stream.streamId);
                   
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => AgoraLiveStreamScreen(
-                      channelName: stream.channelName,
+                        channelName: stream.channelName,
                         token: token,
                         isHost: false, // Viewer mode
-                      streamId: stream.streamId, // Pass streamId for cleanup
+                        streamId: stream.streamId, // Pass streamId for cleanup
                       ),
                     ),
                   ).then((_) {
                     // Decrement viewer count when viewer leaves
-                  liveStreamService.leaveStream(stream.streamId);
-                });
+                    liveStreamService.leaveStream(stream.streamId);
+                  });
+                } catch (e) {
+                  debugPrint('❌ Error generating token: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to join stream: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                }
               },
                   child: _buildLiveStreamCard(
                     hostName: stream.hostName,
@@ -1570,59 +1862,137 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startLiveStream() async {
     if (!mounted) return;
     
+    // Navigator reference for closing loading dialog
+    NavigatorState? navigator;
+    bool isLoadingDialogShown = false;
+    
     try {
+      // Step 1: Check authentication
       final currentUser = _auth.currentUser;
-        if (currentUser == null) {
+      if (currentUser == null) {
         if (!mounted) return;
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context)!.pleaseLoginToStartLiveStream),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.pleaseLoginToStartLiveStream),
+            backgroundColor: Colors.red,
+          ),
+        );
         return;
       }
 
-      // Show loading indicator
+      // Step 2: Check for existing active stream (prevent concurrent streams)
+      final liveStreamService = LiveStreamService();
+      final existingStream = await liveStreamService.getHostActiveStream(currentUser.uid)
+          .timeout(const Duration(seconds: 10));
+      
+      if (existingStream != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('You already have an active live stream. Please end it before starting a new one.'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      // Step 3: Request camera and microphone permissions BEFORE creating stream
       if (!mounted) return;
-      final navigator = Navigator.of(context);
+      final cameraStatus = await Permission.camera.request();
+      final micStatus = await Permission.microphone.request();
+      
+      if (cameraStatus.isDenied || micStatus.isDenied) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera and microphone permissions are required to start a live stream.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+      
+      if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please enable camera and microphone permissions in app settings.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Settings',
+              textColor: Colors.white,
+              onPressed: () => openAppSettings(),
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Step 4: Show loading indicator
+      if (!mounted) return;
+      navigator = Navigator.of(context);
       try {
         showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF8E24AA),
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF8E24AA),
+            ),
           ),
-        ),
-      );
+        );
+        isLoadingDialogShown = true;
       } catch (e) {
         debugPrint('Error showing dialog: $e');
         return;
       }
 
-      // Get user data
-      final userData = await _databaseService.getUserData(currentUser.uid);
+      // Step 5: Get user data
+      final userData = await _databaseService.getUserData(currentUser.uid)
+          .timeout(const Duration(seconds: 10));
       if (!mounted) return;
       
       final hostName = userData?.name ?? currentUser.displayName ?? currentUser.phoneNumber ?? 'Host';
       final hostPhotoUrl = userData?.photoURL;
 
-      // Create live stream in Firebase and get stream ID
-      final liveStreamService = LiveStreamService();
+      // Step 6: Generate unique stream ID and channel name
       final firestore = FirebaseFirestore.instance;
-      
-      // For testing: Use fixed channel name "chamakz" (must match token generation)
-      // For production: Use dynamic channel name based on streamId
-      const channelName = 'chamakz'; // Fixed channel name for testing
-      
-      // Create stream with the channel name
       final streamId = firestore.collection('live_streams').doc().id;
+      final channelName = streamId; // Use streamId as unique channel name
+      
+      // Step 7: Generate token FIRST (before creating stream to avoid orphaned streams)
+      final tokenService = AgoraTokenService();
+      String token;
+      try {
+        token = await tokenService.getHostToken(
+          channelName: channelName,
+          uid: 0,
+        ).timeout(const Duration(seconds: 15));
+        debugPrint('✅ Generated host token: ${token.length} chars');
+        debugPrint('📋 Token preview: ${token.substring(0, 20)}...');
+      } catch (e) {
+        debugPrint('❌ Error generating token: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to generate token: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return; // Don't create stream if token generation fails
+      }
+
+      if (!mounted) return;
+
+      // Step 8: Create stream model
       final stream = LiveStreamModel(
         streamId: streamId,
-        channelName: channelName, // Use fixed channel name for testing
+        channelName: channelName,
         hostId: currentUser.uid,
         hostName: hostName,
         hostPhotoUrl: hostPhotoUrl,
@@ -1632,8 +2002,9 @@ class _HomeScreenState extends State<HomeScreen> {
         isActive: true,
       );
       
-      // Save to Firebase
-      await liveStreamService.createStream(stream);
+      // Step 9: Save to Firebase (AFTER token generation succeeds)
+      await liveStreamService.createStream(stream)
+          .timeout(const Duration(seconds: 10));
       
       debugPrint('✅ Live stream created in Firebase: $streamId');
       debugPrint('📺 Channel name: $channelName');
@@ -1641,57 +2012,35 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('📺 Stream will appear in home page grid');
       
       if (!mounted) return;
-      
-      // Token for Agora
-      // Token generated for channel: "chamakz", UID: 0
-      // Generate new token at: Agora Console > Your Project > Generate Temp Token
-      const token = '007eJxTYHjIN+X7PVPJzqJ/XfNeT720PCf2/S7Zz/vKyztF7lqrPEpUYDAxTkoyTTU0TrYwNjUxMTG1NE22SE4zsDBPNEhOTkw0WVGtltkQyMhQ/yqbkZEBAkF8dobkjMTcxOwqBgYAg14jGw==';
-      
-      debugPrint('🔑 Token: ${token.isEmpty ? "EMPTY (tokenless mode)" : "PROVIDED (${token.length} chars)"}');
-      debugPrint('📋 Token preview: ${token.isEmpty ? "N/A" : token.substring(0, 20)}...');
-      debugPrint('⚠️ If token fails, check:');
-      debugPrint('   1. Token was generated for channel: "$channelName"');
-      debugPrint('   2. Token was generated with UID: 0');
-      debugPrint('   3. Token is not expired');
-      debugPrint('   4. App Certificate status in Agora Console');
 
-        // Close loading dialog
+      // Step 10: Navigate to Agora Live Streaming Screen as Host
+      try {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AgoraLiveStreamScreen(
+              channelName: channelName,
+              token: token,
+              isHost: true, // Host mode
+              streamId: streamId, // Pass streamId for cleanup
+            ),
+          ),
+        );
+      } catch (e) {
+        debugPrint('Navigation error: $e');
         if (mounted) {
-          try {
-            navigator.pop();
-          } catch (e) {
-            debugPrint('Error closing dialog: $e');
-          }
-        }
-
-        // Navigate to Agora Live Streaming Screen as Host
-        if (mounted) {
-          try {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AgoraLiveStreamScreen(
-                  channelName: channelName,
-                  token: token,
-                  isHost: true, // Host mode
-                  streamId: streamId, // Pass streamId for cleanup
-                ),
-              ),
-            );
-          } catch (e) {
-            debugPrint('Navigation error: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to start live stream: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
         }
       }
     } catch (e) {
-      // Close loading dialog if still open
-      if (mounted) {
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (popError) {
-          debugPrint('Error closing dialog: $popError');
-        }
-      }
-
+      debugPrint('❌ Error starting live stream: $e');
+      
       // Show error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1702,7 +2051,21 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       }
-      debugPrint('❌ Error starting live stream: $e');
+    } finally {
+      // Step 11: Always close loading dialog if it was shown
+      if (isLoadingDialogShown && mounted && navigator != null) {
+        try {
+          navigator.pop();
+        } catch (e) {
+          debugPrint('Error closing dialog: $e');
+          // Try alternative method if first fails
+          try {
+            Navigator.of(context, rootNavigator: true).pop();
+          } catch (e2) {
+            debugPrint('Error closing dialog (alternative): $e2');
+          }
+        }
+      }
     }
   }
 
