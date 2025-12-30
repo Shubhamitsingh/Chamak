@@ -58,8 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final List<String> _sliderImages = [
     'assets/images/bannerpromo.jpg',
     'assets/images/bannerpromo1.jpg',
-    'assets/images/banner2.jpeg',
-    'assets/images/banner3.jpeg',
+    'assets/images/promobanner2.jpg',
   ];
 
   @override
@@ -763,24 +762,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     child: Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.image_outlined,
-                            size: 28,
-                            color: Colors.white.withValues(alpha:0.8),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Slide ${index + 1}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                      child: Icon(
+                        Icons.image_outlined,
+                        size: 28,
+                        color: Colors.white.withValues(alpha:0.8),
                       ),
                     ),
                   );

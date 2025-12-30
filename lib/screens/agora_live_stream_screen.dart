@@ -32,6 +32,8 @@ import 'private_call_screen.dart';
 import 'messages_screen.dart';
 import 'chat_screen.dart';
 import '../widgets/low_coin_popup.dart';
+import '../widgets/end_stream_confirmation_sheet.dart';
+import 'live_stream_summary_screen.dart';
 
 // Agora App ID
 const String appId = '43bb5e13c835444595c8cf087a0ccaa4';
@@ -70,6 +72,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   bool _hostIsOffline = false; // Track if host has gone offline
   bool _isViewsSwapped = false; // Track if host and user views are swapped
   DateTime? _joinTime; // Track when viewer joined to avoid false offline detection
+  DateTime? _streamStartTime; // Track when host started the stream
   
   bool _isFollowingHost = false; // Track if viewer is following the host
   bool _isFollowLoading = false; // Track follow/unfollow loading state
@@ -155,6 +158,11 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       _setupRealtimeBalanceListener();
     }
     
+    // Track stream start time for host
+    if (widget.isHost && widget.streamId != null) {
+      _fetchStreamStartTime();
+    }
+    
     // Setup call request listeners
     // Add a small delay to ensure widget is fully mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -182,6 +190,43 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
         });
       }
     });
+  }
+
+  // Fetch stream start time for host
+  Future<void> _fetchStreamStartTime() async {
+    if (widget.streamId == null) return;
+    
+    try {
+      final streamDoc = await FirebaseFirestore.instance
+          .collection('liveStreams')
+          .doc(widget.streamId)
+          .get();
+      
+      if (streamDoc.exists) {
+        final data = streamDoc.data();
+        if (data != null && data['startedAt'] != null) {
+          setState(() {
+            _streamStartTime = DateTime.parse(data['startedAt']);
+          });
+        } else {
+          // Fallback to current time if not found
+          setState(() {
+            _streamStartTime = DateTime.now();
+          });
+        }
+      } else {
+        // Fallback to current time if stream not found
+        setState(() {
+          _streamStartTime = DateTime.now();
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching stream start time: $e');
+      // Fallback to current time on error
+      setState(() {
+        _streamStartTime = DateTime.now();
+      });
+    }
   }
 
   // Start promotional timer
@@ -724,6 +769,102 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Show end stream confirmation popup
+  void _showEndStreamConfirmation() {
+    EndStreamConfirmationSheet.show(
+      context: context,
+      onConfirm: () async {
+        await _endStreamAndShowSummary();
+      },
+      onCancel: () {
+        // Do nothing, just close the popup
+        debugPrint('❌ User cancelled ending stream');
+      },
+    );
+  }
+
+  // End stream and show summary
+  Future<void> _endStreamAndShowSummary() async {
+    try {
+      // Calculate metrics
+      final streamDuration = _streamStartTime != null
+          ? DateTime.now().difference(_streamStartTime!)
+          : const Duration(seconds: 0);
+
+      // Get host info
+      final currentUser = _auth.currentUser;
+      final hostId = currentUser?.uid ?? '';
+      final hostName = currentUser?.displayName ?? 'Host';
+      
+      // Fetch host photo URL
+      String? hostPhotoUrl;
+      try {
+        final userData = await DatabaseService().getUserData(hostId);
+        hostPhotoUrl = userData?.photoURL;
+      } catch (e) {
+        debugPrint('❌ Error fetching host photo: $e');
+      }
+
+      // Calculate followers gained (placeholder - can be connected to real data)
+      // For now, we'll use 0 or fetch from stream data if available
+      int followersGained = 0;
+      try {
+        if (widget.streamId != null) {
+          final streamDoc = await FirebaseFirestore.instance
+              .collection('liveStreams')
+              .doc(widget.streamId)
+              .get();
+          if (streamDoc.exists) {
+            final data = streamDoc.data();
+            // You can add followers tracking logic here
+            // For now, using placeholder
+            followersGained = 0;
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ Error calculating followers: $e');
+      }
+
+      // Calculate income earned (cCoins earned during stream)
+      int incomeEarned = 0;
+      try {
+        final userData = await DatabaseService().getUserData(hostId);
+        // Get initial cCoins from stream start (if tracked)
+        // For now, we'll use current cCoins as placeholder
+        // In production, you'd track cCoins at stream start
+        incomeEarned = userData?.cCoins ?? 0;
+      } catch (e) {
+        debugPrint('❌ Error calculating income: $e');
+      }
+
+      // Cleanup Agora engine
+      await _cleanupAgoraEngine();
+
+      // Navigate to summary screen
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => LiveStreamSummaryScreen(
+              hostId: hostId,
+              hostName: hostName,
+              hostPhotoUrl: hostPhotoUrl,
+              streamDuration: streamDuration,
+              followersGained: followersGained,
+              incomeEarned: incomeEarned,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error ending stream and showing summary: $e');
+      // Fallback: just cleanup and go back
+      await _cleanupAgoraEngine();
+      if (mounted) {
+        Navigator.of(context).pop();
       }
     }
   }
@@ -1700,11 +1841,18 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                   color: Colors.white,
                   size: 20,
                 ),
-                onPressed: () async {
-                  debugPrint('❌ Close button pressed - cleaning up...');
-                  await _cleanupAgoraEngine();
-                  if (mounted) {
-                    Navigator.of(context).pop();
+                onPressed: () {
+                  // For host, show confirmation popup
+                  if (widget.isHost) {
+                    _showEndStreamConfirmation();
+                  } else {
+                    // For viewer, end directly
+                    debugPrint('❌ Close button pressed - cleaning up...');
+                    _cleanupAgoraEngine().then((_) {
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    });
                   }
                 },
               ),
@@ -4058,11 +4206,17 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
         canPop: false, // Prevent default back button behavior
         onPopInvoked: (didPop) async {
           if (didPop) return;
-          // Ensure cleanup happens when back button is pressed
-          debugPrint('🔙 Back button pressed - cleaning up...');
-          await _cleanupAgoraEngine();
-          if (mounted) {
-            Navigator.of(context).pop();
+          
+          // For host, show confirmation popup
+          if (widget.isHost) {
+            _showEndStreamConfirmation();
+          } else {
+            // For viewer, end directly
+            debugPrint('🔙 Back button pressed - cleaning up...');
+            await _cleanupAgoraEngine();
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
           }
         },
         child: Scaffold(
@@ -4321,11 +4475,18 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                           child: IconButton(
                                 padding: EdgeInsets.zero,
                                 icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                            onPressed: () async {
-                              debugPrint('❌ Close button pressed - cleaning up...');
-                              await _cleanupAgoraEngine();
-                              if (mounted) {
-                                Navigator.of(context).pop();
+                            onPressed: () {
+                              // For host, show confirmation popup
+                              if (widget.isHost) {
+                                _showEndStreamConfirmation();
+                              } else {
+                                // For viewer, end directly
+                                debugPrint('❌ Close button pressed - cleaning up...');
+                                _cleanupAgoraEngine().then((_) {
+                                  if (mounted) {
+                                    Navigator.of(context).pop();
+                                  }
+                                });
                               }
                             },
                           ),

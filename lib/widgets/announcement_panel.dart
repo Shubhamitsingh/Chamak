@@ -3,7 +3,6 @@ import 'package:Chamak/generated/l10n/app_localizations.dart';
 import '../services/event_service.dart';
 import '../services/announcement_tracking_service.dart';
 import '../models/announcement_model.dart';
-import '../screens/contact_support_chat_screen.dart';
 
 class AnnouncementPanel extends StatefulWidget {
   const AnnouncementPanel({super.key});
@@ -54,69 +53,6 @@ class _AnnouncementPanelState extends State<AnnouncementPanel> {
                   children: [
                     // Header
                     _buildHeader(context),
-                    
-                    // Need Help? Chat Support Container (Separate container)
-                    Center(
-                      child: Container(
-                        margin: const EdgeInsets.fromLTRB(20, 6, 20, 8),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pop(); // Close announcements panel first
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const ContactSupportChatScreen(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            constraints: const BoxConstraints(maxWidth: 320),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFF69B4), Color(0xFFFF1B7C)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFF69B4).withValues(alpha: 0.3),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                              const Icon(
-                                Icons.support_agent_rounded,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Need Help? Chat Support',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ),
-                              const Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                color: Colors.white,
-                                size: 14,
-                              ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                     
                     // Announcements List (Now with real Firebase data!)
                     Expanded(

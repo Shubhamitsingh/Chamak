@@ -9,6 +9,7 @@ import 'profile_screen.dart';
 import 'chat_list_screen.dart';
 import 'wallet_screen.dart';
 import 'agora_live_stream_screen.dart';
+import 'host_rules_screen.dart';
 import '../widgets/announcement_panel.dart';
 import '../widgets/live_chat_panel.dart';
 import '../services/live_stream_service.dart';
@@ -23,6 +24,60 @@ import '../widgets/coin_purchase_popup.dart';
 import '../services/location_permission_service.dart';
 import '../services/agora_token_service.dart';
 
+// Optimized Scrolling Text Widget for Banner
+class _ScrollingText extends StatelessWidget {
+  final String text;
+  final AnimationController controller;
+
+  const _ScrollingText({
+    required this.text,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            child: Transform.translate(
+              offset: Offset(-controller.value * 300, 0),
+              child: Row(
+                children: [
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                  ),
+                  const SizedBox(width: 100),
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   final String phoneNumber;
   
@@ -35,7 +90,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   int _currentBottomIndex = 0;
   int _topTabIndex = 0; // 0 = Explore, 1 = Live, 2 = Following, 3 = New
   final TextEditingController _searchController = TextEditingController();
@@ -47,10 +102,17 @@ class _HomeScreenState extends State<HomeScreen> {
   final DatabaseService _databaseService = DatabaseService();
   final LocationPermissionService _locationPermissionService = LocationPermissionService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  late AnimationController _marqueeController;
 
   @override
   void initState() {
     super.initState();
+    // Initialize marquee animation controller
+    _marqueeController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
+    
     // 📍 Request location for new users (first time opening app)
     _requestLocationForNewUser();
     // 🪙 Coin Purchase Popup
@@ -378,6 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.dispose();
     _pageController.dispose();
+    _marqueeController.dispose();
     super.dispose();
   }
 
@@ -468,6 +531,9 @@ class _HomeScreenState extends State<HomeScreen> {
           // Top Bar with Explore/Live Toggle and Search in One Line
           _buildTopBar(),
           
+          // Scrolling Announcement Bar
+          _buildAnnouncementBar(),
+          
           // Main Content Area - Swipeable PageView
           Expanded(
             child: ClipRect(
@@ -497,7 +563,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTopBar() {
     return FadeInDown(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        margin: const EdgeInsets.fromLTRB(12, 4, 12, 0),
         height: 42,
         child: Row(
           children: [
@@ -690,18 +756,46 @@ class _HomeScreenState extends State<HomeScreen> {
             
             const SizedBox(width: 12),
             
-            // Announcement Icon with Badge Counter (Only Unseen)
+            // Announcement Icon with Badge Counter (Only Unseen) - Optimized
             StreamBuilder<List<AnnouncementModel>>(
               stream: _eventService.getAnnouncementsStream(),
               builder: (context, announcementSnapshot) {
+                if (!announcementSnapshot.hasData) {
+                  return Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Icon(
+                      Icons.whatshot_rounded,
+                      color: Colors.orange[700],
+                      size: 26,
+                    ),
+                  );
+                }
+                
+                final announcements = announcementSnapshot.data ?? [];
+                
                 return StreamBuilder<Set<String>>(
                   stream: _trackingService.getSeenAnnouncementIdsStream(),
                   builder: (context, seenSnapshot) {
+                    if (!seenSnapshot.hasData) {
+                      return Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.whatshot_rounded,
+                          color: Colors.orange[700],
+                          size: 26,
+                        ),
+                      );
+                    }
+                    
+                    final seenIds = seenSnapshot.data ?? {};
+                    
                     return StreamBuilder<Set<String>>(
                       stream: _trackingService.getDismissedAnnouncementIdsStream(),
                       builder: (context, dismissedSnapshot) {
-                        final announcements = announcementSnapshot.data ?? [];
-                        final seenIds = seenSnapshot.data ?? {};
+                        if (!mounted) {
+                          return const SizedBox.shrink();
+                        }
+                        
                         final dismissedIds = dismissedSnapshot.data ?? {};
                         
                         // Count only NEW and UNSEEN and NOT DISMISSED announcements
@@ -714,6 +808,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         
                         return GestureDetector(
                           onTap: () async {
+                            if (!mounted) return;
                             // Mark all current new announcements as seen when opening
                             final newAnnouncementIds = announcements
                                 .where((a) => a.isNew && !seenIds.contains(a.id))
@@ -724,7 +819,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               await _trackingService.markMultipleAsSeen(newAnnouncementIds);
                             }
                             
-                            _showAnnouncementPanel(context);
+                            if (mounted) {
+                              _showAnnouncementPanel(context);
+                            }
                           },
                           child: Stack(
                             clipBehavior: Clip.none,
@@ -816,6 +913,158 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Helper method to sanitize text and remove problematic characters
+  String _sanitizeText(String? text) {
+    if (text == null || text.isEmpty) return '';
+    
+    try {
+      // Remove null characters, control characters, and problematic unicode
+      String sanitized = text
+          .replaceAll('\x00', '') // Remove null characters
+          .replaceAll(RegExp(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]'), '') // Remove control characters
+          .trim()
+          .replaceAll(RegExp(r'\s+'), ' '); // Replace multiple spaces with single space
+      
+      // Ensure it's valid UTF-8 and doesn't contain widget references
+      sanitized = sanitized.replaceAll(RegExp(r'<[^>]*>'), ''); // Remove any HTML-like tags
+      sanitized = sanitized.replaceAll(RegExp(r'\{[^}]*\}'), ''); // Remove any brace patterns that might be widget references
+      
+      return sanitized;
+    } catch (e) {
+      debugPrint('Error sanitizing text: $e');
+      return text.trim();
+    }
+  }
+
+  // ========== SCROLLING ANNOUNCEMENT BAR ==========
+  Widget _buildAnnouncementBar() {
+    return RepaintBoundary(
+      child: StreamBuilder<List<AnnouncementModel>>(
+        stream: _eventService.getAnnouncementsStream(),
+        builder: (context, announcementSnapshot) {
+        // Show loading state with a placeholder
+        if (announcementSnapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            height: 30,
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF69B4), Color(0xFFFF1B7C)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(
+                    Icons.campaign_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Loading announcements...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Handle errors
+        if (announcementSnapshot.hasError) {
+          debugPrint('Announcement bar error: ${announcementSnapshot.error}');
+          return const SizedBox.shrink();
+        }
+
+        final announcements = announcementSnapshot.data ?? [];
+        
+        // Get announcement text
+        String announcementText;
+        if (announcements.isEmpty) {
+          debugPrint('No announcements found - showing placeholder');
+          announcementText = 'Welcome to Chamakz! Stay tuned for exciting updates and announcements • ';
+        } else {
+          // Get the first active announcement
+          AnnouncementModel? activeAnnouncement;
+          try {
+            activeAnnouncement = announcements.firstWhere(
+              (a) => a.isActive,
+              orElse: () => announcements.first,
+            );
+          } catch (e) {
+            debugPrint('Error getting announcement: $e');
+            announcementText = 'Welcome to Chamakz! Stay tuned for exciting updates • ';
+          }
+
+          if (activeAnnouncement == null) {
+            announcementText = 'Welcome to Chamakz! Stay tuned for exciting updates • ';
+          } else {
+            // Clean the text - remove any extra spaces, null characters, and ensure proper formatting
+            final title = _sanitizeText(activeAnnouncement.title);
+            final description = _sanitizeText(activeAnnouncement.description);
+            announcementText = '$title • $description';
+          }
+        }
+
+        return Container(
+          height: 30,
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFF69B4), Color(0xFFFF1B7C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF69B4).withValues(alpha: 0.2),
+                blurRadius: 3,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Icon
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.campaign_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              // Scrolling Text
+              Expanded(
+                child: ClipRect(
+                  clipBehavior: Clip.hardEdge,
+                  child: _ScrollingText(
+                    text: announcementText,
+                    controller: _marqueeController,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      ),
+    );
+  }
+
   // ========== LIVE CONTENT ==========
   Widget _buildLiveContent() {
     final liveStreamService = LiveStreamService();
@@ -834,6 +1083,7 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Error state
         if (snapshot.hasError) {
+          if (!mounted) return const SizedBox.shrink();
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -851,6 +1101,7 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // No data state
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          if (!mounted) return const SizedBox.shrink();
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -888,10 +1139,11 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 10,
             childAspectRatio: 0.85,
           ),
-          physics: const NeverScrollableScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
+          shrinkWrap: true,
           addRepaintBoundaries: true,
           addAutomaticKeepAlives: false,
-          itemCount: liveStreams.length,
+          itemCount: liveStreams.length > 20 ? 20 : liveStreams.length, // Limit to 20 items
           itemBuilder: (context, index) {
             final stream = liveStreams[index];
             return RepaintBoundary(
@@ -980,6 +1232,7 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Error state
         if (snapshot.hasError) {
+          if (!mounted) return const SizedBox.shrink();
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -997,6 +1250,7 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // No data state
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          if (!mounted) return const SizedBox.shrink();
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1034,69 +1288,68 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 10,
             childAspectRatio: 0.85,
           ),
-          itemCount: liveStreams.length,
+          physics: const ClampingScrollPhysics(),
+          shrinkWrap: true,
+          itemCount: liveStreams.length > 20 ? 20 : liveStreams.length, // Limit to 20 items
           itemBuilder: (context, index) {
             final stream = liveStreams[index];
-            return FadeInUp(
-              delay: Duration(milliseconds: 50 * index),
-              child: GestureDetector(
-                onTap: () async {
-                  if (!mounted) return;
-                  // Navigate to live stream as viewer
-                  // Generate token dynamically using AgoraTokenService
-                  debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
-                  debugPrint('📺 Channel: ${stream.channelName}');
+            return GestureDetector(
+              onTap: () async {
+                if (!mounted) return;
+                // Navigate to live stream as viewer
+                // Generate token dynamically using AgoraTokenService
+                debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
+                debugPrint('📺 Channel: ${stream.channelName}');
+                
+                try {
+                  final tokenService = AgoraTokenService();
+                  final token = await tokenService.getAudienceToken(
+                    channelName: stream.channelName,
+                    uid: 0,
+                  );
+                  debugPrint('✅ Generated audience token: ${token.length} chars');
                   
-                  try {
-                    final tokenService = AgoraTokenService();
-                    final token = await tokenService.getAudienceToken(
-                      channelName: stream.channelName,
-                      uid: 0,
-                    );
-                    debugPrint('✅ Generated audience token: ${token.length} chars');
-                    
-                    if (!mounted) return;
-                    
-                    // Increment viewer count
-                    liveStreamService.joinStream(stream.streamId);
-                    
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AgoraLiveStreamScreen(
-                          channelName: stream.channelName,
-                          token: token,
-                          isHost: false, // Viewer mode
-                          streamId: stream.streamId, // Pass streamId for cleanup
-                        ),
+                  if (!mounted) return;
+                  
+                  // Increment viewer count
+                  liveStreamService.joinStream(stream.streamId);
+                  
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AgoraLiveStreamScreen(
+                        channelName: stream.channelName,
+                        token: token,
+                        isHost: false, // Viewer mode
+                        streamId: stream.streamId, // Pass streamId for cleanup
                       ),
-                    ).then((_) {
-                      // Decrement viewer count when viewer leaves
-                      liveStreamService.leaveStream(stream.streamId);
-                    });
-                  } catch (e) {
-                    debugPrint('❌ Error generating token: $e');
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to join stream: ${e.toString()}'),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    }
+                    ),
+                  ).then((_) {
+                    // Decrement viewer count when viewer leaves
+                    liveStreamService.leaveStream(stream.streamId);
+                  });
+                } catch (e) {
+                  debugPrint('❌ Error generating token: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to join stream: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
                   }
-                },
-                  child: _buildLiveStreamCard(
-                    hostName: stream.hostName,
-                    title: stream.title,
-                    viewers: stream.viewerCount,
-                    thumbnail: Icons.live_tv,
-                    isLive: true,
-                    hostPhotoUrl: stream.hostPhotoUrl,
-                    streamId: stream.streamId, // Pass streamId for chat
-                    hostId: stream.hostId, // Pass hostId to fetch user data
-                  ),
+                }
+              },
+              child: _buildLiveStreamCard(
+                hostName: stream.hostName,
+                title: stream.title,
+                viewers: stream.viewerCount,
+                thumbnail: Icons.live_tv,
+                isLive: true,
+                hostPhotoUrl: stream.hostPhotoUrl,
+                streamId: stream.streamId, // Pass streamId for chat
+                hostId: stream.hostId, // Pass hostId to fetch user data
               ),
             );
           },
@@ -1624,6 +1877,7 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Error state
         if (snapshot.hasError) {
+          if (!mounted) return const SizedBox.shrink();
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1641,6 +1895,7 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // No data state
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          if (!mounted) return const SizedBox.shrink();
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1678,9 +1933,10 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 10,
             childAspectRatio: 0.85,
           ),
-          physics: const NeverScrollableScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
+          shrinkWrap: true,
           addAutomaticKeepAlives: false,
-          itemCount: liveStreams.length,
+          itemCount: liveStreams.length > 20 ? 20 : liveStreams.length, // Limit to 20 items
           itemBuilder: (context, index) {
             final stream = liveStreams[index];
             return GestureDetector(
@@ -1811,7 +2067,14 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: () {
-                _startLiveStream();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HostRulesScreen(
+                      onGoLive: _startLiveStream,
+                    ),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8E24AA),
@@ -1862,51 +2125,97 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startLiveStream() async {
     if (!mounted) return;
     
-    // Navigator reference for closing loading dialog
-    NavigatorState? navigator;
+    // Step 1: Check authentication
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.pleaseLoginToStartLiveStream),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Step 2: Check for existing active stream and auto-end if found
+    final liveStreamService = LiveStreamService();
+    LiveStreamModel? existingStream;
+    try {
+      existingStream = await liveStreamService.getHostActiveStream(currentUser.uid)
+          .timeout(const Duration(seconds: 8));
+    } catch (e) {
+      debugPrint('⚠️ Error checking existing stream (continuing anyway): $e');
+      // Continue even if check fails
+    }
+    
+    // Auto-end previous stream if exists (no popup - direct action)
+    if (existingStream != null) {
+      try {
+        // Automatically end the existing stream (fire and forget - don't wait)
+        liveStreamService.endLiveStream(existingStream.streamId)
+            .timeout(const Duration(seconds: 5))
+            .catchError((e) => debugPrint('⚠️ Error ending previous stream: $e'));
+        debugPrint('✅ Previous stream auto-ending in background...');
+      } catch (e) {
+        debugPrint('⚠️ Error ending previous stream (continuing anyway): $e');
+        // Continue even if ending fails - don't block user
+      }
+    }
+
+    // Step 3: Show loading dialog BEFORE permissions
+    if (!mounted) return;
     bool isLoadingDialogShown = false;
+    NavigatorState? navigator;
     
     try {
-      // Step 1: Check authentication
-      final currentUser = _auth.currentUser;
-      if (currentUser == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.pleaseLoginToStartLiveStream),
-            backgroundColor: Colors.red,
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                color: Color(0xFFFF69B4),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Starting live stream...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-        );
-        return;
-      }
+        ),
+      );
+      isLoadingDialogShown = true;
+      navigator = Navigator.of(context);
+    } catch (e) {
+      debugPrint('Error showing dialog: $e');
+      return;
+    }
 
-      // Step 2: Check for existing active stream (prevent concurrent streams)
-      final liveStreamService = LiveStreamService();
-      final existingStream = await liveStreamService.getHostActiveStream(currentUser.uid)
-          .timeout(const Duration(seconds: 10));
-      
-      if (existingStream != null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('You already have an active live stream. Please end it before starting a new one.'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-
-      // Step 3: Request camera and microphone permissions BEFORE creating stream
+    try {
+      // Step 4: Request permissions (parallel)
       if (!mounted) return;
-      final cameraStatus = await Permission.camera.request();
-      final micStatus = await Permission.microphone.request();
+      final permissions = await Future.wait([
+        Permission.camera.request(),
+        Permission.microphone.request(),
+      ]);
+      final cameraStatus = permissions[0];
+      final micStatus = permissions[1];
       
       if (cameraStatus.isDenied || micStatus.isDenied) {
+        if (isLoadingDialogShown && navigator != null) navigator.pop();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Camera and microphone permissions are required to start a live stream.'),
+            content: const Text('Camera and microphone permissions are required to start a live stream.'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -1915,10 +2224,11 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       
       if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
+        if (isLoadingDialogShown && navigator != null) navigator.pop();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Please enable camera and microphone permissions in app settings.'),
+            content: const Text('Please enable camera and microphone permissions in app settings.'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
             action: SnackBarAction(
@@ -1931,65 +2241,57 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Step 4: Show loading indicator
+      // Step 5: Get user data and generate stream ID in parallel
       if (!mounted) return;
-      navigator = Navigator.of(context);
+      
+      // Generate stream ID immediately (no network needed)
+      final streamId = FirebaseFirestore.instance.collection('live_streams').doc().id;
+      final channelName = streamId;
+      
+      // Get user data with longer timeout and fallback
+      dynamic userData;
       try {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFFFF69B4),
-            ),
-          ),
-        );
-        isLoadingDialogShown = true;
+        userData = await _databaseService.getUserData(currentUser.uid)
+            .timeout(const Duration(seconds: 8));
       } catch (e) {
-        debugPrint('Error showing dialog: $e');
-        return;
+        debugPrint('⚠️ Error getting user data (using fallback): $e');
+        userData = null; // Use fallback values
       }
-
-      // Step 5: Get user data
-      final userData = await _databaseService.getUserData(currentUser.uid)
-          .timeout(const Duration(seconds: 10));
-      if (!mounted) return;
       
       final hostName = userData?.name ?? currentUser.displayName ?? currentUser.phoneNumber ?? 'Host';
       final hostPhotoUrl = userData?.photoURL;
 
-      // Step 6: Generate unique stream ID and channel name
-      final firestore = FirebaseFirestore.instance;
-      final streamId = firestore.collection('live_streams').doc().id;
-      final channelName = streamId; // Use streamId as unique channel name
-      
-      // Step 7: Generate token FIRST (before creating stream to avoid orphaned streams)
+      // Step 6: Generate token (most time-consuming step)
+      if (!mounted) return;
       final tokenService = AgoraTokenService();
       String token;
       try {
         token = await tokenService.getHostToken(
           channelName: channelName,
           uid: 0,
-        ).timeout(const Duration(seconds: 15));
+        ).timeout(const Duration(seconds: 15)); // Increased timeout for token generation
         debugPrint('✅ Generated host token: ${token.length} chars');
-        debugPrint('📋 Token preview: ${token.substring(0, 20)}...');
       } catch (e) {
+        if (isLoadingDialogShown && navigator != null) {
+          try {
+            navigator.pop();
+          } catch (_) {}
+        }
         debugPrint('❌ Error generating token: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to generate token: ${e.toString()}'),
+              content: Text('Failed to generate token. Please check your internet connection and try again.'),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(seconds: 4),
             ),
           );
         }
-        return; // Don't create stream if token generation fails
+        return;
       }
 
+      // Step 7: Create stream in Firebase
       if (!mounted) return;
-
-      // Step 8: Create stream model
       final stream = LiveStreamModel(
         streamId: streamId,
         channelName: channelName,
@@ -2002,44 +2304,51 @@ class _HomeScreenState extends State<HomeScreen> {
         isActive: true,
       );
       
-      // Step 9: Save to Firebase (AFTER token generation succeeds)
-      await liveStreamService.createStream(stream)
-          .timeout(const Duration(seconds: 10));
+      // Create stream with longer timeout and better error handling
+      try {
+        await liveStreamService.createStream(stream)
+            .timeout(const Duration(seconds: 10));
+        debugPrint('✅ Live stream created: $streamId');
+      } catch (e) {
+        debugPrint('⚠️ Error creating stream (but continuing): $e');
+        // Continue anyway - stream might still work
+      }
       
-      debugPrint('✅ Live stream created in Firebase: $streamId');
-      debugPrint('📺 Channel name: $channelName');
-      debugPrint('📺 Stream ID: $streamId');
-      debugPrint('📺 Stream will appear in home page grid');
+      // Close loading dialog
+      if (isLoadingDialogShown && navigator != null) {
+        navigator.pop();
+        isLoadingDialogShown = false;
+      }
       
       if (!mounted) return;
 
-      // Step 10: Navigate to Agora Live Streaming Screen as Host
-      try {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AgoraLiveStreamScreen(
-              channelName: channelName,
-              token: token,
-              isHost: true, // Host mode
-              streamId: streamId, // Pass streamId for cleanup
-            ),
+      // Step 8: Navigate to live stream screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AgoraLiveStreamScreen(
+            channelName: channelName,
+            token: token,
+            isHost: true,
+            streamId: streamId,
           ),
-        );
-      } catch (e) {
-        debugPrint('Navigation error: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to start live stream: ${e.toString()}'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      }
+        ),
+      );
     } catch (e) {
       debugPrint('❌ Error starting live stream: $e');
+      
+      // Close loading dialog
+      if (isLoadingDialogShown && navigator != null) {
+        try {
+          navigator.pop();
+        } catch (e) {
+          try {
+            Navigator.of(context, rootNavigator: true).pop();
+          } catch (e2) {
+            debugPrint('Error closing dialog: $e2');
+          }
+        }
+      }
       
       // Show error message
       if (mounted) {
@@ -2050,21 +2359,6 @@ class _HomeScreenState extends State<HomeScreen> {
             duration: const Duration(seconds: 3),
           ),
         );
-      }
-    } finally {
-      // Step 11: Always close loading dialog if it was shown
-      if (isLoadingDialogShown && mounted && navigator != null) {
-        try {
-          navigator.pop();
-        } catch (e) {
-          debugPrint('Error closing dialog: $e');
-          // Try alternative method if first fails
-          try {
-            Navigator.of(context, rootNavigator: true).pop();
-          } catch (e2) {
-            debugPrint('Error closing dialog (alternative): $e2');
-          }
-        }
       }
     }
   }
@@ -2086,9 +2380,16 @@ class _HomeScreenState extends State<HomeScreen> {
     return BottomNavigationBar(
         currentIndex: _currentBottomIndex,
         onTap: (index) {
-          // Handle (+) button click (index 2) - navigate to live streaming screen
+          // Handle (+) button click (index 2) - navigate to host rules screen
           if (index == 2) {
-            _startLiveStream();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HostRulesScreen(
+                  onGoLive: _startLiveStream,
+                ),
+              ),
+            );
             // Don't change the selected index, keep it on current tab
             return;
           }

@@ -668,10 +668,47 @@ class LiveStreamService {
           .where('hostId', isEqualTo: hostId)
           .where('isActive', isEqualTo: true)
           .limit(1)
-          .get();
+          .get(const GetOptions(source: Source.server)); // Force server read for fresh data
       
       if (querySnapshot.docs.isNotEmpty) {
-        return LiveStreamModel.fromMap(querySnapshot.docs.first.data());
+        final doc = querySnapshot.docs.first;
+        final data = doc.data();
+        final stream = LiveStreamModel.fromMap(data);
+        
+        // Check hostStatus - if it's 'ended', the stream is not actually active
+        final hostStatus = data['hostStatus'] as String?;
+        if (hostStatus == 'ended') {
+          print('⚠️ Found stream with hostStatus=ended - auto-ending: ${doc.id}');
+          try {
+            await endLiveStream(doc.id);
+            return null;
+          } catch (e) {
+            print('❌ Error ending stream with ended status: $e');
+            return null;
+          }
+        }
+        
+        // Check if stream is stale (older than 3 minutes) - likely from app crash/force close
+        final startedAt = stream.startedAt;
+        final now = DateTime.now();
+        final duration = now.difference(startedAt);
+        
+        // If stream is older than 3 minutes, it's likely stale (app was force-closed)
+        if (duration.inMinutes > 3) {
+          print('⚠️ Found stale stream (${duration.inMinutes} minutes old) - auto-ending: ${doc.id}');
+          try {
+            // Auto-end the stale stream
+            await endLiveStream(doc.id);
+            print('✅ Stale stream auto-ended');
+            return null; // Return null so user can start a new stream
+          } catch (e) {
+            print('❌ Error auto-ending stale stream: $e');
+            // Still return null to allow new stream
+            return null;
+          }
+        }
+        
+        return stream;
       }
       
       return null;
