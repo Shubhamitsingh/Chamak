@@ -211,7 +211,7 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(
-                color: const Color(0xFF9C27B0),
+                color: const Color(0xFFFF69B4),
                 strokeWidth: 2.5,
               ),
               const SizedBox(height: 12),

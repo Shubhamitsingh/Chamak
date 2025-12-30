@@ -4074,7 +4074,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
+                  CircularProgressIndicator(color: Color(0xFFFF69B4)),
                   SizedBox(height: 16),
                   Text('Initializing live stream...'),
                 ],

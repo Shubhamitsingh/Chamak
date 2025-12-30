@@ -513,7 +513,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
           : SingleChildScrollView(
               child: Column(
                 children: [

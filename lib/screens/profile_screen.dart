@@ -144,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
             return const Center(
               child: CircularProgressIndicator(
-                color: Color(0xFFE91E63),
+                color: Color(0xFFFF69B4),
               ),
             );
           }
@@ -293,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 return const Center(
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Color(0xFF9C27B0),
+                                    color: Color(0xFFFF69B4),
                                   ),
                                 );
                               },
@@ -335,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 return const Center(
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Color(0xFF9C27B0),
+                                    color: Color(0xFFFF69B4),
                                   ),
                                 );
                               },

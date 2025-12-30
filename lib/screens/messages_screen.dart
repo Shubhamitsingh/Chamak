@@ -191,7 +191,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              color: Color(0xFF9C27B0),
+              color: Color(0xFFFF69B4),
             ),
           );
         }

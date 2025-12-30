@@ -129,7 +129,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           builder: (context, giftSnapshot) {
             if (giftSnapshot.connectionState == ConnectionState.waiting ||
                 withdrawalSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)));
             }
 
             if (giftSnapshot.hasError || withdrawalSnapshot.hasError) {
@@ -148,7 +148,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 });
                 // Show loading while switching to fallback
                 return const Center(
-                  child: CircularProgressIndicator(),
+                  child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
                 );
               }
               

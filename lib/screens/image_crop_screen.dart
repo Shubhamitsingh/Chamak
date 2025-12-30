@@ -199,7 +199,7 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const CircularProgressIndicator(
-                      color: Color(0xFF9C27B0),
+                      color: Color(0xFFFF69B4),
                     ),
                     const SizedBox(height: 20),
                     Text(

@@ -827,7 +827,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              color: Color(0xFF8E24AA), // purple loader
+              color: Color(0xFFFF69B4), // pink loader
             ),
           );
         }
@@ -973,7 +973,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              color: Color(0xFF8E24AA),
+              color: Color(0xFFFF69B4),
             ),
           );
         }
@@ -1617,7 +1617,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              color: Color(0xFF8E24AA),
+              color: Color(0xFFFF69B4),
             ),
           );
         }
@@ -1940,7 +1940,7 @@ class _HomeScreenState extends State<HomeScreen> {
           barrierDismissible: false,
           builder: (context) => const Center(
             child: CircularProgressIndicator(
-              color: Color(0xFF8E24AA),
+              color: Color(0xFFFF69B4),
             ),
           ),
         );

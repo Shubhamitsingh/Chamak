@@ -115,7 +115,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(

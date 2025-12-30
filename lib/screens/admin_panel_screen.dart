@@ -251,7 +251,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
           backgroundColor: const Color(0xFF04B104),
         ),
         body: const Center(
-          child: CircularProgressIndicator(),
+          child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
         ),
       );
     }
@@ -429,7 +429,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
             if (_isLoading)
               const Padding(
                 padding: EdgeInsets.all(8.0),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4))),
               ),
             if (_searchResults.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -1113,7 +1113,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
       stream: _withdrawalService.getAllWithdrawalRequests(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)));
         }
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));

@@ -127,8 +127,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              // Match events theme with purple accent
-              color: Color(0xFF8E24AA),
+              color: Color(0xFFFF69B4),
             ),
           );
         }
@@ -255,8 +254,7 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
           debugPrint('⏳ [EventScreen] Waiting for data...');
           return const Center(
             child: CircularProgressIndicator(
-              // Match announcements theme with purple accent
-              color: Color(0xFF8E24AA),
+              color: Color(0xFFFF69B4),
             ),
           );
         }
