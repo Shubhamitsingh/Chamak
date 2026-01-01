@@ -1,5 +1,9 @@
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/promotion_model.dart';
@@ -45,8 +49,111 @@ class PromotionService {
     }
   }
 
-  /// Upload promotional image to Firebase Storage
+  /// Add watermark (app logo) to an image file before upload
+  Future<Uint8List?> _addWatermarkToImageFile(String filePath) async {
+    try {
+      // Load the base image from file
+      final File imageFile = File(filePath);
+      final Uint8List baseImageBytes = await imageFile.readAsBytes();
+      final ui.Codec baseCodec = await ui.instantiateImageCodec(baseImageBytes);
+      final ui.FrameInfo baseFrameInfo = await baseCodec.getNextFrame();
+      final ui.Image baseImage = baseFrameInfo.image;
+
+      // Load the watermark logo from assets
+      final ByteData logoData = await rootBundle.load('assets/images/logopink.png');
+      final Uint8List logoBytes = logoData.buffer.asUint8List();
+      final ui.Codec logoCodec = await ui.instantiateImageCodec(logoBytes);
+      final ui.FrameInfo logoFrameInfo = await logoCodec.getNextFrame();
+      final ui.Image logoImage = logoFrameInfo.image;
+
+      // Calculate watermark size (15% of image width, maintain aspect ratio)
+      final double watermarkWidth = baseImage.width * 0.15;
+      final double watermarkHeight = (logoImage.height / logoImage.width) * watermarkWidth;
+
+      // Create a canvas to draw the watermarked image
+      final ui.PictureRecorder recorder = ui.PictureRecorder();
+      final ui.Canvas canvas = ui.Canvas(recorder);
+      
+      // Draw the base image
+      canvas.drawImage(baseImage, Offset.zero, ui.Paint());
+      
+      // Draw watermark in top-left corner with padding
+      const double padding = 12.0;
+      final ui.Rect watermarkRect = ui.Rect.fromLTWH(
+        padding,
+        padding,
+        watermarkWidth,
+        watermarkHeight,
+      );
+      
+      // Draw watermark
+      canvas.drawImageRect(
+        logoImage,
+        ui.Rect.fromLTWH(0, 0, logoImage.width.toDouble(), logoImage.height.toDouble()),
+        watermarkRect,
+        ui.Paint()..filterQuality = ui.FilterQuality.high,
+      );
+
+      // Convert to image
+      final ui.Picture picture = recorder.endRecording();
+      final ui.Image watermarkedImage = await picture.toImage(
+        baseImage.width,
+        baseImage.height,
+      );
+
+      // Convert to bytes
+      final ByteData? byteData = await watermarkedImage.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+
+      // Dispose images
+      baseImage.dispose();
+      logoImage.dispose();
+      watermarkedImage.dispose();
+
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('Error adding watermark to image: $e');
+      return null;
+    }
+  }
+
+  /// Upload promotional image to Firebase Storage (with watermark)
   Future<String> uploadPromotionalImage(String filePath, String userId) async {
+    try {
+      // Add watermark to the image before uploading
+      final watermarkedBytes = await _addWatermarkToImageFile(filePath);
+      
+      if (watermarkedBytes == null) {
+        debugPrint('Warning: Failed to add watermark, uploading original image');
+        // Fallback to original image if watermarking fails
+        return await _uploadImageFile(filePath, userId);
+      }
+
+      // Upload watermarked image
+      final fileName = 'promotions/${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final ref = _storage.ref().child(fileName);
+      
+      final uploadTask = ref.putData(
+        watermarkedBytes,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          cacheControl: 'public, max-age=31536000',
+        ),
+      );
+
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('Error uploading promotional image: $e');
+      rethrow;
+    }
+  }
+
+  /// Upload image file without watermark (fallback)
+  Future<String> _uploadImageFile(String filePath, String userId) async {
     try {
       final fileName = 'promotions/${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final ref = _storage.ref().child(fileName);
@@ -64,7 +171,7 @@ class PromotionService {
       
       return downloadUrl;
     } catch (e) {
-      debugPrint('Error uploading promotional image: $e');
+      debugPrint('Error uploading image file: $e');
       rethrow;
     }
   }

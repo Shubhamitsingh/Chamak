@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -95,6 +96,10 @@ class _PromotionScreenState extends State<PromotionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenHeight = screenSize.height;
+    final screenWidth = screenSize.width;
+    
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -117,35 +122,44 @@ class _PromotionScreenState extends State<PromotionScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.04, // 4% of screen width
+                vertical: 16,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Image Carousel
-                  _buildImageCarousel(),
-                  const SizedBox(height: 24),
+                  _buildImageCarousel(screenHeight, screenWidth),
+                  SizedBox(height: screenHeight * 0.03), // 3% of screen height
                   
                   // Attractive Text
-                  _buildAttractiveText(),
-                  const SizedBox(height: 36),
+                  _buildAttractiveText(screenWidth),
+                  SizedBox(height: screenHeight * 0.04), // 4% of screen height
                   
                   // Action Buttons
-                  _buildActionButtons(),
-                  const SizedBox(height: 20),
+                  _buildActionButtons(screenWidth),
+                  SizedBox(height: screenHeight * 0.025), // 2.5% of screen height
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildImageCarousel() {
+  Widget _buildImageCarousel(double screenHeight, double screenWidth) {
     // Always use local asset images
     final List<String> imagesToShow = _localPromoImages;
+    
+    // Responsive carousel height: 40-50% of screen height, min 300, max 500
+    final carouselHeight = (screenHeight * 0.45).clamp(300.0, 500.0);
+    
+    // Responsive horizontal margin: 8-10% of screen width, min 24, max 60 (further reduced container width)
+    final horizontalMargin = (screenWidth * 0.09).clamp(24.0, 60.0);
 
     return Column(
       children: [
         SizedBox(
-          height: 400, // Increased height
+          height: carouselHeight,
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
@@ -155,7 +169,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
             itemBuilder: (context, index) {
               final imagePath = imagesToShow[index];
               return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 40), // Reduced width with more margin
+                margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
@@ -208,16 +222,26 @@ class _PromotionScreenState extends State<PromotionScreen> {
     );
   }
 
-  Widget _buildAttractiveText() {
+  Widget _buildAttractiveText(double screenWidth) {
+    // Responsive font sizes based on screen width
+    final titleFontSize = (screenWidth * 0.045).clamp(16.0, 20.0);
+    final subtitleFontSize = (screenWidth * 0.033).clamp(12.0, 14.0);
+    
+    // Responsive padding: 4-6% of screen width
+    final horizontalPadding = (screenWidth * 0.05).clamp(16.0, 24.0);
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: 16,
+      ),
       child: Column(
         children: [
           Text(
             'Invite friends. Earn instantly.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: titleFontSize,
               fontWeight: FontWeight.bold,
               color: Colors.grey[900],
               letterSpacing: 0.5,
@@ -229,7 +253,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
             'Share your referral link and get rewarded for every friend who joins!',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: subtitleFontSize,
               color: Colors.grey[600],
               height: 1.4,
             ),
@@ -239,13 +263,25 @@ class _PromotionScreenState extends State<PromotionScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(double screenWidth) {
+    // Responsive button width: 30-35% of screen width, min 120, max 160
+    final buttonWidth = (screenWidth * 0.32).clamp(120.0, 160.0);
+    
+    // Responsive font size
+    final buttonFontSize = (screenWidth * 0.035).clamp(13.0, 15.0);
+    
+    // Responsive button height
+    final buttonHeight = (screenWidth * 0.11).clamp(44.0, 50.0);
+    
+    // Responsive spacing between buttons
+    final buttonSpacing = (screenWidth * 0.03).clamp(8.0, 16.0);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Share URL Button
         SizedBox(
-          width: 140,
+          width: buttonWidth,
           child: ElevatedButton(
             onPressed: _handleShareURL,
             style: ElevatedButton.styleFrom(
@@ -256,21 +292,21 @@ class _PromotionScreenState extends State<PromotionScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              minimumSize: const Size(140, 44),
+              minimumSize: Size(buttonWidth, buttonHeight),
             ),
-            child: const Text(
+            child: Text(
               'Share URL',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: buttonFontSize,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: buttonSpacing),
         // Save QR Code Button
         SizedBox(
-          width: 140,
+          width: buttonWidth,
           child: ElevatedButton(
             onPressed: _handleSaveQRCode,
             style: ElevatedButton.styleFrom(
@@ -280,12 +316,12 @@ class _PromotionScreenState extends State<PromotionScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              minimumSize: const Size(140, 44),
+              minimumSize: Size(buttonWidth, buttonHeight),
             ),
             child: Text(
               AppLocalizations.of(context)!.saveQRCode,
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: buttonFontSize,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -306,11 +342,30 @@ class _PromotionScreenState extends State<PromotionScreen> {
       // Copy to clipboard
       await Clipboard.setData(ClipboardData(text: _appLink!));
 
-      // Share using native share dialog
-      await Share.share(
-        'Check out Chamakz! Download the app: $_appLink',
-        subject: 'Chamakz App',
-      );
+      // Get the first promo image and add watermark
+      final promoImagePath = _localPromoImages[0];
+      final watermarkedImage = await _addWatermarkToAssetImage(promoImagePath);
+      
+      if (watermarkedImage != null) {
+        // Save watermarked image to temp file
+        final directory = await getApplicationDocumentsDirectory();
+        final tempFilePath = '${directory.path}/share_promo_${DateTime.now().millisecondsSinceEpoch}.png';
+        final tempFile = File(tempFilePath);
+        await tempFile.writeAsBytes(watermarkedImage);
+
+        // Share image along with text
+        await Share.shareXFiles(
+          [XFile(tempFilePath)],
+          text: 'Check out Chamakz! Download the app: $_appLink',
+          subject: 'Chamakz App',
+        );
+      } else {
+        // Fallback to text-only share if watermarking fails
+        await Share.share(
+          'Check out Chamakz! Download the app: $_appLink',
+          subject: 'Chamakz App',
+        );
+      }
 
       // Calculate and award reward
       final reward = await _rewardService.calculateReward(
@@ -384,6 +439,75 @@ class _PromotionScreenState extends State<PromotionScreen> {
     }
   }
 
+  /// Add watermark (app logo) to an asset image
+  Future<Uint8List?> _addWatermarkToAssetImage(String assetPath) async {
+    try {
+      // Load the base image from assets
+      final ByteData baseImageData = await rootBundle.load(assetPath);
+      final Uint8List baseImageBytes = baseImageData.buffer.asUint8List();
+      final ui.Codec baseCodec = await ui.instantiateImageCodec(baseImageBytes);
+      final ui.FrameInfo baseFrameInfo = await baseCodec.getNextFrame();
+      final ui.Image baseImage = baseFrameInfo.image;
+
+      // Load the watermark logo from assets
+      final ByteData logoData = await rootBundle.load('assets/images/logopink.png');
+      final Uint8List logoBytes = logoData.buffer.asUint8List();
+      final ui.Codec logoCodec = await ui.instantiateImageCodec(logoBytes);
+      final ui.FrameInfo logoFrameInfo = await logoCodec.getNextFrame();
+      final ui.Image logoImage = logoFrameInfo.image;
+
+      // Calculate watermark size (10% of image width, maintain aspect ratio)
+      final double watermarkWidth = baseImage.width * 0.15;
+      final double watermarkHeight = (logoImage.height / logoImage.width) * watermarkWidth;
+
+      // Create a canvas to draw the watermarked image
+      final ui.PictureRecorder recorder = ui.PictureRecorder();
+      final ui.Canvas canvas = ui.Canvas(recorder);
+      
+      // Draw the base image
+      canvas.drawImage(baseImage, Offset.zero, ui.Paint());
+      
+      // Draw watermark in top-left corner with padding
+      const double padding = 12.0;
+      final ui.Rect watermarkRect = ui.Rect.fromLTWH(
+        padding,
+        padding,
+        watermarkWidth,
+        watermarkHeight,
+      );
+      
+      // Draw watermark with slight transparency for better visibility
+      canvas.drawImageRect(
+        logoImage,
+        ui.Rect.fromLTWH(0, 0, logoImage.width.toDouble(), logoImage.height.toDouble()),
+        watermarkRect,
+        ui.Paint()..filterQuality = ui.FilterQuality.high,
+      );
+
+      // Convert to image
+      final ui.Picture picture = recorder.endRecording();
+      final ui.Image watermarkedImage = await picture.toImage(
+        baseImage.width,
+        baseImage.height,
+      );
+
+      // Convert to bytes
+      final ByteData? byteData = await watermarkedImage.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+
+      // Dispose images
+      baseImage.dispose();
+      logoImage.dispose();
+      watermarkedImage.dispose();
+
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('Error adding watermark to asset image: $e');
+      return null;
+    }
+  }
+
   Future<Uint8List?> _generateQRCodeImage(String data) async {
     try {
       final qrValidationResult = QrValidator.validate(
@@ -405,7 +529,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
       );
 
       final picRecorder = ui.PictureRecorder();
-      final canvas = Canvas(picRecorder);
+      final canvas = ui.Canvas(picRecorder);
       const size = 500.0;
       painter.paint(canvas, const Size(size, size));
       final picture = picRecorder.endRecording();

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../services/gift_service.dart';
 import '../services/withdrawal_service.dart';
-import '../models/gift_model.dart';
 import '../models/withdrawal_request_model.dart';
 import 'package:intl/intl.dart';
 
@@ -15,7 +13,6 @@ class TransactionHistoryScreen extends StatefulWidget {
 
 class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GiftService _giftService = GiftService();
   final WithdrawalService _withdrawalService = WithdrawalService();
 
   String _selectedFilter = 'all'; // 'all', 'payment_request', 'withdrawals'
@@ -117,24 +114,16 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         ? _withdrawalService.getUserWithdrawalRequestsFallback(userId)
         : _withdrawalService.getUserWithdrawalRequests(userId);
     
-    final giftStream = _useFallback
-        ? _giftService.getHostReceivedGiftsFallback(userId)
-        : _giftService.getHostReceivedGifts(userId);
-    
     return StreamBuilder<List<WithdrawalRequestModel>>(
       stream: withdrawalStream,
       builder: (context, withdrawalSnapshot) {
-        return StreamBuilder<List<GiftModel>>(
-          stream: giftStream,
-          builder: (context, giftSnapshot) {
-            if (giftSnapshot.connectionState == ConnectionState.waiting ||
-                withdrawalSnapshot.connectionState == ConnectionState.waiting) {
+            if (withdrawalSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)));
             }
 
-            if (giftSnapshot.hasError || withdrawalSnapshot.hasError) {
-              final error = giftSnapshot.error ?? withdrawalSnapshot.error;
-              final errorString = error.toString();
+            if (withdrawalSnapshot.hasError) {
+              final error = withdrawalSnapshot.error;
+              final errorString = error!.toString();
               
               // Check if it's an index error - use fallback automatically
               if ((errorString.contains('index') || errorString.contains('failed-precondition')) && !_useFallback) {
@@ -247,7 +236,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               );
             }
 
-            final gifts = giftSnapshot.data ?? [];
             final withdrawals = withdrawalSnapshot.data ?? [];
 
             // Filter withdrawals by status
@@ -260,11 +248,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 .toList();
 
             // Combine and sort transactions based on filter
+            // NOTE: Only show withdrawal requests, NOT gift earnings
             List<dynamic> combined = [];
             
             if (_selectedFilter == 'all') {
-              // Show everything: earnings + all withdrawal requests
-              combined.addAll(gifts);
+              // Show all withdrawal requests only (pending, approved, paid)
               combined.addAll(withdrawals);
             } else if (_selectedFilter == 'payment_request') {
               // Show only pending/approved payment requests (not paid yet)
@@ -279,10 +267,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               DateTime? dateA;
               DateTime? dateB;
 
-              if (a is GiftModel) dateA = a.timestamp;
               if (a is WithdrawalRequestModel) dateA = a.requestDate;
-
-              if (b is GiftModel) dateB = b.timestamp;
               if (b is WithdrawalRequestModel) dateB = b.requestDate;
 
               if (dateA == null && dateB == null) return 0;
@@ -313,82 +298,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               itemCount: combined.length,
               itemBuilder: (context, index) {
                 final item = combined[index];
-                if (item is GiftModel) {
-                  return _buildGiftTransactionItem(item);
-                } else if (item is WithdrawalRequestModel) {
+                // Only show withdrawal requests now
+                if (item is WithdrawalRequestModel) {
                   return _buildWithdrawalRequestItem(item);
                 }
                 return const SizedBox.shrink();
               },
             );
-          },
-        );
       },
-    );
-  }
-
-  Widget _buildGiftTransactionItem(GiftModel gift) {
-    final cCoinsEarned = gift.cCoinsEarned ?? 0;
-    final timestamp = gift.timestamp;
-    String formattedDate = timestamp != null ? _formatDate(timestamp) : 'Unknown Date';
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.arrow_downward, color: Colors.green, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Earnings',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formattedDate,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '+C $cCoinsEarned',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    'RECEIVED',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green[700]),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -500,7 +417,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         ],
                       ),
                     ),
-                    // Amount Column
+                    // Amount Column - Show only INR amount
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -510,17 +427,17 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           textBaseline: TextBaseline.alphabetic,
                           children: [
                             Text(
-                              'C ',
+                              '₹',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.grey[700],
                               ),
                             ),
                             Text(
-                              '${request.amount}',
+                              inrAmount.toStringAsFixed(2),
                               style: const TextStyle(
-                                fontSize: 17,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
                                 letterSpacing: 0.2,
@@ -529,11 +446,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           ],
                         ),
                         Text(
-                          '≈ ₹${inrAmount.toStringAsFixed(2)}',
+                          'Withdrawal',
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
                       ],

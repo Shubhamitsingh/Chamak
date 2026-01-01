@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 import 'contact_support_screen.dart';
 import 'transaction_history_screen.dart';
 import '../services/gift_service.dart';
 import '../services/withdrawal_service.dart';
 import '../services/database_service.dart';
 import '../services/id_generator_service.dart';
+import '../models/gift_model.dart' show GiftModel;
 
 class MyEarningScreen extends StatefulWidget {
   final String phoneNumber;
@@ -28,6 +30,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   final TextEditingController _accountHolderController = TextEditingController();
   final TextEditingController _cryptoAddressController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _withdrawalSectionKey = GlobalKey();
   final GiftService _giftService = GiftService();
   final WithdrawalService _withdrawalService = WithdrawalService();
   final DatabaseService _databaseService = DatabaseService();
@@ -37,11 +40,20 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   int totalCCoins = 0; // Host's C Coins balance
   double availableBalance = 0.00; // Withdrawable amount in INR
   final double withdrawnAmount = 0.00; // Amount already withdrawn
-  final int minWithdrawal = 500; // Minimum 500 C Coins to withdraw
+  static const double _coinToInrRate = 0.04; // 1 C Coin = ₹0.04
+  static const double _minWithdrawalINR = 20.00; // Minimum ₹20 to withdraw (500 C Coins * 0.04)
+  
+  // Stats for quick cards (now calculated in real-time via StreamBuilder)
+  int todayEarnings = 0;
+  int weekEarnings = 0;
+  int monthEarnings = 0;
   
   bool _isProcessing = false;
   bool _isLoading = true;
   String _selectedMethod = 'UPI'; // Default withdrawal method
+  
+  // Animation controller for balance
+  int _displayedBalance = 0;
   
   @override
   void initState() {
@@ -58,12 +70,17 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
       final summary = await _giftService.getHostEarningsSummary(currentUser.uid);
       
       if (mounted) {
+        final newTotal = summary['totalCCoins'] ?? 0;
         setState(() {
-          totalCCoins = summary['totalCCoins'] ?? 0;
+          totalCCoins = newTotal;
+          _displayedBalance = newTotal;
           availableBalance = summary['withdrawableAmount'] ?? 0.0;
           _isLoading = false;
         });
+        // Animate balance counter
+        _animateBalance(newTotal);
       }
+      // Note: Period earnings now calculated in real-time via StreamBuilder in _buildQuickStatsCards()
     } catch (e) {
       debugPrint('Error loading earnings: $e');
       if (mounted) {
@@ -72,6 +89,73 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         });
       }
     }
+  }
+  
+  /// Calculate earnings for Today, Week, Month from gifts list
+  /// This is now called from StreamBuilder for real-time updates
+  Map<String, int> _calculatePeriodEarningsFromGifts(List<GiftModel> gifts) {
+    try {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final weekStart = now.subtract(Duration(days: now.weekday - 1));
+      final monthStart = DateTime(now.year, now.month, 1);
+      
+      int today = 0;
+      int week = 0;
+      int month = 0;
+      
+      for (var gift in gifts) {
+        if (gift.timestamp == null) continue;
+        final giftDate = gift.timestamp!;
+        final cCoins = gift.cCoinsEarned ?? 0;
+        
+        if (giftDate.isAfter(todayStart)) {
+          today += cCoins;
+        }
+        if (giftDate.isAfter(DateTime(weekStart.year, weekStart.month, weekStart.day))) {
+          week += cCoins;
+        }
+        if (giftDate.isAfter(monthStart)) {
+          month += cCoins;
+        }
+      }
+      
+      return {
+        'today': today,
+        'week': week,
+        'month': month,
+      };
+    } catch (e) {
+      debugPrint('Error calculating period earnings: $e');
+      return {'today': 0, 'week': 0, 'month': 0};
+    }
+  }
+  
+  /// Animate balance counter
+  void _animateBalance(int target) {
+    if (_displayedBalance == target) return;
+    
+    final duration = Duration(milliseconds: 800);
+    final steps = 30;
+    final stepValue = (target - _displayedBalance) / steps;
+    
+    int currentStep = 0;
+    Timer.periodic(Duration(milliseconds: duration.inMilliseconds ~/ steps), (timer) {
+      currentStep++;
+      if (mounted) {
+        setState(() {
+          _displayedBalance = (_displayedBalance + stepValue).round().clamp(0, target);
+        });
+      }
+      if (currentStep >= steps) {
+        timer.cancel();
+        if (mounted) {
+          setState(() {
+            _displayedBalance = target;
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -196,18 +280,28 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
       body: RefreshIndicator(
         onRefresh: _loadEarningsData,
         color: const Color(0xFF04B104),
-        child: SingleChildScrollView(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Earning Overview Card
+              // Earning Overview Card (Enhanced)
               _buildEarningOverview(),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              
+              // Quick Stats Cards
+              _buildQuickStatsCards(),
+              
+              const SizedBox(height: 16),
               
               // Withdrawal Section
               _buildWithdrawalSection(),
+              
+              const SizedBox(height: 20),
+              
+              // Recent Transactions Preview
+              _buildRecentTransactions(),
               
               const SizedBox(height: 20),
               
@@ -226,7 +320,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   Widget _buildEarningOverview() {
     return Container(
       margin: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-      height: 120,
+      constraints: const BoxConstraints(minHeight: 140),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF04B104), Color(0xFF038103)],
@@ -287,80 +381,159 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           
           // Wallet Icon - Top Right
           Positioned(
-            top: 20,
+            top: 16,
             right: 16,
             child: Image.asset(
               'assets/images/wallet.png',
-              width: 60,
-              height: 60,
+              width: 56,
+              height: 56,
               fit: BoxFit.contain,
             ),
           ),
           
           // Content
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Column(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
-                Text(
-                  AppLocalizations.of(context)!.totalEarning,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Coin icon + Balance
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Coin image
-                    Image.asset(
-                      'assets/images/coin.png',
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.contain,
-                    ),
-                    
-                    const SizedBox(width: 10),
-                    
-                    // Balance number
-                    Text(
-                      totalCCoins.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black26,
-                            offset: Offset(0, 2),
-                            blurRadius: 4,
+                // Left side - Main content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header
+                      Text(
+                        AppLocalizations.of(context)!.totalEarning,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 8),
+                      
+                      // Coin icon + Balance
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Coin image
+                          Image.asset(
+                            'assets/images/coin.png',
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(Icons.monetization_on, color: Colors.white, size: 28);
+                            },
+                          ),
+                          
+                          const SizedBox(width: 8),
+                          
+                          // Balance number (Animated)
+                          Flexible(
+                            child: Text(
+                              _displayedBalance.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black26,
+                                    offset: Offset(0, 1),
+                                    blurRadius: 3,
+                                  ),
+                                ],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                
-                const Spacer(),
-                
-                // Available Balance label
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    '≈ ₹${availableBalance.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
+                      
+                      const SizedBox(height: 10),
+                      
+                      // Available Balance + Progress Indicator
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '≈ ₹${availableBalance.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          // Progress bar for withdrawal threshold
+                          // Calculate min withdrawal in C Coins (₹20 = 500 C Coins)
+                          Builder(
+                            builder: (context) {
+                              final minWithdrawalCCoins = (_minWithdrawalINR / _coinToInrRate).round();
+                              if (totalCCoins < minWithdrawalCCoins) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      height: 3,
+                                      constraints: const BoxConstraints(maxWidth: 180),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                      child: FractionallySizedBox(
+                                        alignment: Alignment.centerLeft,
+                                        widthFactor: (totalCCoins / minWithdrawalCCoins).clamp(0.0, 1.0),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '₹${(_minWithdrawalINR - (totalCCoins * _coinToInrRate)).toStringAsFixed(2)} until withdrawal',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 8,
+                                fontWeight: FontWeight.w400,
+                              ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                );
+                              } else {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    '✓ Ready to withdraw',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -371,9 +544,330 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     );
   }
 
+  // ========== QUICK STATS CARDS ==========
+  Widget _buildQuickStatsCards() {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Use StreamBuilder for real-time period earnings updates
+    return StreamBuilder<List<GiftModel>>(
+      stream: _giftService.getHostReceivedGifts(currentUser.uid),
+      builder: (context, snapshot) {
+        // Calculate period earnings from current gifts snapshot
+        final periodEarnings = snapshot.hasData
+            ? _calculatePeriodEarningsFromGifts(snapshot.data!)
+            : {'today': todayEarnings, 'week': weekEarnings, 'month': monthEarnings};
+
+        // Update state variables for backward compatibility
+        if (snapshot.hasData && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                todayEarnings = periodEarnings['today'] ?? 0;
+                weekEarnings = periodEarnings['week'] ?? 0;
+                monthEarnings = periodEarnings['month'] ?? 0;
+              });
+            }
+          });
+        }
+
+        return Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                title: 'Today',
+                value: periodEarnings['today'] ?? 0,
+                icon: Icons.today,
+                color: const Color(0xFF2196F3),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                title: 'This Week',
+                value: periodEarnings['week'] ?? 0,
+                icon: Icons.date_range,
+                color: const Color(0xFF9C27B0),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                title: 'This Month',
+                value: periodEarnings['month'] ?? 0,
+                icon: Icons.calendar_month,
+                color: const Color(0xFFFF9800),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required int value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: color),
+              ),
+              const Spacer(),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Image.asset(
+                'assets/images/coin3.png',
+                width: 14,
+                height: 14,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(Icons.monetization_on, size: 14, color: Colors.amber[700]);
+                },
+              ),
+              const SizedBox(width: 4),
+              Text(
+                value.toString(),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ========== RECENT TRANSACTIONS PREVIEW ==========
+  Widget _buildRecentTransactions() {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Recent Earnings',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              TextButton(
+                onPressed: _navigateToTransactionHistory,
+                child: const Text(
+                  'View All',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF04B104),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          StreamBuilder<List<GiftModel>>(
+            stream: _giftService.getHostReceivedGifts(currentUser.uid),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(color: Color(0xFF04B104)),
+                  ),
+                );
+              }
+
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Center(
+                    child: Text(
+                      'No recent earnings',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final recentGifts = snapshot.data!.take(5).toList();
+
+              return Column(
+                children: recentGifts.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final gift = entry.value;
+                  final isLast = index == recentGifts.length - 1;
+
+                  return _buildTransactionPreviewItem(gift, isLast);
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionPreviewItem(GiftModel gift, bool isLast) {
+    final cCoins = gift.cCoinsEarned ?? 0;
+    final timestamp = gift.timestamp;
+    final senderName = gift.senderName ?? 'Anonymous';
+
+    String timeAgo = 'Just now';
+    if (timestamp != null) {
+      final now = DateTime.now();
+      final diff = now.difference(timestamp);
+      if (diff.inDays > 0) {
+        timeAgo = '${diff.inDays}d ago';
+      } else if (diff.inHours > 0) {
+        timeAgo = '${diff.inHours}h ago';
+      } else if (diff.inMinutes > 0) {
+        timeAgo = '${diff.inMinutes}m ago';
+      }
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF04B104).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.monetization_on,
+                size: 16,
+                color: Color(0xFF04B104),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    senderName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    timeAgo,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                Image.asset(
+                  'assets/images/coin3.png',
+                  width: 14,
+                  height: 14,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(Icons.monetization_on, size: 14, color: Colors.amber[700]);
+                  },
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '+$cCoins',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF04B104),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        if (!isLast) ...[
+          const SizedBox(height: 12),
+          Divider(height: 1, color: Colors.grey[200]),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
   // ========== WITHDRAWAL SECTION ==========
   Widget _buildWithdrawalSection() {
     return Container(
+      key: _withdrawalSectionKey,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: _getWhiteContainerDecoration(),
       child: Column(
@@ -492,7 +986,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                         fit: BoxFit.contain,
                       ),
                     ),
-                    suffixText: 'C',
+                    suffixText: '₹',
                     filled: true,
                     fillColor: Colors.grey[50],
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -513,15 +1007,22 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     if (value == null || value.isEmpty) {
                       return AppLocalizations.of(context)!.pleaseEnterAmount;
                     }
-                    final amount = double.tryParse(value);
-                    if (amount == null || amount <= 0) {
+                    final amountInINR = double.tryParse(value);
+                    if (amountInINR == null || amountInINR <= 0) {
                       return AppLocalizations.of(context)!.enterValidAmount;
                     }
-                    if (amount < minWithdrawal) {
-                      return '${AppLocalizations.of(context)!.minimumWithdrawal} C $minWithdrawal';
+                    // Validate minimum withdrawal amount (₹20)
+                    if (amountInINR < _minWithdrawalINR) {
+                      return 'Minimum withdrawal amount is ₹${_minWithdrawalINR.toStringAsFixed(2)}';
                     }
-                    if (amount > totalCCoins) {
-                      return AppLocalizations.of(context)!.insufficientBalance;
+                    // Validate against available balance (in INR)
+                    if (amountInINR > availableBalance) {
+                      return 'Amount exceeds available balance. Maximum: ₹${availableBalance.toStringAsFixed(2)}';
+                    }
+                    // Convert INR to C Coins and validate against total C Coins
+                    final amountInCCoins = (amountInINR / _coinToInrRate).round();
+                    if (amountInCCoins > totalCCoins) {
+                      return 'Insufficient balance. Maximum: ₹${availableBalance.toStringAsFixed(2)}';
                     }
                     return null;
                   },
@@ -945,8 +1446,12 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           paymentDetails = {'walletAddress': _cryptoAddressController.text.trim()};
         }
 
-        // Get amount from controller
-        final amount = int.tryParse(_amountController.text.trim()) ?? 0;
+        // Get amount in INR from controller
+        final amountInINR = double.tryParse(_amountController.text.trim()) ?? 0.0;
+        
+        // Convert INR amount to C Coins for withdrawal request
+        // Withdrawal service expects amount in C Coins
+        final amountInCCoins = (amountInINR / _coinToInrRate).round();
         
         // Get user information to store with withdrawal request
         String? userName;
@@ -963,9 +1468,10 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         }
         
         // Submit withdrawal request with host information
+        // Note: withdrawal service expects amount in C Coins
         final requestId = await _withdrawalService.submitWithdrawalRequest(
           userId: currentUser.uid,
-          amount: amount,
+          amount: amountInCCoins,
           withdrawalMethod: _selectedMethod,
           paymentDetails: paymentDetails,
           userName: userName,

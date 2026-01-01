@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'contact_support_screen.dart';
+import 'coin_purchase_history_screen.dart';
 import '../services/database_service.dart';
 import '../services/gift_service.dart';
 import '../services/coin_service.dart';
@@ -41,10 +42,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   bool _listenersSetup = false; // Track if listeners are set up
   
-  // Tab controller
-  late TabController _tabController;
-  int _currentTabIndex = 0;
-  
   // Recharge packages - 9 options
   final List<Map<String, dynamic>> rechargePackages = [
     {'coins': 1100, 'inr': 99, 'bonus': 10, 'badge': 'Popular Choice'},
@@ -57,53 +54,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     {'coins': 135000, 'inr': 7999, 'bonus': 69, 'badge': 'Ultimate Deal'},
     {'coins': 175000, 'inr': 9999, 'bonus': 75, 'badge': 'Legendary'},
   ];
-  
-  // Reseller list
-  final List<Map<String, dynamic>> resellers = [
-    {
-      'name': 'John Reseller',
-      'rating': 4.8,
-      'coins': 50000,
-      'price': '₹32,000',
-      'discount': '15% OFF',
-      'verified': true,
-    },
-    {
-      'name': 'Sarah Coins',
-      'rating': 4.9,
-      'coins': 100000,
-      'price': '₹62,400',
-      'discount': '20% OFF',
-      'verified': true,
-    },
-    {
-      'name': 'Mike Trader',
-      'rating': 4.7,
-      'coins': 25000,
-      'price': '₹16,000',
-      'discount': '10% OFF',
-      'verified': true,
-    },
-    {
-      'name': 'Emma Store',
-      'rating': 4.6,
-      'coins': 75000,
-      'price': '₹47,200',
-      'discount': '18% OFF',
-      'verified': false,
-    },
-  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!mounted) return;
-      setState(() {
-        _currentTabIndex = _tabController.index;
-      });
-    });
     
     // Setup real-time listeners FIRST (they'll listen for changes)
     _setupRealtimeListener();
@@ -261,7 +215,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     _walletSubscription?.cancel();
     _userSubscription?.cancel();
     _listenersSetup = false; // Reset flag for next time
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -460,56 +413,69 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           ),
         ),
         actions: [
-          // Refresh Icon
-          IconButton(
-            icon: const Icon(
-              Icons.refresh,
-              color: Colors.black87,
-              size: 22,
-            ),
-            onPressed: _loadCoinBalance,
-          ),
-          // Transaction History Icon
-          IconButton(
-            icon: const Icon(
-              Icons.receipt_long_rounded,
-              color: Colors.black87,
-              size: 22,
-            ),
-            onPressed: () {
-              // TODO: Navigate to transaction history
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(AppLocalizations.of(context)!.transactionHistoryComingSoon),
-                  backgroundColor: const Color(0xFF04B104),
-                  duration: const Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Refresh Icon
+              IconButton(
+                icon: const Icon(
+                  Icons.refresh,
+                  color: Colors.black87,
+                  size: 22,
                 ),
-              );
-            },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: _loadCoinBalance,
+              ),
+              const SizedBox(width: 1),
+              // Coin Purchase History Icon (3 dots)
+              IconButton(
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: Colors.black87,
+                  size: 22,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  try {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CoinPurchaseHistoryScreen(),
+                      ),
+                    );
+                  } catch (e) {
+                    debugPrint('Error navigating to coin purchase history: $e');
+                  }
+                },
+              ),
+              const SizedBox(width: 1),
+              // Contact Support Icon
+              IconButton(
+                icon: const Icon(
+                  Icons.support_agent,
+                  color: Colors.black87,
+                  size: 22,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  try {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ContactSupportScreen(),
+                      ),
+                    );
+                  } catch (e) {
+                    debugPrint('Error navigating to contact support: $e');
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
-          // Contact Support Icon
-          IconButton(
-            icon: const Icon(
-              Icons.support_agent,
-              color: Colors.black87,
-              size: 22,
-            ),
-            onPressed: () {
-              try {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ContactSupportScreen(),
-                  ),
-                );
-              } catch (e) {
-                debugPrint('Error navigating to contact support: $e');
-              }
-            },
-          ),
-          const SizedBox(width: 8),
         ],
       ),
       body: _isLoading
@@ -528,13 +494,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               const SizedBox(height: 8),
             ],
             
-            // Tab Bar
-            _buildTabBar(),
-            
-            // Tab Bar View Content
-            _currentTabIndex == 0
-                ? _buildFlatRechargeTab()
-                : _buildResellerTab(),
+            // Recharge Packages
+            _buildFlatRechargeTab(),
             
             const SizedBox(height: 25),
             
@@ -934,122 +895,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     );
   }
 
-  // ========== TAB BAR - Modern & Professional ==========
-  Widget _buildTabBar() {
-    return FadeInUp(
-      delay: const Duration(milliseconds: 200),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 0),
-        constraints: const BoxConstraints(
-          maxHeight: 45,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.grey[200]!,
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TabBar(
-          controller: _tabController,
-          indicatorSize: TabBarIndicatorSize.tab,
-          indicator: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF92400E), Color(0xFFB45309), Color(0xFFD97706)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF92400E).withValues(alpha:0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.grey[700],
-          labelStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.3,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-          dividerColor: Colors.transparent,
-          tabs: [
-            Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.flash_on, size: 14),
-                  const SizedBox(width: 5),
-                  Text(AppLocalizations.of(context)!.flatRecharge),
-                ],
-              ),
-            ),
-            Tab(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.store, size: 14),
-                      const SizedBox(width: 5),
-                      Text(AppLocalizations.of(context)!.reseller),
-                    ],
-                  ),
-                  // Special discount badge
-                  Positioned(
-                    top: -8,
-                    right: -5,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF512F), Color(0xFFDD2476)],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFFF512F).withValues(alpha:0.4),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)!.save20Percent,
-                        style: const TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ========== FLAT RECHARGE TAB ==========
   Widget _buildFlatRechargeTab() {
@@ -1105,318 +950,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             },
           ),
         ],
-      ),
-    );
-  }
-
-  // ========== RESELLER TAB ==========
-  Widget _buildResellerTab() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 20, 12, 20),
-      child: Column(
-        children: [
-          // Attractive header banner
-          FadeInDown(
-            delay: const Duration(milliseconds: 100),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFFF6B6B),
-                    Color(0xFFFF8E53),
-                    Color(0xFFFFB347),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFF8E53).withValues(alpha:0.4),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha:0.25),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.local_offer,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context)!.getBestDeals,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          AppLocalizations.of(context)!.saveUpTo20Percent,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha:0.95),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      AppLocalizations.of(context)!.best,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF512F),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Reseller cards
-          ...resellers.map((reseller) => _buildResellerCard(reseller)).toList(),
-        ],
-      ),
-    );
-  }
-
-  // ========== RESELLER CARD - Clean & Modern ==========
-  Widget _buildResellerCard(Map<String, dynamic> reseller) {
-    final int index = resellers.indexOf(reseller);
-    
-    return FadeInUp(
-      delay: Duration(milliseconds: 150 + (index * 100)),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: reseller['verified'] 
-                ? const Color(0xFF10B981).withValues(alpha:0.3)
-                : Colors.grey[300]!,
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-              child: Row(
-                children: [
-            // Avatar
-                  Container(
-              width: 52,
-              height: 52,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                  colors: [Color(0xFFFFB800), Color(0xFFD97706)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                Icons.store_rounded,
-                      color: Colors.white,
-                size: 26,
-                    ),
-                  ),
-                  
-                  const SizedBox(width: 14),
-                  
-            // Name, Verified, Rating
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                  // Name with verified badge
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                reseller['name'],
-                                style: const TextStyle(
-                            fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (reseller['verified']) ...[
-                        const SizedBox(width: 5),
-                              Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: const BoxDecoration(
-                            color: Color(0xFF10B981),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                            size: 10,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                  // Rating
-                  Row(
-                            children: [
-                              const Icon(
-                                Icons.star,
-                                color: Color(0xFFFFB800),
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                        '${reseller['rating']}',
-                        style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                  if (reseller['discount'] != null && reseller['discount'].isNotEmpty)
-                    Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444),
-                            borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        reseller['discount'],
-                        style: const TextStyle(
-                              fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                ],
-                        ),
-                      ],
-                    ),
-                  ),
-            
-            // Contact Button
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                  colors: [Color(0xFF92400E), Color(0xFFD97706)],
-                    ),
-                borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                    color: const Color(0xFF92400E).withValues(alpha:0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _startChatWithReseller(reseller),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/chat.png',
-                          width: 16,
-                          height: 16,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 6),
-                      Text(
-                          AppLocalizations.of(context)!.chat,
-                        style: const TextStyle(
-                      color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ========== START CHAT WITH RESELLER ==========
-  void _startChatWithReseller(Map<String, dynamic> reseller) {
-    if (!mounted) return;
-    // Navigate to Messages screen to start chat
-    // In production, this would navigate to a chat screen with the reseller
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Image.asset('assets/images/chat.png', width: 20, height: 20, color: Colors.white),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                AppLocalizations.of(context)!.startingChatWith(reseller['name']),
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFFFFB800),
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
-        action: SnackBarAction(
-          label: AppLocalizations.of(context)!.open,
-          textColor: Colors.white,
-          onPressed: () {
-            // TODO: Navigate to chat/messages screen with reseller
-            // Navigator.push(context, MaterialPageRoute(builder: (context) => ChatScreen(reseller: reseller)));
-          },
-        ),
       ),
     );
   }

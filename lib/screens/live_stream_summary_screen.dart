@@ -23,15 +23,15 @@ class LiveStreamSummaryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.black.withOpacity(0.85),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const SizedBox.shrink(),
         title: const Text(
           'Live Ended',
           style: TextStyle(
-            color: Colors.black87,
+            color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -40,7 +40,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
         toolbarHeight: 48,
         actions: [
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.black87, size: 22),
+            icon: const Icon(Icons.close, color: Colors.white, size: 22),
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
@@ -115,7 +115,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -124,7 +124,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
                         'Stream Ended Successfully',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: Colors.grey[300],
                         ),
                       ),
                     ],
@@ -213,7 +213,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -253,7 +253,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
             text,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[700],
+              color: Colors.grey[300],
               height: 1.4,
             ),
           ),
@@ -283,7 +283,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: Colors.grey[300],
           ),
         ),
       ],
