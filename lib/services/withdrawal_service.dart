@@ -5,9 +5,10 @@ class WithdrawalService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Submit a new withdrawal request
+  // amount: Payment amount in INR (NOT C Coins) - for admin to see pending payment amount
   Future<String?> submitWithdrawalRequest({
     required String userId,
-    required int amount,
+    required double amount, // Changed from int to double - now stores INR
     required String withdrawalMethod,
     required Map<String, dynamic> paymentDetails,
     String? userName,
@@ -109,7 +110,22 @@ class WithdrawalService {
       
       final requestData = requestDoc.data()!;
       final userId = requestData['userId'] as String;
-      final amount = requestData['amount'] as int; // Amount in C Coins
+      
+      // Handle backward compatibility: old records have int (C Coins), new ones have double (INR)
+      final storedAmount = requestData['amount'];
+      double amountInINR;
+      int cCoinsToDeduct;
+      
+      if (storedAmount is int) {
+        // Old format: stored as C Coins (int)
+        cCoinsToDeduct = storedAmount;
+        amountInINR = storedAmount * 0.04; // Convert to INR for logging
+      } else {
+        // New format: stored as INR (double)
+        amountInINR = (storedAmount as num).toDouble();
+        // Convert INR to C Coins for deduction
+        cCoinsToDeduct = (amountInINR / 0.04).round();
+      }
       
       // Use batch write to atomically update withdrawal status and deduct C Coins
       final batch = _firestore.batch();
@@ -131,7 +147,7 @@ class WithdrawalService {
       batch.set(
         earningsRef,
         {
-          'totalCCoins': FieldValue.increment(-amount), // Deduct C Coins
+          'totalCCoins': FieldValue.increment(-cCoinsToDeduct), // Deduct C Coins (converted from INR)
           'lastUpdated': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -140,7 +156,7 @@ class WithdrawalService {
       // Commit batch (all updates atomic)
       await batch.commit();
       
-      print('✅ Withdrawal marked as paid: Deducted $amount C Coins from user $userId');
+      print('✅ Withdrawal marked as paid: ₹${amountInINR.toStringAsFixed(2)} - Deducted $cCoinsToDeduct C Coins from user $userId');
       return true;
     } catch (e) {
       print('❌ Error marking withdrawal request as paid: $e');

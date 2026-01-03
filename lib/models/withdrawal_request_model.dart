@@ -5,7 +5,7 @@ class WithdrawalRequestModel {
   final String userId;
   final String? userName; // Host/User name
   final String? displayId; // Formatted user ID for display
-  final int amount; // Amount in C Coins
+  final double amount; // Amount in INR (Payment Amount) - NOT C Coins
   final String withdrawalMethod; // UPI, Bank Transfer, Crypto
   final Map<String, dynamic> paymentDetails;
   final String status; // pending, approved, paid
@@ -21,7 +21,7 @@ class WithdrawalRequestModel {
     required this.userId,
     this.userName,
     this.displayId,
-    required this.amount,
+    required this.amount, // double - INR amount
     required this.withdrawalMethod,
     required this.paymentDetails,
     this.status = 'pending',
@@ -40,7 +40,10 @@ class WithdrawalRequestModel {
       userId: data['userId'] as String,
       userName: data['userName'] as String?,
       displayId: data['displayId'] as String?,
-      amount: data['amount'] as int,
+      // Handle backward compatibility: old records have int (C Coins), new ones have double (INR)
+      amount: (data['amount'] is int) 
+          ? (data['amount'] as int).toDouble() * 0.04  // Convert old C Coins to INR
+          : (data['amount'] as num).toDouble(),  // New format: already in INR
       withdrawalMethod: data['withdrawalMethod'] as String,
       paymentDetails: data['paymentDetails'] as Map<String, dynamic>,
       status: data['status'] as String? ?? 'pending',

@@ -2321,6 +2321,70 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
+    // Step 1.5: Check if account is approved for live streaming
+    try {
+      final userData = await _databaseService.getUserData(currentUser.uid);
+      if (userData == null || !userData.isActive) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.block,
+                  color: Colors.orange,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Account Not Approved',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Your account is not approved for live streaming. '
+              'Please contact admin to get approval for going live.',
+              style: TextStyle(fontSize: 15, height: 1.5),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.orange,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        return; // Don't start stream
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking account approval: $e');
+      // Continue if check fails (don't block user if error occurs)
+    }
+
     // Step 2: Check for existing active stream and auto-end if found
     final liveStreamService = LiveStreamService();
     LiveStreamModel? existingStream;

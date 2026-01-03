@@ -7,6 +7,7 @@ import '../services/admin_service.dart';
 import '../services/support_chat_service.dart';
 import '../services/withdrawal_service.dart';
 import '../services/storage_service.dart';
+import '../services/database_service.dart';
 import '../models/withdrawal_request_model.dart';
 import 'admin_support_chat_screen.dart';
 
@@ -23,6 +24,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   final SupportChatService _supportChatService = SupportChatService();
   final WithdrawalService _withdrawalService = WithdrawalService();
   final StorageService _storageService = StorageService();
+  final DatabaseService _databaseService = DatabaseService();
   final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _coinsController = TextEditingController();
@@ -128,6 +130,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
           ..._selectedUser!,
           'uCoins': balance['uCoins'] ?? 0,
           'cCoins': balance['cCoins'] ?? 0,
+          'isActive': balance['isActive'] ?? true, // Load account approval status
         };
       });
       print('✅ UI updated with new balance');
@@ -240,6 +243,40 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
         duration: const Duration(seconds: 4),
       ),
     );
+  }
+
+  /// Toggle account approval status
+  Future<void> _toggleAccountApproval() async {
+    if (_selectedUser == null) return;
+
+    final userId = _selectedUser!['userId'] as String;
+    final currentStatus = _selectedUser!['isActive'] ?? true;
+    final newStatus = !currentStatus;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final success = await _databaseService.updateAccountApproval(
+      userId: userId,
+      isApproved: newStatus,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (success) {
+          _selectedUser!['isActive'] = newStatus;
+          _showSuccess(
+            newStatus
+                ? '✅ Account approved! User can now go live.'
+                : '❌ Account disapproved. User cannot go live.',
+          );
+        } else {
+          _showError('Failed to update account approval status.');
+        }
+      });
+    }
   }
 
   @override
@@ -514,6 +551,83 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
               ),
             ),
             const Divider(height: 24),
+            // Account Approval Status
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: (_selectedUser!['isActive'] ?? true)
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: (_selectedUser!['isActive'] ?? true)
+                      ? Colors.green
+                      : Colors.red,
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    (_selectedUser!['isActive'] ?? true)
+                        ? Icons.check_circle
+                        : Icons.cancel,
+                    color: (_selectedUser!['isActive'] ?? true)
+                        ? Colors.green
+                        : Colors.red,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    (_selectedUser!['isActive'] ?? true)
+                        ? 'Account Approved'
+                        : 'Account Not Approved',
+                    style: TextStyle(
+                      color: (_selectedUser!['isActive'] ?? true)
+                          ? Colors.green
+                          : Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Approve/Disapprove Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _toggleAccountApproval,
+                icon: Icon(
+                  (_selectedUser!['isActive'] ?? true)
+                      ? Icons.block
+                      : Icons.check_circle,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  (_selectedUser!['isActive'] ?? true)
+                      ? 'Disapprove Account'
+                      : 'Approve Account',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: (_selectedUser!['isActive'] ?? true)
+                      ? Colors.red
+                      : const Color(0xFF04B104),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -1155,7 +1269,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
         statusText = request.status;
     }
 
-    final inrAmount = request.amount * 0.04;
+    // Amount is now stored directly in INR (not C Coins)
+    // Backward compatibility: old records were C Coins, model converts them to INR
+    final inrAmount = request.amount; // Already in INR from model
+    final cCoinsEquivalent = (inrAmount / 0.04).round(); // For display if needed
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1182,7 +1299,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Amount: C ${request.amount} (≈ ₹${inrAmount.toStringAsFixed(2)})',
+                        'Amount: ₹${inrAmount.toStringAsFixed(2)} (${cCoinsEquivalent} C Coins)',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

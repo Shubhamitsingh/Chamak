@@ -1449,10 +1449,6 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         // Get amount in INR from controller
         final amountInINR = double.tryParse(_amountController.text.trim()) ?? 0.0;
         
-        // Convert INR amount to C Coins for withdrawal request
-        // Withdrawal service expects amount in C Coins
-        final amountInCCoins = (amountInINR / _coinToInrRate).round();
-        
         // Get user information to store with withdrawal request
         String? userName;
         String? displayId;
@@ -1468,10 +1464,11 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         }
         
         // Submit withdrawal request with host information
-        // Note: withdrawal service expects amount in C Coins
+        // Store INR amount directly (payment amount) - NOT C Coins
+        // Admin can see pending payment amount clearly
         final requestId = await _withdrawalService.submitWithdrawalRequest(
           userId: currentUser.uid,
-          amount: amountInCCoins,
+          amount: amountInINR, // Store INR directly (payment amount)
           withdrawalMethod: _selectedMethod,
           paymentDetails: paymentDetails,
           userName: userName,

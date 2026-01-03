@@ -7,10 +7,13 @@ import 'package:intl/intl.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'contact_support_screen.dart';
 import 'coin_purchase_history_screen.dart';
+import 'payment_page.dart';
 import '../services/database_service.dart';
 import '../services/gift_service.dart';
 import '../services/coin_service.dart';
-import 'payment_screen.dart';
+import '../services/withdrawal_service.dart';
+import '../services/payment_gateway_api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WalletScreen extends StatefulWidget {
   final String phoneNumber;
@@ -28,11 +31,15 @@ class WalletScreen extends StatefulWidget {
   State<WalletScreen> createState() => _WalletScreenState();
 }
 
-class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderStateMixin {
+class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final DatabaseService _databaseService = DatabaseService();
   final GiftService _giftService = GiftService();
   final CoinService _coinService = CoinService();
+  final WithdrawalService _withdrawalService = WithdrawalService();
+  final PaymentGatewayApiService _paymentGatewayService = PaymentGatewayApiService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isProcessingPayment = false;
 
   // Real coin data - fetched from Firestore
   int coinBalance = 0; // U Coins (User Coins)
@@ -59,11 +66,34 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
     
+    // Add lifecycle observer for automatic payment checking
+    WidgetsBinding.instance.addObserver(this);
+    
     // Setup real-time listeners FIRST (they'll listen for changes)
     _setupRealtimeListener();
     
     // Then load initial balance (this will set the initial value, listeners will update it)
     _loadCoinBalance();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // When app comes to foreground, check payment status if payment is pending
+    if (state == AppLifecycleState.resumed) {
+      if (_currentPaymentOrderId != null && 
+          _currentPaymentId != null && 
+          _currentPaymentCoins != null) {
+        // User returned to app, check payment status
+        print('📱 App resumed - checking payment status...');
+        _verifyPaymentStatus(
+          orderId: _currentPaymentOrderId!,
+          paymentId: _currentPaymentId!,
+          coins: _currentPaymentCoins!,
+        );
+      }
+    }
   }
   
   @override
@@ -212,9 +242,20 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     print('🔄 Wallet: Disposing listeners...');
+    
+    // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // Cancel payment status timer
+    _paymentStatusTimer?.cancel();
+    
+    // Cancel subscriptions
     _walletSubscription?.cancel();
     _userSubscription?.cancel();
-    _listenersSetup = false; // Reset flag for next time
+    
+    // Reset flags
+    _listenersSetup = false;
+    
     super.dispose();
   }
 
@@ -964,27 +1005,27 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     final bool showBadgeText = (index == 3 || index == 5 || index == 7) && package['badge'] != null; // Show badge text for 4th (index 3), 6th (index 5), and 8th (index 7) grid items
     
     return GestureDetector(
-        onTap: () => _showPaymentDialog(package),
-        child: Container(
+      onTap: _isProcessingPayment ? null : () => _handlePackageClick(package, index),
+      child: Container(
         padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
+        decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-            border: Border.all(
+          border: Border.all(
             color: const Color(0xFFD97706).withValues(alpha:0.3),
             width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
+          ),
+          boxShadow: [
+            BoxShadow(
               color: const Color(0xFFFFB800).withValues(alpha:0.08),
               blurRadius: 6,
               offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
+            ),
+          ],
+        ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
               Center(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -1139,44 +1180,544 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                     ),
                   ),
                 ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  // ========== PAYMENT HANDLERS ==========
+  
+  /// Handle package click - initiate payment
+  Future<void> _handlePackageClick(Map<String, dynamic> package, int index) async {
+    if (_isProcessingPayment) return;
+    
+    // Navigate to payment page
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentPage(
+          package: package,
+          packageIndex: index,
+        ),
+      ),
+    );
+  }
+  
+  /// Show payment method selection dialog (UPI apps)
+  void _showPaymentMethodDialog({
+    required BuildContext context,
+    required String? upiIntentUrl,
+    required String? gpayUrl,
+    required String? phonepeUrl,
+    required String? paytmUrl,
+    required String? orderId,
+    required String? paymentId,
+    required int coins,
+  }) {
+    if (!mounted) return;
+    
+    // Build list of available payment options
+    final List<Map<String, String>> paymentOptions = [];
+    
+    if (gpayUrl != null && gpayUrl.isNotEmpty) {
+      paymentOptions.add({
+        'name': 'Google Pay',
+        'url': gpayUrl,
+        'icon': '💰',
+      });
+    }
+    
+    if (phonepeUrl != null && phonepeUrl.isNotEmpty) {
+      paymentOptions.add({
+        'name': 'PhonePe',
+        'url': phonepeUrl,
+        'icon': '📱',
+      });
+    }
+    
+    if (paytmUrl != null && paytmUrl.isNotEmpty) {
+      paymentOptions.add({
+        'name': 'Paytm',
+        'url': paytmUrl,
+        'icon': '💳',
+      });
+    }
+    
+    if (upiIntentUrl != null && upiIntentUrl.isNotEmpty) {
+      paymentOptions.add({
+        'name': 'Any UPI App',
+        'url': upiIntentUrl,
+        'icon': '🏦',
+      });
+    }
+    
+    if (paymentOptions.isEmpty) {
+      // No UPI options, show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No payment options available. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Choose Payment Method',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: paymentOptions.map((option) {
+            return ListTile(
+              leading: Text(
+                option['icon']!,
+                style: const TextStyle(fontSize: 30),
+              ),
+              title: Text(option['name']!),
+              onTap: () async {
+                Navigator.pop(context);
+                await _launchUPIApp(option['url']!, option['name']!);
+                // Show payment status dialog after launching UPI app
+                _showPaymentStatusDialog(
+                  orderId: orderId,
+                  paymentId: paymentId,
+                  coins: coins,
+                );
+              },
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Launch UPI app with intent URL
+  Future<void> _launchUPIApp(String upiUrl, String appName) async {
+    try {
+      print('🚀 Launching $appName');
+      print('   Original URL: $upiUrl');
+      
+      String urlToLaunch = upiUrl;
+      
+      // Handle Android Intent URLs (for PhonePe, Paytm)
+      if (upiUrl.contains('#Intent;')) {
+        print('📱 Detected Android Intent URL');
+        
+        // Extract UPI scheme from Intent (format: scheme=upi;...)
+        final schemeMatch = RegExp(r'scheme=upi[^;]*').firstMatch(upiUrl);
+        if (schemeMatch != null) {
+          // Try to extract the full UPI URL from Intent
+          // Pattern: scheme=upi;package=...;S.browser_fallback_url=...
+          final fallbackMatch = RegExp(r'S\.browser_fallback_url=([^;#]+)').firstMatch(upiUrl);
+          if (fallbackMatch != null) {
+            urlToLaunch = Uri.decodeComponent(fallbackMatch.group(1)!);
+            print('   Extracted fallback URL: $urlToLaunch');
+          } else {
+            // Extract UPI scheme directly: upi://pay?...
+            final upiMatch = RegExp(r'upi://[^;#]+').firstMatch(upiUrl);
+            if (upiMatch != null) {
+              urlToLaunch = upiMatch.group(0)!;
+              print('   Extracted UPI scheme: $urlToLaunch');
+            }
+          }
+        }
+      }
+      
+      // Launch the UPI URL
+      final uri = Uri.parse(urlToLaunch);
+      print('   Launching URI: $uri');
+      
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      
+      if (launched) {
+        print('✅ $appName launched successfully');
+      } else {
+        print('⚠️ Launch returned false - app might not be installed');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$appName not found. Please install the app or try another payment method.'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error launching $appName: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open $appName. Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+  
+  // Store current payment info for automatic checking
+  String? _currentPaymentOrderId;
+  String? _currentPaymentId;
+  int? _currentPaymentCoins;
+  Timer? _paymentStatusTimer;
+
+  /// Show payment status dialog (Enhanced In-App Experience)
+  void _showPaymentStatusDialog({
+    required String? orderId,
+    required String? paymentId,
+    required int coins,
+  }) {
+    if (!mounted) return;
+    
+    // Store payment info for automatic checking
+    _currentPaymentOrderId = orderId;
+    _currentPaymentId = paymentId;
+    _currentPaymentCoins = coins;
+    
+    // Start automatic status checking every 3 seconds
+    _startPaymentStatusPolling();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.payment, color: Color(0xFF9C27B0)),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Complete Payment',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.phone_android,
+              size: 60,
+              color: Color(0xFF9C27B0),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Payment app opened!',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Complete the payment in the UPI app.\n\nWe\'ll automatically verify your payment.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.autorenew, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Checking payment status...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                if (orderId != null && paymentId != null) {
+                  _verifyPaymentStatus(orderId: orderId, paymentId: paymentId, coins: coins);
+                }
+              },
+              icon: const Icon(Icons.check_circle),
+              label: const Text('I have completed payment'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9C27B0),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () {
+                _stopPaymentStatusPolling();
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  /// Start automatic payment status polling
+  void _startPaymentStatusPolling() {
+    _paymentStatusTimer?.cancel();
+    
+    _paymentStatusTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (_currentPaymentOrderId != null && _currentPaymentId != null && _currentPaymentCoins != null) {
+        // Check payment status automatically
+        final result = await _paymentGatewayService.verifyPayment(
+          orderId: _currentPaymentOrderId!,
+          paymentId: _currentPaymentId!,
+        );
+        
+        if (result['success'] == true && mounted) {
+          // Payment successful!
+          _stopPaymentStatusPolling();
+          Navigator.pop(context); // Close payment dialog
+          _showPaymentSuccessScreen(_currentPaymentCoins!);
+          _currentPaymentOrderId = null;
+          _currentPaymentId = null;
+          _currentPaymentCoins = null;
+        }
+      } else {
+        _stopPaymentStatusPolling();
+      }
+    });
+  }
+  
+  /// Stop payment status polling
+  void _stopPaymentStatusPolling() {
+    _paymentStatusTimer?.cancel();
+    _paymentStatusTimer = null;
+  }
+  
+  /// Show beautiful payment success screen (In-App)
+  void _showPaymentSuccessScreen(int coins) {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Success Icon with Animation
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  size: 60,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Payment Successful!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '$coins coins',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF9C27B0),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'have been added to your wallet',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _loadCoinBalance(); // Refresh balance
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF9C27B0),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Done',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+  
+  /// Verify payment status after user completes payment (Enhanced In-App)
+  Future<void> _verifyPaymentStatus({
+    required String orderId,
+    required String paymentId,
+    required int coins,
+  }) async {
+    if (!mounted) return;
+    
+    _stopPaymentStatusPolling(); // Stop automatic checking
+    
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9C27B0)),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Verifying payment...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    
+    try {
+      final result = await _paymentGatewayService.verifyPayment(
+        orderId: orderId,
+        paymentId: paymentId,
+      );
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      
+      if (result['success'] == true) {
+        // Show beautiful success screen
+        _showPaymentSuccessScreen(coins);
+      } else {
+        // Show error dialog
+        _showPaymentErrorDialog(
+          message: result['message'] ?? 'Payment verification failed. Please try again.',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      _showPaymentErrorDialog(
+        message: 'Error verifying payment: ${e.toString()}',
+      );
+    }
+  }
+  
+  /// Show payment error dialog (In-App)
+  void _showPaymentErrorDialog({required String message}) {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.orange),
+            SizedBox(width: 12),
+            Text('Payment Verification'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (_currentPaymentOrderId != null && 
+                  _currentPaymentId != null && 
+                  _currentPaymentCoins != null) {
+                _verifyPaymentStatus(
+                  orderId: _currentPaymentOrderId!,
+                  paymentId: _currentPaymentId!,
+                  coins: _currentPaymentCoins!,
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9C27B0),
+            ),
+            child: const Text('Retry'),
+          ),
+        ],
       ),
     );
   }
 
   // ========== DIALOGS ==========
-  void _showPaymentDialog(Map<String, dynamic> package) {
-    if (!mounted) return;
-    final int coins = package['coins'];
-    final int inr = package['inr'];
-    final String packageId = 'package_${coins}_${inr}'; // Generate unique package ID
-    
-    // Navigate to payment screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PaymentScreen(
-          coins: coins,
-          amount: inr,
-          packageId: packageId,
-        ),
-      ),
-    ).then((success) {
-      // Refresh wallet data if payment was successful
-      // The real-time listeners will automatically update the balance
-      // But we can also manually refresh to ensure immediate update
-      if (success == true) {
-        _loadCoinBalance();
-        // Also sync wallet to ensure consistency
-        final userId = _auth.currentUser?.uid;
-        if (userId != null) {
-          _coinService.syncWalletWithUsers(userId);
-        }
-      }
-    });
-  }
-
   void _showWithdrawalDialog() {
     if (!mounted) return;
     final TextEditingController amountController = TextEditingController();

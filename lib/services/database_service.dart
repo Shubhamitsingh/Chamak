@@ -238,6 +238,24 @@ class DatabaseService {
     }
   }
 
+  // Update account approval status (admin only)
+  Future<bool> updateAccountApproval({
+    required String userId,
+    required bool isApproved,
+  }) async {
+    try {
+      await _usersCollection.doc(userId).update({
+        'isActive': isApproved,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+      print('✅ Account approval updated: userId=$userId, isApproved=$isApproved');
+      return true;
+    } catch (e) {
+      print('❌ Error updating account approval: $e');
+      return false;
+    }
+  }
+
   // Delete User (Soft delete)
   Future<void> deleteUser() async {
     try {

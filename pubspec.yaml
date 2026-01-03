@@ -73,6 +73,12 @@ dependencies:
   # URL Launcher for payment apps
   url_launcher: ^6.2.0
   
+  # HTTP for API calls
+  http: ^1.1.0
+  
+  # Crypto for signature verification
+  crypto: ^3.0.3
+  
   # QR Code Generator
   qr_flutter: ^4.1.0
   

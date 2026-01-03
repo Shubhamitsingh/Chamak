@@ -435,6 +435,7 @@ class AdminService {
           'displayName': data['displayName'] ?? 'User',
           'uCoins': data['uCoins'] ?? 0,
           'cCoins': data['cCoins'] ?? 0,
+          'isActive': data['isActive'] ?? true, // Account approval status
         });
       }
 
@@ -454,6 +455,7 @@ class AdminService {
                 'displayName': data['displayName'] ?? 'User',
                 'uCoins': data['uCoins'] ?? 0,
                 'cCoins': data['cCoins'] ?? 0,
+                'isActive': data['isActive'] ?? true, // Account approval status
               });
             }
           }
@@ -522,6 +524,7 @@ class AdminService {
         'displayName': data['displayName'] ?? 'User',
         'phoneNumber': data['phoneNumber'] ?? '',
         'countryCode': data['countryCode'] ?? '',
+        'isActive': data['isActive'] ?? true, // Account approval status
       };
     } catch (e) {
       print('❌ Error getting user coin balance: $e');

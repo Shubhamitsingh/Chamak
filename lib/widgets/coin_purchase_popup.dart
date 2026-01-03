@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'dart:math' as math;
 import '../services/coin_popup_service.dart';
-import '../screens/payment_screen.dart';
 
 /// Beautiful coin purchase popup with bottom sheet design matching the exclusive offer style
 class CoinPurchasePopup {
@@ -354,17 +353,8 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
         child: ElevatedButton(
           onPressed: () {
             Navigator.pop(context);
-            final String packageId = 'exclusive_${coins}_${discountedPrice.toInt()}';
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PaymentScreen(
-                  coins: coins,
-                  amount: discountedPrice.toInt(),
-                  packageId: packageId,
-                ),
-              ),
-            );
+            // Payment screen removed - payment is now handled via PayPrime API in wallet screen
+            // Users can purchase coins directly from wallet screen packages
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,

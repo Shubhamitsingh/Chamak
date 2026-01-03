@@ -341,7 +341,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         backgroundColor = Colors.grey.withOpacity(0.1);
     }
 
-    final inrAmount = request.amount * 0.04;
+    // Amount is now stored directly in INR (not C Coins)
+    // Backward compatibility: old records were C Coins, model converts them to INR
+    final inrAmount = request.amount; // Already in INR from model
     final methodIcon = request.withdrawalMethod == 'UPI'
         ? Icons.account_balance_wallet_rounded
         : request.withdrawalMethod == 'Bank Transfer'

@@ -4,7 +4,7 @@
 
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {onCall} = require("firebase-functions/v2/https");
+const {onCall, onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {RtcTokenBuilder, RtcRole} = require("agora-token");
@@ -237,6 +237,241 @@ exports.testNotification = onCall({}, async (request) => {
     throw new Error(error.message);
   }
 });
+
+/**
+ * PayPrime IPN (Instant Payment Notification) Handler
+ * 
+ * This function receives payment callbacks from PayPrime after a user completes payment.
+ * It verifies the payment signature and adds coins to the user's account.
+ * 
+ * PayPrime sends POST request with form-urlencoded data:
+ * - status: Payment status ("success" or "failed")
+ * - identifier: Order identifier (max 20 chars)
+ * - signature: HMAC SHA256 signature for verification
+ * - data: Payment details (JSON string or object with amount, currency, transaction_id, etc.)
+ * 
+ * IPN URL will be: https://YOUR_REGION-YOUR_PROJECT.cloudfunctions.net/payprimeIPN
+ */
+exports.payprimeIPN = onRequest(
+  {
+    secrets: ["PAYPRIME_SECRET_KEY"],
+    cors: true, // Allow CORS for PayPrime requests
+  },
+  async (req, res) => {
+    try {
+      // Only accept POST requests
+      if (req.method !== "POST") {
+        res.status(405).send("Method Not Allowed");
+        return;
+      }
+
+      // PayPrime sends POST with form-urlencoded data
+      // Parse the request body
+      const {status, identifier, signature, data} = req.body;
+
+      // Handle data - it might be a JSON string or already an object
+      let paymentData;
+      if (typeof data === "string") {
+        try {
+          paymentData = JSON.parse(data);
+        } catch (e) {
+          paymentData = {};
+        }
+      } else {
+        paymentData = data || {};
+      }
+
+      console.log("🔔 PayPrime IPN received:");
+      console.log(`   Status: ${status}`);
+      console.log(`   Identifier: ${identifier}`);
+      console.log(`   Data: ${JSON.stringify(data)}`);
+
+      // Validate required fields
+      if (!status || !identifier || !signature || !paymentData) {
+        console.error("❌ Missing required fields in IPN");
+        res.status(400).send({success: false, message: "Missing required fields"});
+        return;
+      }
+
+      // Get secret key from environment
+      const secretKey = process.env.PAYPRIME_SECRET_KEY;
+      if (!secretKey) {
+        console.error("❌ PAYPRIME_SECRET_KEY not configured");
+        res.status(500).send({success: false, message: "Secret key not configured"});
+        return;
+      }
+
+      // Verify signature
+      // PayPrime signature: HMAC SHA256 of (amount + identifier) using secret key
+      const crypto = require("crypto");
+      const amountFromData = paymentData.amount?.toString() || paymentData.amount;
+      const customKey = `${amountFromData}${identifier}`;
+      const expectedSignature = crypto
+          .createHmac("sha256", secretKey)
+          .update(customKey)
+          .digest("hex")
+          .toUpperCase();
+
+      console.log(`🔐 Signature Verification:`);
+      console.log(`   Custom Key: ${customKey}`);
+      console.log(`   Expected: ${expectedSignature}`);
+      console.log(`   Received: ${signature}`);
+
+      if (signature.toUpperCase() !== expectedSignature.toUpperCase()) {
+        console.error("❌ Invalid signature - payment verification failed");
+        res.status(400).send({success: false, message: "Invalid signature"});
+        return;
+      }
+
+      // Find order by identifier
+      const ordersSnapshot = await admin.firestore()
+          .collection("orders")
+          .where("identifier", "==", identifier)
+          .limit(1)
+          .get();
+
+      if (ordersSnapshot.empty) {
+        console.error(`❌ Order not found for identifier: ${identifier}`);
+        res.status(404).send({success: false, message: "Order not found"});
+        return;
+      }
+
+      const orderDoc = ordersSnapshot.docs[0];
+      const orderData = orderDoc.data();
+      const orderId = orderDoc.id;
+      const userId = orderData.userId;
+      const coins = orderData.coins;
+      const amount = orderData.amount;
+      const packageId = orderData.packageId;
+
+      console.log(`📦 Order found:`);
+      console.log(`   Order ID: ${orderId}`);
+      console.log(`   User ID: ${userId}`);
+      console.log(`   Coins: ${coins}`);
+      console.log(`   Amount: ${amount}`);
+
+      // Check payment status
+      if (status !== "success") {
+        console.log(`⚠️ Payment status is not success: ${status}`);
+        // Update order status to failed
+        await orderDoc.ref.update({
+          status: "failed",
+          failedAt: admin.firestore.FieldValue.serverTimestamp(),
+          failureReason: `Payment status: ${status}`,
+        });
+        res.status(200).send({success: false, message: `Payment status: ${status}`});
+        return;
+      }
+
+      // Check if payment already processed (prevent duplicates)
+      const existingPayment = await admin.firestore()
+          .collection("payments")
+          .where("orderId", "==", orderId)
+          .where("status", "==", "completed")
+          .limit(1)
+          .get();
+
+      if (!existingPayment.empty) {
+        console.log("✅ Payment already processed");
+        res.status(200).send({
+          success: true,
+          message: "Payment already processed",
+          coins: coins,
+        });
+        return;
+      }
+
+      // Get payment transaction ID
+      const paymentId = paymentData.payment_transaction_id ||
+                       paymentData.transaction_id ||
+                       paymentData.payment_trx ||
+                       orderId;
+
+      // Add coins to user account
+      // Update users collection (primary source of truth)
+      const userRef = admin.firestore().collection("users").doc(userId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        console.error(`❌ User not found: ${userId}`);
+        res.status(404).send({success: false, message: "User not found"});
+        return;
+      }
+
+      const currentCoins = userDoc.data().uCoins || 0;
+      const newCoins = currentCoins + coins;
+
+      // Update user's coin balance
+      await userRef.update({
+        uCoins: newCoins,
+        coins: newCoins, // Also update coins field for compatibility
+      });
+
+      // Update wallets collection (secondary)
+      const walletRef = admin.firestore().collection("wallets").doc(userId);
+      await walletRef.set({
+        balance: newCoins,
+        coins: newCoins,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+
+      console.log(`💰 Coins added: ${currentCoins} → ${newCoins} (+${coins})`);
+
+      // Update order status
+      await orderDoc.ref.update({
+        status: "completed",
+        paymentId: paymentId,
+        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Record payment in payments collection
+      await admin.firestore().collection("payments").doc(paymentId).set({
+        userId: userId,
+        packageId: packageId,
+        coins: coins,
+        amount: amount,
+        paymentId: paymentId,
+        orderId: orderId,
+        identifier: identifier,
+        status: "completed",
+        paymentMethod: "payprime",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Record transaction
+      await admin.firestore()
+          .collection("users")
+          .doc(userId)
+          .collection("transactions")
+          .doc(paymentId)
+          .set({
+            type: "purchase",
+            coins: coins,
+            amount: amount,
+            paymentId: paymentId,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            description: "Coin purchase via PayPrime",
+          });
+
+      console.log("✅ Payment verified and coins added successfully!");
+
+      // Return success response to PayPrime
+      res.status(200).send({
+        success: true,
+        message: "Payment verified and coins added successfully",
+        coins: coins,
+        amount: amount,
+      });
+    } catch (error) {
+      console.error("❌ Error processing PayPrime IPN:", error);
+      res.status(500).send({
+        success: false,
+        message: `Error processing IPN: ${error.message}`,
+      });
+    }
+  },
+);
 
 /**
  * Generate Agora Token for Live Streaming
