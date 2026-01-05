@@ -69,9 +69,9 @@ class FollowService {
 
       batch.set(followingRef, {
         'userId': targetUser.uid,
-        'userName': targetUser.name,
-        'userImage': targetUser.profileImage,
-        'userNumericId': targetUser.numericUserId,
+        'followerName': targetUser.name,
+        'followerImage': targetUser.profileImage,
+        'followerNumericId': targetUser.numericUserId,
         'followedAt': FieldValue.serverTimestamp(),
       });
 
@@ -84,9 +84,9 @@ class FollowService {
 
       batch.set(followersRef, {
         'userId': currentUserId,
-        'userName': currentUserData['name'] ?? '',
-        'userImage': currentUserData['profileImage'] ?? '',
-        'userNumericId': currentUserData['numericUserId'] ?? '',
+        'followerName': currentUserData['name'] ?? '',
+        'followerImage': currentUserData['profileImage'] ?? '',
+        'followerNumericId': currentUserData['numericUserId'] ?? '',
         'followedAt': FieldValue.serverTimestamp(),
       });
 

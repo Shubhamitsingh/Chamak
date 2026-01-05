@@ -1023,36 +1023,6 @@ class _LiveChatPanelState extends State<LiveChatPanel> with TickerProviderStateM
     );
   }
 
-  // Build welcome message (cached widget for better performance)
-  Widget _buildWelcomeMessage() {
-    return RepaintBoundary(
-      key: const ValueKey('welcome_message'),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 2, bottom: 20), // Small top padding to ensure visibility
-          child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.yellow.withValues(alpha: 0.1), // Lighter transparent yellow background
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.yellow.withValues(alpha: 0.25),
-              width: 1.5,
-            ),
-          ),
-          child: Text(
-            'Admin: Welcome to Chamakz!\nPlease don\'t share inappropriate content like pornography or violence as it\'s strictly against our policies. Our AI system continuously monitors content to ensure compliance.',
-            style: TextStyle(
-              color: Colors.amber[600], // Golden yellow
-              fontSize: 11,
-              height: 1.4,
-              fontWeight: FontWeight.bold, // More bold
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildMessageBubble(LiveChatMessageModel message, bool isSentByMe) {
     // Handle system/admin messages - Always show prominently on both host and user screens
     if (message.type == LiveChatMessageType.system) {

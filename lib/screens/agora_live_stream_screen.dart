@@ -198,7 +198,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     
     try {
       final streamDoc = await FirebaseFirestore.instance
-          .collection('liveStreams')
+          .collection('live_streams')
           .doc(widget.streamId)
           .get();
       
@@ -362,6 +362,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     _callRequestStatusSubscription?.cancel();
     _hostStatusSubscription?.cancel();
     _incomingCallRequestSubscription?.cancel();
+    _balanceSubscription?.cancel();
     
     // Dispose chat controllers
     _chatMessageController.dispose();
@@ -815,11 +816,10 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       try {
         if (widget.streamId != null) {
           final streamDoc = await FirebaseFirestore.instance
-              .collection('liveStreams')
+              .collection('live_streams')
               .doc(widget.streamId)
               .get();
           if (streamDoc.exists) {
-            final data = streamDoc.data();
             // You can add followers tracking logic here
             // For now, using placeholder
             followersGained = 0;

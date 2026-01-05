@@ -51,30 +51,15 @@ class DatabaseService {
           print('🆔 Generated numeric ID for existing user: $numericIdToUpdate');
         }
 
-        // Check if coin fields exist, initialize if missing
-        final hasUCoins = data != null && data.containsKey('uCoins');
-        final hasCCoins = data != null && data.containsKey('cCoins');
-        final hasCoins = data != null && data.containsKey('coins');
-        
         Map<String, dynamic> updateData = {
           if (numericIdToUpdate != null) 'numericUserId': numericIdToUpdate,
           'lastLogin': FieldValue.serverTimestamp(),
           'isActive': true,
         };
         
-        // Initialize coin fields if missing
-        if (!hasUCoins) {
-          updateData['uCoins'] = 0;
-          print('💰 Initializing uCoins = 0 for existing user');
-        }
-        if (!hasCCoins) {
-          updateData['cCoins'] = 0;
-          print('💰 Initializing cCoins = 0 for existing user');
-        }
-        if (!hasCoins) {
-          updateData['coins'] = 0;
-          print('💰 Initializing coins = 0 for existing user (legacy field)');
-        }
+        // Note: Coin fields (uCoins, coins, cCoins) cannot be set by users
+        // They are managed by Cloud Functions and admin services only
+        // CoinService handles missing fields by defaulting to 0
         
         // If no photo set, generate and store a deterministic avatar
         if (existingPhoto == null || existingPhoto.isEmpty) {
@@ -109,9 +94,10 @@ class DatabaseService {
           'followersCount': 0,
           'followingCount': 0,
           'level': 1,
-          'coins': 0, // Legacy field (kept for compatibility)
-          'uCoins': 0, // User Coins - initialized to 0
-          'cCoins': 0, // Host Coins - initialized to 0
+          // Note: Coin fields (uCoins, coins, cCoins) are NOT set here
+          // They will be initialized by Cloud Functions or admin services
+          // This is required by Firestore security rules
+          // CoinService handles missing fields by defaulting to 0
         }).timeout(
           const Duration(seconds: 10),
           onTimeout: () {
@@ -119,7 +105,7 @@ class DatabaseService {
           },
         );
         print('✅ User profile created successfully in Firestore!');
-        print('   Initialized: uCoins = 0, cCoins = 0');
+        print('   Note: Coin fields (uCoins, cCoins) will be initialized when first accessed or by Cloud Functions');
       }
     } catch (e) {
       print('❌ Error creating/updating user in Firestore: $e');

@@ -24,14 +24,10 @@ class SetProfileScreen extends StatefulWidget {
 class _SetProfileScreenState extends State<SetProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nicknameController = TextEditingController();
-  final _referralCodeController = TextEditingController();
   
   String? _selectedGender;
   DateTime? _selectedDateOfBirth;
   String? _selectedLanguage;
-  bool _isReferralExpanded = false;
-  bool _isReferralVerified = false;
-  bool _isLoading = false;
   bool _isSubmitting = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -66,7 +62,6 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
   @override
   void dispose() {
     _nicknameController.dispose();
-    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -329,16 +324,67 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
   Future<void> _selectDateOfBirth() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().subtract(const Duration(days: 365 * 25)),
+      initialDate: _selectedDateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 25)),
       firstDate: DateTime.now().subtract(const Duration(days: 365 * 100)),
       lastDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+      helpText: 'Select Date of Birth',
+      cancelText: 'CANCEL',
+      confirmText: 'OK',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFF1744),
-              onPrimary: Colors.white,
-              onSurface: Colors.black87,
+              primary: Color(0xFFFF1744), // Pink/Red primary color
+              onPrimary: Colors.white, // White text on primary
+              onSurface: Colors.black87, // Dark text on surface
+              surface: Colors.white, // White background
+              secondary: Color(0xFFFF1744), // Secondary color for selection
+              onSecondary: Colors.white, // White text on secondary
+              error: Color(0xFFFF1744), // Error color
+            ),
+            dialogBackgroundColor: Colors.white,
+            datePickerTheme: DatePickerThemeData(
+              backgroundColor: Colors.white,
+              headerBackgroundColor: const Color(0xFFFF1744), // Pink header
+              headerForegroundColor: Colors.white, // White text in header
+              headerHeadlineStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              headerHelpStyle: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+              dayStyle: const TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.normal,
+              ),
+              weekdayStyle: const TextStyle(
+                color: Colors.black54,
+                fontWeight: FontWeight.w500,
+              ),
+              yearStyle: const TextStyle(
+                color: Colors.black87,
+                fontSize: 16,
+              ),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+              cancelButtonStyle: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFFF1744), // Pink cancel text
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              confirmButtonStyle: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFFF1744), // Pink confirm text
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
           child: child!,
@@ -350,38 +396,6 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
         _selectedDateOfBirth = picked;
       });
     }
-  }
-
-  // Verify referral code
-  Future<void> _verifyReferralCode() async {
-    final code = _referralCodeController.text.trim().toUpperCase();
-    if (code.isEmpty) {
-      _showErrorSnackBar('Please enter referral code');
-      return;
-    }
-    if (code.length < 6 || code.length > 8) {
-      _showErrorSnackBar('Referral code must be 6-8 characters');
-      return;
-    }
-    if (!RegExp(r'^[A-Z0-9]+$').hasMatch(code)) {
-      _showErrorSnackBar('Referral code must be alphanumeric');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    // TODO: Implement actual referral code verification API
-    // For now, simulate verification
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() {
-      _isLoading = false;
-      _isReferralVerified = true;
-    });
-
-    _showSuccessSnackBar('Referral code verified');
   }
 
   // Check if form is valid
@@ -448,9 +462,6 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
         'dateOfBirth': dobFormatted,
         'age': age, // Also save calculated age for edit_profile_screen
         'language': _selectedLanguage, // Mother tongue
-        'referralCode': _referralCodeController.text.trim().toUpperCase().isNotEmpty
-            ? _referralCodeController.text.trim().toUpperCase()
-            : null,
         'profileCompleted': true,
         'profileCompletedAt': FieldValue.serverTimestamp(),
       });
@@ -487,17 +498,6 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
     );
   }
 
-  void _showSuccessSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF04B104),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -516,47 +516,70 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
                         // Title - compact at top
                         const Text(
-                          'Set Profile',
+                          'Complete Your Profile',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                             color: Color(0xFF212121),
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Please fill in your details to continue',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
 
                       // Field 1: Nick-name
-                      TextFormField(
-                        controller: _nicknameController,
-                        decoration: InputDecoration(
-                          hintText: 'Nick-name',
-                          hintStyle: const TextStyle(color: Color(0xFF9E9E9E)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFFF1744), width: 2),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          filled: true,
-                          fillColor: Colors.white,
+                      Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        style: const TextStyle(fontSize: 16),
-                        validator: _validateNickname,
-                        onChanged: (_) => setState(() {}),
+                        child: TextFormField(
+                          controller: _nicknameController,
+                          decoration: InputDecoration(
+                            hintText: 'Nick-name',
+                            hintStyle: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                          validator: _validateNickname,
+                          onChanged: (_) => setState(() {}),
+                        ),
                       ),
                       const SizedBox(height: 16),
 
@@ -564,32 +587,55 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                       GestureDetector(
                         onTap: _showGenderBottomSheet,
                         child: Container(
-                          height: 56,
+                          height: 48,
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE0E0E0)),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                _selectedGender ?? 'Who are you?',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: _selectedGender != null
-                                      ? Colors.black87
-                                      : const Color(0xFF9E9E9E),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person_outline,
+                                      size: 20,
+                                      color: _selectedGender != null
+                                          ? const Color(0xFFFF1B7C)
+                                          : Colors.grey[600],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Flexible(
+                                      child: Text(
+                                        _selectedGender ?? 'Select Gender',
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w500,
+                                          color: _selectedGender != null
+                                              ? Colors.black87
+                                              : Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const Text(
-                                'Select',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFFFF1744),
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: _selectedGender != null
+                                    ? const Color(0xFFFF1B7C)
+                                    : Colors.grey[600],
                               ),
                             ],
                           ),
@@ -601,28 +647,58 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                       GestureDetector(
                         onTap: _selectDateOfBirth,
                         child: Container(
-                          height: 56,
+                          height: 48,
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE0E0E0)),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                _selectedDateOfBirth != null
-                                    ? DateFormat('dd MMM yyyy').format(_selectedDateOfBirth!)
-                                    : 'Date of Birth',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: _selectedDateOfBirth != null
-                                      ? Colors.black87
-                                      : const Color(0xFF9E9E9E),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_today_outlined,
+                                      size: 20,
+                                      color: _selectedDateOfBirth != null
+                                          ? const Color(0xFFFF1B7C)
+                                          : Colors.grey[600],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Flexible(
+                                      child: Text(
+                                        _selectedDateOfBirth != null
+                                            ? DateFormat('dd MMM yyyy').format(_selectedDateOfBirth!)
+                                            : 'Date of Birth',
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w500,
+                                          color: _selectedDateOfBirth != null
+                                              ? Colors.black87
+                                              : Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const Text('🎂', style: TextStyle(fontSize: 20)),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: _selectedDateOfBirth != null
+                                    ? const Color(0xFFFF1B7C)
+                                    : Colors.grey[600],
+                              ),
                             ],
                           ),
                         ),
@@ -630,9 +706,15 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                       if (_selectedDateOfBirth != null && !_isValidAge(_selectedDateOfBirth))
                         Padding(
                           padding: const EdgeInsets.only(top: 8, left: 16),
-                          child: Text(
-                            'You must be 18+ years old',
-                            style: TextStyle(color: Colors.red[700], fontSize: 12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, size: 16, color: Colors.red[700]),
+                              const SizedBox(width: 6),
+                              Text(
+                                'You must be 18+ years old',
+                                style: TextStyle(color: Colors.red[700], fontSize: 12),
+                              ),
+                            ],
                           ),
                         ),
                       const SizedBox(height: 16),
@@ -641,254 +723,168 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                       GestureDetector(
                         onTap: _showLanguageBottomSheet,
                         child: Container(
-                          height: 56,
+                          height: 48,
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE0E0E0)),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                _selectedLanguage ?? 'Mother Tongue',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: _selectedLanguage != null
-                                      ? Colors.black87
-                                      : const Color(0xFF9E9E9E),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.language_outlined,
+                                      size: 20,
+                                      color: _selectedLanguage != null
+                                          ? const Color(0xFFFF1B7C)
+                                          : Colors.grey[600],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Flexible(
+                                      child: Text(
+                                        _selectedLanguage ?? 'Select Mother Tongue',
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w500,
+                                          color: _selectedLanguage != null
+                                              ? Colors.black87
+                                              : Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const Text(
-                                'Select',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFFFF1744),
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: _selectedLanguage != null
+                                    ? const Color(0xFFFF1B7C)
+                                    : Colors.grey[600],
                               ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-
-                      // Field 5: Referral Code (Optional)
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isReferralExpanded = !_isReferralExpanded;
-                          });
-                        },
-                        child: Text(
-                          'I have referral code',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFFFF1744),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      if (_isReferralExpanded) ...[
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _referralCodeController,
-                                decoration: InputDecoration(
-                                  hintText: 'Enter referral code',
-                                  hintStyle: const TextStyle(color: Color(0xFF9E9E9E)),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFFFF1744), width: 2),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                                style: const TextStyle(fontSize: 16),
-                                textCapitalization: TextCapitalization.characters,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isReferralVerified = false;
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _isLoading
-                                ? const SizedBox(
-                                    width: 56,
-                                    height: 56,
-                                    child: Center(
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    ),
-                                  )
-                                : _isReferralVerified
-                                    ? Container(
-                                        width: 56,
-                                        height: 56,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF04B104),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(Icons.check, color: Colors.white),
-                                      )
-                                    : ElevatedButton(
-                                        onPressed: _verifyReferralCode,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFFFF1744),
-                                          foregroundColor: Colors.white,
-                                          minimumSize: const Size(56, 56),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                        child: const Text('Verify'),
-                                      ),
-                          ],
-                        ),
-                      ],
                       const SizedBox(height: 32),
                     ],
                   ),
                 ),
               ),
 
-              // Fixed Bottom Section
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
+              // Submit Button at Bottom
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _isFormValid() && !_isSubmitting ? _submitForm : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF1B7C), // Pink
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey[300],
+                      elevation: 8,
+                      shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4), // Pink shadow
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
-                  ],
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : const Text(
+                            'Submit',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _isFormValid() && !_isSubmitting ? _submitForm : null,
-                          borderRadius: BorderRadius.circular(28),
-                          child: Container(
-                            width: double.infinity,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              gradient: _isFormValid()
-                                  ? const LinearGradient(
-                                      colors: [Color(0xFFFF1744), Color(0xFFFF5252)],
-                                    )
-                                  : null,
-                              color: _isFormValid() ? null : const Color(0xFFBDBDBD),
-                              borderRadius: BorderRadius.circular(28),
-                              boxShadow: _isFormValid()
-                                  ? [
-                                      BoxShadow(
-                                        color: const Color(0xFFFF1744).withOpacity(0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: _isSubmitting
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Submit',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Terms Text
-                    RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        style: const TextStyle(
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Terms Text at Bottom
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'By continuing, you agree to our ',
+                        style: TextStyle(
+                          color: Colors.black54,
                           fontSize: 12,
-                          color: Color(0xFF757575),
                         ),
-                        children: [
-                          const TextSpan(text: 'By proceeding I accept the '),
-                          WidgetSpan(
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const TermsConditionsScreen(),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'Community Guidelines',
-                                style: TextStyle(
-                                  decoration: TextDecoration.underline,
-                                  color: Color(0xFF757575),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const TextSpan(text: ', '),
-                          WidgetSpan(
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const PrivacyPolicyScreen(),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'Terms of use',
-                                style: TextStyle(
-                                  decoration: TextDecoration.underline,
-                                  color: Color(0xFF757575),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
-                    ),
-                  ],
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TermsConditionsScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Terms',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF04B104),
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        ' & ',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 12,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PrivacyPolicyScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Privacy Policy',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF04B104),
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
