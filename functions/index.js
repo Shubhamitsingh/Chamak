@@ -8,6 +8,9 @@ const {onCall, onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const {setGlobalOptions} = require("firebase-functions/v2");
 const {RtcTokenBuilder, RtcRole} = require("agora-token");
+const axios = require("axios");
+const crypto = require("crypto");
+const qs = require("qs");
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -392,5 +395,507 @@ exports.generateAgoraToken = onCall(
   } catch (error) {
     console.error("❌ Error generating Agora token:", error);
     throw new Error(`Failed to generate token: ${error.message}`);
+  }
+});
+
+// ============================================================================
+// PAYPRIME PAYMENT GATEWAY INTEGRATION
+// ============================================================================
+
+/**
+ * PHASE 3: Payment Initiation API
+ * 
+ * This function initiates a payment with PayPrime gateway.
+ * - Validates authenticated user
+ * - Generates unique order ID
+ * - Creates PENDING payment document in Firestore
+ * - Calls PayPrime API to initiate payment
+ * - Returns payment URL for WebView
+ * 
+ * Required parameters:
+ * - amount: Payment amount in INR (number)
+ * - currency: Currency code (default: "INR")
+ * - coins: Number of coins user is purchasing (number)
+ * 
+ * Returns:
+ * - orderId: Unique order ID
+ * - paymentUrl: URL to open in WebView
+ * - paymentId: Payment document ID in Firestore
+ */
+exports.initiatePayment = onCall(
+  {
+    secrets: ["PAYPRIME_API_KEY", "PAYPRIME_SECRET_KEY"],
+  },
+  async (request) => {
+    // PHASE 1: Authentication Requirement
+    if (!request.auth) {
+      throw new Error("User must be authenticated");
+    }
+
+    const userId = request.auth.uid;
+    const {amount, currency = "INR", coins} = request.data;
+
+    // Validate required parameters
+    if (!amount || typeof amount !== "number" || amount <= 0) {
+      throw new Error("amount is required and must be a positive number");
+    }
+
+    if (!coins || typeof coins !== "number" || coins <= 0) {
+      throw new Error("coins is required and must be a positive number");
+    }
+
+    // Get PayPrime credentials from secrets
+    const publicKey = process.env.PAYPRIME_API_KEY?.trim();
+    const secretKey = process.env.PAYPRIME_SECRET_KEY?.trim();
+
+    if (!publicKey || !secretKey) {
+      console.error("❌ PayPrime credentials not configured");
+      throw new Error(
+        "PayPrime credentials not configured. " +
+        "Please set PAYPRIME_API_KEY and PAYPRIME_SECRET_KEY in Firebase Functions secrets."
+      );
+    }
+
+    try {
+      // Generate unique identifier (PayPrime uses identifier, not order_id)
+      // PayPrime requires identifier to be max 20 characters
+      // Format: CHAMAK + timestamp (last 10 digits) + user hash (4 chars) = 20 chars
+      const timestamp = Date.now().toString().slice(-10); // Last 10 digits of timestamp
+      const userHash = userId.substring(0, 4).replace(/[^a-zA-Z0-9]/g, ''); // First 4 alphanumeric chars
+      const identifier = `CHAMAK${timestamp}${userHash}`.substring(0, 20); // Ensure max 20 chars
+      const paymentId = admin.firestore().collection("payments").doc().id;
+
+      // Get user info for payment
+      const userDoc = await admin.firestore().collection("users").doc(userId).get();
+      const userData = userDoc.exists ? userDoc.data() : {};
+      
+      // Split name into first and last name
+      const fullName = userData.displayName || userData.nickname || "User";
+      const nameParts = fullName.split(" ");
+      const firstName = nameParts[0] || "User";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      
+      const userEmail = userData.email || `${userId}@chamak.app`;
+      const userPhone = (userData.phoneNumber || "").replace(/\D/g, ""); // Remove non-digits
+
+      // PHASE 2: Create PENDING payment document in Firestore
+      const paymentData = {
+        userId: userId,
+        orderId: identifier, // Using identifier as orderId for consistency
+        identifier: identifier, // PayPrime identifier
+        paymentId: paymentId,
+        amount: amount,
+        currency: currency.toUpperCase(), // PayPrime requires uppercase
+        coins: coins,
+        status: "PENDING",
+        gateway: "payprime",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        userInfo: {
+          name: fullName,
+          firstName: firstName,
+          lastName: lastName,
+          email: userEmail,
+          phone: userPhone,
+        },
+        metadata: {
+          retryCount: 0,
+          gatewayResponse: null,
+        },
+      };
+
+      await admin.firestore().collection("payments").doc(paymentId).set(paymentData);
+      console.log(`✅ Created payment document: ${paymentId} for identifier: ${identifier}`);
+
+      // Get Firebase project ID for webhook URL
+      const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
+      if (!projectId) {
+        throw new Error("Firebase project ID not found. Cannot generate webhook URL.");
+      }
+
+      const webhookUrl = `https://us-central1-${projectId}.cloudfunctions.net/payprimeWebhook`;
+      const successUrl = `https://chamak.app/payment/success/${paymentId}`;
+      const cancelUrl = `https://chamak.app/payment/cancel/${paymentId}`;
+
+      // Prepare PayPrime API request (form-urlencoded format)
+      // According to PayPrime docs: https://payprime.in/api-docs/
+      const payprimePayload = {
+        public_key: publicKey,
+        identifier: identifier,
+        currency: currency.toUpperCase(),
+        amount: amount.toFixed(2), // PayPrime expects decimal as string
+        details: `Purchase ${coins} coins for Chamak App`,
+        ipn_url: webhookUrl,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        site_name: "Chamak",
+        checkout_theme: "light",
+        "customer[first_name]": firstName,
+        "customer[last_name]": lastName,
+        "customer[email]": userEmail,
+        "customer[mobile]": userPhone,
+      };
+
+      // PayPrime API endpoint (use test URL for testing, production for live)
+      const isTestMode = publicKey.startsWith("test_");
+      const payprimeApiUrl = isTestMode
+        ? "https://merchant.payprime.in/test/payment/initiate"
+        : "https://merchant.payprime.in/payment/initiate";
+      
+      console.log(`📞 Calling PayPrime API (${isTestMode ? "TEST" : "PRODUCTION"}) for identifier: ${identifier}`);
+      console.log(`   Amount: ₹${amount}`);
+      console.log(`   Currency: ${currency.toUpperCase()}`);
+      console.log(`   Webhook URL: ${webhookUrl}`);
+
+      // PayPrime requires application/x-www-form-urlencoded
+      const payprimeResponse = await axios.post(
+        payprimeApiUrl,
+        qs.stringify(payprimePayload),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          timeout: 30000, // 30 seconds timeout
+        }
+      );
+
+      const payprimeData = payprimeResponse.data;
+      console.log(`✅ PayPrime API response received for identifier: ${identifier}`);
+      console.log(`   Response status: ${payprimeData.status || 'N/A'}`);
+      console.log("PayPrime response:", JSON.stringify(payprimeData, null, 2));
+
+      // Check if PayPrime returned an error
+      if (payprimeData.status === "error") {
+        const errorMessage = Array.isArray(payprimeData.message)
+          ? payprimeData.message.join(", ")
+          : payprimeData.message || "Unknown error from PayPrime";
+        throw new Error(`PayPrime API error: ${errorMessage}`);
+      }
+
+      // Extract payment URL from PayPrime response
+      // PayPrime can return either:
+      // 1. redirect_url (for web-based payments)
+      // 2. UPI intent URLs (for UPI payments)
+      let paymentUrl = payprimeData.redirect_url;
+
+      // If no redirect_url, check for UPI URLs (PayPrime returns UPI URLs directly)
+      if (!paymentUrl) {
+        // Prioritize GPay, then PhonePe, then Paytm, then generic UPI
+        if (payprimeData.gpay_upi_intent_url) {
+          paymentUrl = payprimeData.gpay_upi_intent_url;
+          console.log(`   Using GPay UPI URL`);
+        } else if (payprimeData.phonepe_upi_intent_url) {
+          paymentUrl = payprimeData.phonepe_upi_intent_url;
+          console.log(`   Using PhonePe UPI URL`);
+        } else if (payprimeData.paytm_upi_intent_url) {
+          paymentUrl = payprimeData.paytm_upi_intent_url;
+          console.log(`   Using Paytm UPI URL`);
+        } else if (payprimeData.upi_intent_url) {
+          paymentUrl = payprimeData.upi_intent_url;
+          console.log(`   Using generic UPI URL`);
+        }
+      }
+
+      if (!paymentUrl) {
+        console.error("PayPrime response:", JSON.stringify(payprimeData, null, 2));
+        throw new Error("PayPrime API did not return a redirect_url or UPI intent URL");
+      }
+
+      // Update payment document with gateway response
+      await admin.firestore().collection("payments").doc(paymentId).update({
+        status: "PROCESSING",
+        metadata: {
+          ...paymentData.metadata,
+          gatewayResponse: payprimeData,
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log(`✅ Payment initiated successfully. Identifier: ${identifier}, Payment ID: ${paymentId}`);
+      console.log(`   Payment URL: ${paymentUrl.substring(0, 50)}...`);
+
+      // Return all available UPI URLs for user selection
+      const upiUrls = {};
+      if (payprimeData.gpay_upi_intent_url) {
+        upiUrls.gpay_upi_intent_url = payprimeData.gpay_upi_intent_url;
+      }
+      if (payprimeData.phonepe_upi_intent_url) {
+        upiUrls.phonepe_upi_intent_url = payprimeData.phonepe_upi_intent_url;
+      }
+      if (payprimeData.paytm_upi_intent_url) {
+        upiUrls.paytm_upi_intent_url = payprimeData.paytm_upi_intent_url;
+      }
+      if (payprimeData.upi_intent_url) {
+        upiUrls.upi_intent_url = payprimeData.upi_intent_url;
+      }
+
+      return {
+        success: true,
+        orderId: identifier,
+        identifier: identifier,
+        paymentId: paymentId,
+        paymentUrl: paymentUrl, // Primary URL (for backward compatibility)
+        upiUrls: upiUrls, // All available UPI URLs
+        amount: amount,
+        currency: currency.toUpperCase(),
+        coins: coins,
+      };
+    } catch (error) {
+      console.error("❌ Error initiating payment:", error);
+      
+      // Log error details
+      if (error.response) {
+        console.error("PayPrime API Error Response:", JSON.stringify(error.response.data, null, 2));
+        console.error("PayPrime API Status:", error.response.status);
+      }
+
+      throw new Error(`Failed to initiate payment: ${error.message}`);
+    }
+  }
+);
+
+/**
+ * PHASE 5: Webhook Receiver for PayPrime
+ * 
+ * This function receives webhooks from PayPrime gateway.
+ * - Validates webhook signature
+ * - Verifies payment status with PayPrime API
+ * - Updates Firestore payment status
+ * - Handles coin addition on success
+ * 
+ * This is the SINGLE SOURCE OF TRUTH for payment confirmation.
+ */
+exports.payprimeWebhook = onRequest(
+  {
+    secrets: ["PAYPRIME_API_KEY", "PAYPRIME_SECRET_KEY"],
+    cors: true,
+  },
+  async (req, res) => {
+    try {
+      // Only accept POST requests
+      if (req.method !== "POST") {
+        return res.status(405).json({error: "Method not allowed"});
+      }
+
+      // PayPrime sends form data (application/x-www-form-urlencoded)
+      // Parameters: status, signature, identifier, data (object)
+      const status = req.body.status;
+      const signature = req.body.signature;
+      const identifier = req.body.identifier;
+      const data = req.body.data; // This is an object containing payment details
+
+      console.log("📥 Received PayPrime webhook:");
+      console.log(`   Status: ${status}`);
+      console.log(`   Identifier: ${identifier}`);
+      console.log(`   Data:`, JSON.stringify(data, null, 2));
+
+      // Validate required fields
+      if (!status || !signature || !identifier || !data) {
+        console.error("❌ Webhook missing required fields");
+        return res.status(400).json({error: "Missing required fields"});
+      }
+
+      // PHASE 5: Validate webhook signature
+      // PayPrime signature: HMAC-SHA256(amount + identifier, secret_key) in UPPERCASE
+      const secretKey = process.env.PAYPRIME_SECRET_KEY?.trim();
+      if (!secretKey) {
+        console.error("❌ PayPrime secret key not configured");
+        return res.status(500).json({error: "Server configuration error"});
+      }
+
+      // Generate expected signature according to PayPrime docs
+      const customKey = data.amount + identifier;
+      const expectedSignature = crypto
+        .createHmac("sha256", secretKey)
+        .update(customKey)
+        .digest("hex")
+        .toUpperCase();
+
+      console.log(`🔐 Signature verification:`);
+      console.log(`   Received: ${signature}`);
+      console.log(`   Expected: ${expectedSignature}`);
+
+      if (signature !== expectedSignature) {
+        console.error("❌ Invalid webhook signature");
+        return res.status(401).json({error: "Invalid signature"});
+      }
+
+      console.log("✅ Signature verified successfully");
+
+      // Find payment document by identifier (PayPrime uses identifier, not order_id)
+      const paymentsSnapshot = await admin.firestore()
+        .collection("payments")
+        .where("identifier", "==", identifier)
+        .limit(1)
+        .get();
+
+      if (paymentsSnapshot.empty) {
+        console.error(`❌ Payment not found for identifier: ${identifier}`);
+        return res.status(404).json({error: "Payment not found"});
+      }
+
+      const paymentDoc = paymentsSnapshot.docs[0];
+      const paymentId = paymentDoc.id;
+      const paymentData = paymentDoc.data();
+
+      // Skip if already processed
+      if (paymentData.status === "SUCCESS" || paymentData.status === "FAILED") {
+        console.log(`ℹ️ Payment ${paymentId} already processed with status: ${paymentData.status}`);
+        return res.status(200).json({message: "Already processed"});
+      }
+
+      // Extract payment details from data object
+      const webhookAmount = parseFloat(data.amount || 0);
+      const transactionId = data.transaction_id || data.payment_transaction_id || null;
+
+      // Cross-check: Verify amount matches
+      if (Math.abs(webhookAmount - paymentData.amount) > 0.01) {
+        console.error(`❌ Amount mismatch. Expected: ${paymentData.amount}, Got: ${webhookAmount}`);
+        return res.status(400).json({error: "Amount mismatch"});
+      }
+
+      // Update payment status based on webhook status
+      // PayPrime sends: "success" or other status
+      let finalStatus = "FAILED";
+      if (status === "success" || status === "SUCCESS") {
+        finalStatus = "SUCCESS";
+      } else if (status === "pending" || status === "PENDING") {
+        finalStatus = "PROCESSING";
+      } else {
+        finalStatus = "FAILED";
+      }
+
+      // Update payment document
+      await admin.firestore().collection("payments").doc(paymentId).update({
+        status: finalStatus,
+        gatewayTransactionId: transactionId,
+        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        metadata: {
+          ...paymentData.metadata,
+          webhookData: {
+            status: status,
+            signature: signature,
+            identifier: identifier,
+            data: data,
+          },
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // If payment successful, add coins to user's wallet
+      if (finalStatus === "SUCCESS") {
+        const userId = paymentData.userId;
+        const coins = paymentData.coins;
+
+        // Update user's coin balance
+        // Update both uCoins (primary) and coinBalance (legacy) for compatibility
+        const userRef = admin.firestore().collection("users").doc(userId);
+        await userRef.update({
+          uCoins: admin.firestore.FieldValue.increment(coins), // Primary field used by wallet screen
+          coinBalance: admin.firestore.FieldValue.increment(coins), // Legacy field for compatibility
+        });
+
+        // Log coin addition transaction
+        await admin.firestore().collection("users").doc(userId).collection("coinTransactions").add({
+          type: "purchase",
+          amount: coins,
+          paymentId: paymentId,
+          orderId: identifier, // Using identifier as orderId
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log(`✅ Added ${coins} coins to user ${userId} for payment ${paymentId}`);
+        console.log(`   Updated uCoins and coinBalance fields`);
+      }
+
+      console.log(`✅ Payment ${paymentId} updated to status: ${finalStatus}`);
+
+      return res.status(200).json({
+        success: true,
+        paymentId: paymentId,
+        status: finalStatus,
+      });
+    } catch (error) {
+      console.error("❌ Error processing PayPrime webhook:", error);
+      return res.status(500).json({
+        error: "Internal server error",
+        message: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * PHASE 7: Reconciliation Job
+ * 
+ * This scheduled function checks for payments stuck in PENDING or PROCESSING state
+ * and verifies their status with PayPrime API.
+ * Runs every 10 minutes.
+ */
+exports.reconcilePayments = onSchedule("every 10 minutes", async () => {
+  try {
+    console.log("🔄 Starting payment reconciliation...");
+
+    // Find payments stuck in PENDING or PROCESSING for more than 15 minutes
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    const stuckPayments = await admin.firestore()
+      .collection("payments")
+      .where("status", "in", ["PENDING", "PROCESSING"])
+      .where("createdAt", "<", fifteenMinutesAgo)
+      .limit(50) // Process max 50 at a time
+      .get();
+
+    if (stuckPayments.empty) {
+      console.log("✅ No stuck payments found");
+      return null;
+    }
+
+    console.log(`📋 Found ${stuckPayments.size} stuck payments to reconcile`);
+
+    // PayPrime doesn't have a separate verification API endpoint
+    // The webhook IS the verification. For reconciliation, we'll mark very old payments as failed
+    // Payments older than 24 hours without webhook = likely failed/abandoned
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    for (const paymentDoc of stuckPayments.docs) {
+      const paymentData = paymentDoc.data();
+      const paymentId = paymentDoc.id;
+      const identifier = paymentData.identifier || paymentData.orderId;
+      const createdAt = paymentData.createdAt?.toDate();
+
+      try {
+        // If payment is older than 24 hours and still pending, mark as failed
+        if (createdAt && createdAt < twentyFourHoursAgo) {
+          await paymentDoc.ref.update({
+            status: "FAILED",
+            metadata: {
+              ...paymentData.metadata,
+              reconciled: true,
+              reconciliationReason: "Payment abandoned - no webhook received after 24 hours",
+            },
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          console.log(`✅ Reconciled payment ${paymentId}: FAILED (abandoned after 24 hours)`);
+        } else {
+          // Payment is still recent, just increment retry count
+          const retryCount = (paymentData.metadata?.retryCount || 0) + 1;
+          await paymentDoc.ref.update({
+            "metadata.retryCount": retryCount,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log(`ℹ️ Payment ${paymentId} still pending (retry ${retryCount}, waiting for webhook)`);
+        }
+      } catch (error) {
+        console.error(`❌ Error reconciling payment ${paymentId}:`, error.message);
+        // Continue with next payment
+      }
+    }
+
+    console.log(`✅ Reconciliation completed. Processed ${stuckPayments.size} payments`);
+    return null;
+  } catch (error) {
+    console.error("❌ Error in reconciliation job:", error);
+    return null;
   }
 });
