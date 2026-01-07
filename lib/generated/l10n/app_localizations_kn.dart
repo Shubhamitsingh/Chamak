@@ -543,6 +543,9 @@ class AppLocalizationsKn extends AppLocalizations {
       'ಎಚ್ಚರಿಕೆಗಳು ಮತ್ತು ಸಮುದಾಯ ಮಾರ್ಗಸೂಚಿಗಳನ್ನು ವೀಕ್ಷಿಸಿ';
 
   @override
+  String get shareAndEarnRewards => 'Share & Earn Rewards';
+
+  @override
   String get warningForPermanentBlock => 'ಶಾಶ್ವತ ನಿರ್ಬಂಧಕ್ಕಾಗಿ ಎಚ್ಚರಿಕೆ';
 
   @override
@@ -1165,9 +1168,6 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get promotion => 'ಪ್ರಚಾರ';
-
-  @override
-  String get shareAndEarnRewards => 'Share & Earn Rewards';
 
   @override
   String get customShareTemplate => 'Custom share template';

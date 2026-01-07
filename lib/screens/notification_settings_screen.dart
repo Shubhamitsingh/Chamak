@@ -124,7 +124,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       ),
       trailing: Switch(
         value: value,
-        activeColor: const Color(0xFF9C27B0), // purple instead of green
+        activeColor: const Color(0xFFFF1B7C), // app pink theme
         onChanged: onChanged,
       ),
     );

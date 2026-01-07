@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../models/user_model.dart';
 import '../models/chat_model.dart';
 import '../services/chat_service.dart';
 import 'chat_screen.dart';
@@ -58,7 +60,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 1,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
         title: const Text(
           'Messages',
           style: TextStyle(
@@ -223,98 +233,67 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final unreadCount = chat.getUnreadCount(_currentUserId!);
     final hasUnread = unreadCount > 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: InkWell(
-          onTap: () async {
-            // Get other user details
-            final otherUser = await _searchService.getUserById(otherUserId);
-            if (otherUser == null || !mounted) return;
+    // Clean design - NO containers, NO borders, NO decorations
+    return InkWell(
+      onTap: () async {
+        // Try to fetch user quickly; fall back to cached chat data to reduce lag
+        UserModel? otherUser;
 
-            if (!mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatScreen(
-                  chatId: chat.chatId,
-                  otherUser: otherUser,
-                ),
-              ),
-            );
-          },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: hasUnread
-                ? LinearGradient(
-                    colors: [
-                      const Color(0xFF04B104).withValues(alpha:0.08),
-                      const Color(0xFF04B104).withValues(alpha:0.03),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: hasUnread ? null : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: hasUnread 
-                  ? const Color(0xFF04B104).withValues(alpha:0.2)
-                  : Colors.grey[200]!,
-              width: 1,
+        try {
+          otherUser = await _searchService
+              .getUserById(otherUserId)
+              .timeout(const Duration(seconds: 3));
+        } catch (_) {
+          // ignore and use fallback
+        }
+
+        otherUser ??= UserModel(
+          userId: otherUserId,
+          numericUserId: '',
+          phoneNumber: '',
+          countryCode: '',
+          displayName: otherUserName.isNotEmpty ? otherUserName : null,
+          photoURL: otherUserImage.isNotEmpty ? otherUserImage : null,
+          createdAt: DateTime.now(),
+          lastLogin: DateTime.now(),
+        );
+
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              chatId: chat.chatId,
+              otherUser: otherUser!,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: hasUnread
-                    ? const Color(0xFF04B104).withValues(alpha:0.1)
-                    : Colors.black.withValues(alpha:0.03),
-                blurRadius: hasUnread ? 8 : 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
-          child: Row(
-            children: [
-              // Profile Image with gradient border
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+              // Profile Image - NO border, NO container
               Stack(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: hasUnread
-                          ? const LinearGradient(
-                              colors: [Color(0xFF04B104), Color(0xFF038C03)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
-                      color: hasUnread ? null : Colors.grey[200],
-                    ),
-                    child: CircleAvatar(
-                      radius: 26,
-                      backgroundColor: Colors.white,
-                      child: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: const Color(0xFF04B104),
-                        backgroundImage: otherUserImage.isNotEmpty
-                            ? NetworkImage(otherUserImage)
-                            : null,
-                        child: otherUserImage.isEmpty
-                            ? Text(
-                                otherUserName.isNotEmpty 
-                                    ? otherUserName[0].toUpperCase() 
-                                    : 'U',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                            : null,
-                      ),
-                    ),
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: otherUserImage.isNotEmpty
+                        ? NetworkImage(otherUserImage)
+                        : null,
+                    child: otherUserImage.isEmpty
+                        ? Text(
+                            otherUserName.isNotEmpty 
+                                ? otherUserName[0].toUpperCase() 
+                                : 'U',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
                   ),
                   // Online indicator
                   Positioned(
@@ -344,32 +323,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Name with gradient (if unread)
+                        // Name (keep black, just bolder on unread)
                         Flexible(
-                          child: hasUnread
-                              ? ShaderMask(
-                                  shaderCallback: (bounds) => const LinearGradient(
-                                    colors: [Color(0xFF04B104), Color(0xFF038C03)],
-                                  ).createShader(bounds),
-                                  child: Text(
-                                    otherUserName,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                )
-                              : Text(
-                                  otherUserName,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                          child: Text(
+                            otherUserName,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         // Timestamp Badge
@@ -457,8 +421,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }
 

@@ -521,29 +521,60 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             
             // Trust Text Above Trust Badges
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '1: ${AppLocalizations.of(context)!.rechargeWithConfidence}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '1: ',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          AppLocalizations.of(context)!.rechargeWithConfidence,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    '2: ${AppLocalizations.of(context)!.fastSafeTrusted}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '2: ',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          AppLocalizations.of(context)!.fastSafeTrusted,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -642,7 +673,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     );
   }
 
-  // ========== BALANCE CARD - Modern Pink Theme ==========
+  // ========== BALANCE CARD - Simple Pink Theme ==========
   Widget _buildBalanceCard() {
     return FadeInDown(
       child: Container(
@@ -651,17 +682,17 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [
-              Color(0xFFFF1B7C), // Primary pink (bright pink)
+              Color(0xFFFF1B7C), // Primary pink
               Color(0xFFFF69B4), // Hot pink
               Color(0xFFE91E63), // Deep pink
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFF1B7C).withOpacity(0.3),
+              color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -669,56 +700,56 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         ),
         child: Stack(
           children: [
-            // Decorative elements - Modern pink circles
+            // Decorative elements - Simple circles
             Positioned(
-              top: -20,
-              right: -20,
+              top: -15,
+              right: -15,
               child: Container(
-                width: 80,
-                height: 80,
+                width: 70,
+                height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.white.withOpacity(0.2),
-                      Colors.white.withOpacity(0.0),
+                      Colors.white.withValues(alpha: 0.15),
+                      Colors.white.withValues(alpha: 0.0),
                     ],
                   ),
                 ),
               ),
             ),
             Positioned(
-              bottom: -25,
-              left: -25,
+              bottom: -20,
+              left: -20,
               child: Container(
-                width: 100,
-                height: 100,
+                width: 90,
+                height: 90,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.white.withOpacity(0.15),
-                      Colors.white.withOpacity(0.0),
+                      Colors.white.withValues(alpha: 0.1),
+                      Colors.white.withValues(alpha: 0.0),
                     ],
                   ),
                 ),
               ),
             ),
-            // Accent circle
+            // Shimmer effect circle
             Positioned(
-              top: 35,
-              right: 25,
+              top: 40,
+              right: 30,
               child: Container(
-                width: 50,
-                height: 50,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
               ),
             ),
             
-            // Savings Icon - Top Right (vertically centered)
+            // Savings Icon - Top Right
             Positioned(
               top: 20,
               right: 16,
@@ -749,9 +780,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   const SizedBox(height: 8),
                   
                   // Coin icon + Balance
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
                       // Coin image
                       Image.asset(
                         'assets/images/coin3.png',
@@ -762,7 +793,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                       
                       const SizedBox(width: 10),
                 
-                // Balance number
+                      // Balance number
                       Expanded(
                         child: Text(
                           NumberFormat.decimalPattern().format(coinBalance),
@@ -789,16 +820,16 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   const SizedBox(height: 4),
                   
                   // Available Coins label
-                      Text(
-                        AppLocalizations.of(context)!.availableCoins,
-                        style: const TextStyle(
-                          color: Colors.white70,
+                  Text(
+                    AppLocalizations.of(context)!.availableCoins,
+                    style: const TextStyle(
+                      color: Colors.white70,
                       fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1514,6 +1545,5 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       debugPrint('Error showing success dialog: $e');
     }
   }
-
 }
 

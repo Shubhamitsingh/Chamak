@@ -12,6 +12,8 @@ class LanguageSelectionScreen extends StatelessWidget {
     switch (languageCode) {
       case 'en': // English
         return const Color(0xFF3B82F6); // Blue
+      case 'hng': // Hinglish
+        return const Color(0xFF22C55E); // Green
       case 'hi': // Hindi
         return const Color(0xFFFF6B35); // Orange
       case 'ta': // Tamil
@@ -54,130 +56,69 @@ class LanguageSelectionScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 50),
+        padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
         itemCount: LanguageService.supportedLanguages.length,
         itemBuilder: (context, index) {
           final languageCode = LanguageService.supportedLanguages.keys.elementAt(index);
           final languageData = LanguageService.supportedLanguages[languageCode]!;
           final isSelected = currentLanguage == languageCode;
+          final accent = _getLanguageColor(languageCode);
 
-          final languageColor = _getLanguageColor(languageCode);
-          
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? languageColor.withValues(alpha:0.1) : Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? languageColor : Colors.grey[300]!,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () async {
-                  await languageProvider.changeLanguage(languageCode);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                            const SizedBox(width: 10),
-                            Text('Language changed to ${languageData['name']}'),
-                          ],
-                        ),
-                        backgroundColor: const Color(0xFF04B104),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                    // Pop back to settings
-                    Navigator.pop(context);
-                  }
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(
-                    children: [
-                      // Language Icon
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: isSelected 
-                              ? languageColor.withValues(alpha:0.2) 
-                              : languageColor.withValues(alpha:0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                          child: Text(
-                            languageData['nativeName']!.substring(0, 2).toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: languageColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      // Language Name
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              languageData['name']!,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                color: isSelected ? languageColor : Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              languageData['nativeName']!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: languageColor.withValues(alpha:0.8),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Selection Indicator
-                      isSelected
-                          ? Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: languageColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.check,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            )
-                          : Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Colors.grey[400],
-                            ),
-                    ],
-                  ),
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            leading: CircleAvatar(
+              radius: 20,
+              backgroundColor: accent.withValues(alpha: 0.12),
+              child: Text(
+                languageData['nativeName']!.substring(0, 2).toUpperCase(),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: accent,
                 ),
               ),
             ),
+            title: Text(
+              languageData['nativeName']!,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            subtitle: Text(
+              languageData['name']!,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+            trailing: isSelected
+                ? Icon(Icons.check_circle, color: accent, size: 20)
+                : const Icon(Icons.radio_button_unchecked, size: 18, color: Colors.grey),
+            onTap: () async {
+              await languageProvider.changeLanguage(languageCode);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                        const SizedBox(width: 10),
+                        Text('Language changed to ${languageData['name']}'),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFF04B104),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+                Navigator.pop(context);
+              }
+            },
           );
         },
       ),

@@ -176,6 +176,7 @@
   "enterValidWalletAddress": "Enter valid wallet address (min 26 characters)",
   "warnings": "Warnings",
   "viewWarningsGuidelines": "View warnings & community guidelines",
+  "shareAndEarnRewards": "Share & Earn Rewards",
   "warningForPermanentBlock": "Warning for permanent block",
   "currentWarnings": "Current warnings",
   "greatNoWarnings": "Great! You have no warnings",

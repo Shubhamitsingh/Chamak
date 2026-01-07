@@ -534,6 +534,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewWarningsGuidelines => 'View warnings & community guidelines';
 
   @override
+  String get shareAndEarnRewards => 'Share & Earn Rewards';
+
+  @override
   String get warningForPermanentBlock => 'Warning for permanent block';
 
   @override
@@ -1148,9 +1151,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get promotion => 'Promotion';
-
-  @override
-  String get shareAndEarnRewards => 'Share & Earn Rewards';
 
   @override
   String get customShareTemplate => 'Custom share template';

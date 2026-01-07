@@ -1875,8 +1875,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Crop Image',
-              toolbarColor: const Color(0xFFFF1B7C),
-              toolbarWidgetColor: Colors.white,
+              toolbarColor: Colors.white,
+              toolbarWidgetColor: Colors.black87,
+              statusBarColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.square,
               lockAspectRatio: true, // Lock to square for profile
               aspectRatioPresets: [
@@ -1892,7 +1893,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               showCropGrid: true,
               hideBottomControls: true, // Hide scale slider/controls
               cropStyle: CropStyle.rectangle,
-              statusBarColor: const Color(0xFFFF1B7C),
             ),
             // UI Settings for iOS
             IOSUiSettings(
@@ -2017,8 +2017,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Crop Image',
-              toolbarColor: const Color(0xFFFF1B7C),
-              toolbarWidgetColor: Colors.white,
+              toolbarColor: Colors.white,
+              toolbarWidgetColor: Colors.black87,
+              statusBarColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.square,
               lockAspectRatio: true, // Lock to square for profile
               aspectRatioPresets: [
@@ -2034,7 +2035,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               showCropGrid: true,
               hideBottomControls: true, // Hide scale slider/controls
               cropStyle: CropStyle.rectangle,
-              statusBarColor: const Color(0xFFFF1B7C),
             ),
             // UI Settings for iOS
             IOSUiSettings(

@@ -24,6 +24,7 @@ import '../widgets/coin_purchase_popup.dart';
 import '../services/location_permission_service.dart';
 import '../services/agora_token_service.dart';
 import '../widgets/live_stream_preview_card.dart';
+import 'live_reels_screen.dart';
 import 'dart:async';
 
 // Optimized Scrolling Text Widget for Banner

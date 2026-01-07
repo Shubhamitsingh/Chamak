@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -80,10 +81,18 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final currentLocale = languageProvider.locale;
     
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0, // keep flat on scroll
+        surfaceTintColor: Colors.transparent, // remove grey tint
+        shadowColor: Colors.transparent,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
         automaticallyImplyLeading: !widget.hideAppBarActions,
         leading: widget.hideAppBarActions
             ? null
@@ -260,14 +269,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
         // Build list
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: EdgeInsets.zero,
           itemCount: filteredChats.length,
           itemBuilder: (context, index) {
             final chat = filteredChats[index];
-            return FadeInUp(
-              delay: Duration(milliseconds: 100 * index),
-              child: _buildMessageTileFromChat(chat),
-            );
+            return _buildMessageTileFromChat(chat);
           },
         );
       },
@@ -307,138 +313,128 @@ class _MessagesScreenState extends State<MessagesScreen> {
           otherUserImage = chat.participantImages[otherUserId];
         }
     
-    // Light pink color for unread messages (matching app theme)
-    final Color lightPink = const Color(0xFFFFD6E8); // Light pink background (visible pink tint)
-    final Color backgroundColor = unreadCount > 0 ? lightPink : Colors.white;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () async {
-            // Get other user's full data
-            try {
-              final otherUser = await _databaseService.getUserData(otherUserId);
-              if (otherUser != null && mounted) {
-                // Mark messages as read
-                await _chatService.markMessagesAsRead(chat.chatId, _currentUserId!);
-                
-                // Navigate to chat screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatScreen(
-                      otherUser: otherUser,
-                      chatId: chat.chatId,
-                    ),
+    // Clean design - NO containers, NO borders, NO backgrounds
+    return Material(
+      color: Colors.transparent,
+      elevation: 0,
+      child: InkWell(
+        onTap: () async {
+          // Get other user's full data
+          try {
+            final otherUser = await _databaseService.getUserData(otherUserId);
+            if (otherUser != null && mounted) {
+              // Mark messages as read
+              await _chatService.markMessagesAsRead(chat.chatId, _currentUserId!);
+              
+              // Navigate to chat screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(
+                    otherUser: otherUser,
+                    chatId: chat.chatId,
                   ),
-                );
-              }
-            } catch (e) {
-              debugPrint('Error opening chat: $e');
+                ),
+              );
             }
-          },
-          borderRadius: BorderRadius.circular(10),
-          splashColor: const Color(0xFF9C27B0).withValues(alpha: 0.1),
-          highlightColor: const Color(0xFF9C27B0).withValues(alpha: 0.05),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Row(
+          } catch (e) {
+            debugPrint('Error opening chat: $e');
+          }
+        },
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+          children: [
+            // Avatar - Compact size
+            Stack(
               children: [
-                // Avatar
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: const Color(0xFF9C27B0).withValues(alpha: 0.1),
-                      backgroundImage: otherUserImage != null && otherUserImage.isNotEmpty
-                          ? NetworkImage(otherUserImage)
-                          : null,
-                      child: otherUserImage == null || otherUserImage.isEmpty
-                          ? const Icon(
-                              Icons.person,
-                              color: Color(0xFF9C27B0),
-                              size: 20,
-                            )
-                          : null,
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: const Color(0xFFFF1B7C).withValues(alpha: 0.1),
+                  backgroundImage: otherUserImage != null && otherUserImage.isNotEmpty
+                      ? NetworkImage(otherUserImage)
+                      : null,
+                  child: otherUserImage == null || otherUserImage.isEmpty
+                      ? const Icon(
+                          Icons.person,
+                          color: Color(0xFFFF1B7C),
+                          size: 14,
+                        )
+                      : null,
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF1B7C),
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Center(
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
-                    if (unreadCount > 0)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(2.5),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            unreadCount > 99 ? '99+' : unreadCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 10),
-                // Name and Message
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        otherUserName,
-                        style: TextStyle(
-                          fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
-                          fontSize: 13,
-                          color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        chat.lastMessage.isNotEmpty ? chat.lastMessage : 'No messages yet',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: unreadCount > 0 ? Colors.black87 : Colors.grey,
-                          fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
                   ),
-                ),
-                const SizedBox(width: 6),
-                // Time
-                Text(
-                  _formatTimestamp(lastMessageTime),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.grey,
-                    fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
               ],
             ),
-          ),
+            const SizedBox(width: 12),
+            // Name and Message - Compact
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    otherUserName,
+                    style: TextStyle(
+                      fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
+                      fontSize: 12,
+                      color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    chat.lastMessage.isNotEmpty ? chat.lastMessage : 'No messages yet',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: unreadCount > 0 ? Colors.black87 : Colors.grey[600],
+                      fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Time - Compact
+            Text(
+              _formatTimestamp(lastMessageTime),
+              style: TextStyle(
+                fontSize: 9,
+                color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.grey[600],
+                fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
+      ),
       ),
     );
       },

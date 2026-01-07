@@ -1128,6 +1128,12 @@ abstract class AppLocalizations {
   /// **'View warnings & community guidelines'**
   String get viewWarningsGuidelines;
 
+  /// No description provided for @shareAndEarnRewards.
+  ///
+  /// In en, this message translates to:
+  /// **'Share & Earn Rewards'**
+  String get shareAndEarnRewards;
+
   /// No description provided for @warningForPermanentBlock.
   ///
   /// In en, this message translates to:
@@ -2267,12 +2273,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Promotion'**
   String get promotion;
-
-  /// No description provided for @shareAndEarnRewards.
-  ///
-  /// In en, this message translates to:
-  /// **'Share & Earn Rewards'**
-  String get shareAndEarnRewards;
 
   /// No description provided for @customShareTemplate.
   ///

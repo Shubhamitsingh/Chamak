@@ -1,22 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:Chamak/generated/l10n/app_localizations.dart';
 
 class WarningScreen extends StatelessWidget {
   const WarningScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final rules = [
-      'Talk to everyone with respect',
-      'Do not ask anyone for Instagram or WhatsApp details',
-      'Do not use abusive language and be polite',
-      'Do not falsely report anyone',
-      'No impersonation or fake profiles',
-      'Do not share personal information like address or phone number',
-      'No harassment, bullying, or threatening behavior',
-      'Do not share inappropriate, explicit, or offensive content',
-      'No spamming, advertising, or promotional messages',
-      'Respect age restrictions and do not interact with minors inappropriately',
-    ];
+    final loc = AppLocalizations.of(context)!;
+
+    final isHindi = Localizations.localeOf(context).languageCode == 'hi';
+
+    final rules = isHindi
+        ? [
+            loc.rule01Hindi,
+            loc.rule02Hindi,
+            loc.rule03Hindi,
+            loc.rule04Hindi,
+            'कोई भी फर्जी/नकली प्रोफ़ाइल न बनाएं',
+            'पता या फ़ोन नंबर जैसी निजी जानकारी साझा न करें',
+            'किसी भी तरह की धमकी, उत्पीड़न या बदसलूकी न करें',
+            'अश्लील, आपत्तिजनक या अनुचित सामग्री साझा न करें',
+            'स्पैम/विज्ञापन/प्रमोशनल संदेश न भेजें',
+            'उम्र प्रतिबंधों का सम्मान करें, नाबालिगों से अनुचित बातचीत न करें',
+          ]
+        : [
+            loc.rule01English,
+            loc.rule02English,
+            loc.rule03English,
+            loc.rule04English,
+            'No impersonation or fake profiles',
+            'Do not share personal information like address or phone number',
+            'No harassment, bullying, or threatening behavior',
+            'Do not share inappropriate, explicit, or offensive content',
+            'No spamming, advertising, or promotional messages',
+            'Respect age restrictions and do not interact with minors inappropriately',
+          ];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -33,9 +51,9 @@ class WarningScreen extends StatelessWidget {
             Navigator.pop(context);
           },
         ),
-        title: const Text(
-          'Warning',
-          style: TextStyle(
+        title: Text(
+          loc.warnings,
+          style: const TextStyle(
             color: Colors.black,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -48,18 +66,18 @@ class WarningScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Follow these guidelines',
-              style: TextStyle(
+            Text(
+              loc.followTheseGuidelines,
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'To maintain a safe community',
-              style: TextStyle(
+            Text(
+              loc.followCommunityGuidelines,
+              style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
               ),

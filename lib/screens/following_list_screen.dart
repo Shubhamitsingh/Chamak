@@ -29,6 +29,7 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isHindi = Localizations.localeOf(context).languageCode == 'hi';
     final currentUserId = _auth.currentUser?.uid;
     final isOwnProfile = currentUserId == widget.userId;
 
@@ -76,7 +77,7 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Error loading following',
+                    isHindi ? 'फ़ॉलोइंग लोड करने में त्रुटि' : 'Error loading following',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[800],
@@ -112,7 +113,7 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Not following anyone yet',
+                    isHindi ? 'अभी किसी को फ़ॉलो नहीं किया' : 'Not following anyone yet',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[800],
@@ -121,7 +122,9 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'When you follow someone, they\'ll appear here',
+                    isHindi
+                        ? 'जब आप किसी को फ़ॉलो करेंगे, तो वे यहाँ दिखेंगे'
+                        : 'When you follow someone, they\'ll appear here',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],
@@ -142,7 +145,7 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Total: ${following.length}',
+                    '${isHindi ? 'कुल' : 'Total'}: ${following.length}',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 14,

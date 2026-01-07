@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/language_service.dart';
 
 class LanguageProvider with ChangeNotifier {
-  Locale _locale = const Locale('en'); // Default to English
+  Locale _locale = const Locale('en'); // Locale used by app
+  String _selectedLanguageCode = 'en'; // Track selected code (incl. Hinglish)
   final LanguageService _languageService = LanguageService();
   
   Locale get locale => _locale;
@@ -15,7 +16,8 @@ class LanguageProvider with ChangeNotifier {
   Future<void> _loadSavedLanguage() async {
     final savedLanguage = await _languageService.getSavedLanguage();
     if (savedLanguage != null && _languageService.isLanguageSupported(savedLanguage)) {
-      _locale = Locale(savedLanguage);
+      _selectedLanguageCode = savedLanguage;
+      _locale = _languageService.getLocaleFromLanguageCode(savedLanguage);
       notifyListeners();
     }
   }
@@ -26,20 +28,21 @@ class LanguageProvider with ChangeNotifier {
       print('Language not supported: $languageCode');
       return;
     }
-    
-    _locale = Locale(languageCode);
+
+    _selectedLanguageCode = languageCode;
+    _locale = _languageService.getLocaleFromLanguageCode(languageCode);
     await _languageService.saveLanguage(languageCode);
     notifyListeners();
   }
   
   /// Get current language code
-  String get currentLanguageCode => _locale.languageCode;
+  String get currentLanguageCode => _selectedLanguageCode;
   
   /// Get current language name
   String get currentLanguageName => _languageService.getLanguageName(_locale.languageCode);
   
   /// Get current language native name
-  String get currentLanguageNativeName => _languageService.getLanguageNativeName(_locale.languageCode);
+  String get currentLanguageNativeName => _languageService.getLanguageNativeName(_selectedLanguageCode);
 }
 
 

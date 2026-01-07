@@ -535,6 +535,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get viewWarningsGuidelines => 'चेतावनियां और समुदाय दिशानिर्देश देखें';
 
   @override
+  String get shareAndEarnRewards => 'शेयर करें और पुरस्कार कमाएँ';
+
+  @override
   String get warningForPermanentBlock => 'स्थायी ब्लॉक के लिए चेतावनी';
 
   @override
@@ -1150,9 +1153,6 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get promotion => 'प्रोमोशन';
-
-  @override
-  String get shareAndEarnRewards => 'Share & Earn Rewards';
 
   @override
   String get customShareTemplate => 'Custom share template';

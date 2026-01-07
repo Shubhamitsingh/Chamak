@@ -29,6 +29,7 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isHindi = Localizations.localeOf(context).languageCode == 'hi';
     final currentUserId = _auth.currentUser?.uid;
     final isOwnProfile = currentUserId == widget.userId;
 
@@ -76,7 +77,7 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Error loading followers',
+                    isHindi ? 'फ़ॉलोअर्स लोड करने में त्रुटि' : 'Error loading followers',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[800],
@@ -112,7 +113,7 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No followers yet',
+                    isHindi ? 'अभी कोई फ़ॉलोअर नहीं' : 'No followers yet',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[800],
@@ -121,7 +122,9 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'When someone follows you, they\'ll appear here',
+                    isHindi
+                        ? 'जब कोई आपको फ़ॉलो करेगा, तो वह यहाँ दिखेगा'
+                        : 'When someone follows you, they\'ll appear here',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],
@@ -142,7 +145,7 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Total: ${followers.length}',
+                    '${isHindi ? 'कुल' : 'Total'}: ${followers.length}',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 14,
