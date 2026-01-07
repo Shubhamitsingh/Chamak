@@ -257,6 +257,55 @@
   "newlyJoinedHosts": "नए शामिल हुए होस्ट",
   "discoverNewTalent": "प्लेटफ़ॉर्म पर नई प्रतिभाओं की खोज करें",
   "joinedToday": "आज शामिल हुए",
-  "joinedDaysAgo": "{days} दिन पहले शामिल हुए"
+  "joinedDaysAgo": "{days} दिन पहले शामिल हुए",
+  "promotion": "प्रोमोशन",
+  "shareURL": "URL साझा करें",
+  "saveQRCode": "QR कोड सहेजें",
+  "appLinkCopied": "ऐप लिंक क्लिपबोर्ड पर कॉपी हो गई!",
+  "qrCodeSaved": "QR कोड गैलरी में सहेजा गया!",
+  "imageUploaded": "छवि सफलतापूर्वक अपलोड की गई!",
+  "rewardEarned": "आपने {coins} सिक्के कमाए!",
+  "@rewardEarned": {
+    "placeholders": {
+      "coins": {
+        "type": "int"
+      }
+    }
+  },
+  "selectImage": "छवि चुनें",
+  "takePhoto": "फोटो लें",
+  "chooseFromGallery": "गैलरी से चुनें",
+  "inviteFriendsEarnInstantly": "दोस्तों को आमंत्रित करें। तुरंत कमाएं।",
+  "shareReferralLinkDescription": "अपना रेफरल लिंक साझा करें और हर दोस्त के लिए पुरस्कार पाएं जो शामिल होता है!",
+  "checkOutChamakzDownloadApp": "Chamakz देखें! ऐप डाउनलोड करें: {link}",
+  "@checkOutChamakzDownloadApp": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "chamakzApp": "Chamakz ऐप",
+  "appLinkCopiedAndShared": "ऐप लिंक कॉपी और साझा की गई! आपने {coins} सिक्के कमाए!",
+  "@appLinkCopiedAndShared": {
+    "placeholders": {
+      "coins": {
+        "type": "int"
+      }
+    }
+  },
+  "failedToShareURL": "URL साझा करने में विफल",
+  "unableToGenerateShareLink": "शेयर लिंक उत्पन्न करने में असमर्थ",
+  "unableToGenerateQRCode": "QR कोड उत्पन्न करने में असमर्थ",
+  "chamakzQRCode": "Chamakz QR कोड",
+  "failedToSaveQRCode": "QR कोड सहेजने में विफल",
+  "qrCodeSavedYouEarned": "QR कोड सहेजा गया! आपने {coins} सिक्के कमाए!",
+  "@qrCodeSavedYouEarned": {
+    "placeholders": {
+      "coins": {
+        "type": "int"
+      }
+    }
+  }
 }
 

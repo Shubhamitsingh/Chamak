@@ -18,13 +18,13 @@ class CallRequestService {
     required String hostId,
   }) async {
     try {
-      // Check if user has enough coins (1000 coins per minute minimum) (with timeout)
+      // Check if user has enough coins (300 coins per minute minimum) (with timeout)
       final hasEnoughCoins = await _coinDeductionService.hasEnoughCoins(callerId)
           .timeout(const Duration(seconds: 10));
       if (!hasEnoughCoins) {
         final balance = await _coinDeductionService.getUserBalance(callerId)
             .timeout(const Duration(seconds: 10));
-        throw Exception('Insufficient balance. You need at least 1000 coins to start a call. Your balance: $balance coins');
+        throw Exception('Insufficient balance. You need at least 300 coins to start a call. Your balance: $balance coins');
       }
       
       // Check if host is already in a call (with timeout)

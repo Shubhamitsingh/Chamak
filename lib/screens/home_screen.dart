@@ -1233,8 +1233,6 @@ class _HomeScreenState extends State<HomeScreen>
             final liveStreams = snapshot.data!;
 
             return GridView.builder(
-              key: ValueKey(
-                  'live_grid_$shouldShowPreview'), // Force rebuild when delay passes
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -1244,71 +1242,69 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const ClampingScrollPhysics(),
               shrinkWrap: true,
-              addRepaintBoundaries: true,
-              addAutomaticKeepAlives: false,
               itemCount: liveStreams.length > 20
                   ? 20
                   : liveStreams.length, // Limit to 20 items
               itemBuilder: (context, index) {
                 final stream = liveStreams[index];
-                debugPrint(
-                    '🏗️ Building grid item $index for stream: ${stream.streamId}, shouldShowPreview=$shouldShowPreview');
-                return RepaintBoundary(
-                  child: LiveStreamPreviewCard(
-                    key: ValueKey('preview_${stream.streamId}'),
-                    stream: stream,
-                    shouldShowPreview:
-                        shouldShowPreview, // Use from ValueListenableBuilder
-                    hostPhotoUrl: stream.hostPhotoUrl,
-                    onTap: () async {
-                      if (!mounted) return;
-                      // Navigate to live stream as audience/viewer
+                return GestureDetector(
+                  onTap: () async {
+                    if (!mounted) return;
+                    // Navigate to live stream as viewer
+                    // Generate token dynamically using AgoraTokenService
+                    debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
+                    debugPrint('📺 Channel: ${stream.channelName}');
+
+                    try {
+                      final tokenService = AgoraTokenService();
+                      final token = await tokenService.getAudienceToken(
+                        channelName: stream.channelName,
+                        uid: 0,
+                      );
                       debugPrint(
-                          '👁️ Viewer joining stream: ${stream.streamId}');
-                      debugPrint('📺 Channel: ${stream.channelName}');
+                          '✅ Generated audience token: ${token.length} chars');
 
-                      try {
-                        final tokenService = AgoraTokenService();
-                        final token = await tokenService.getAudienceToken(
-                          channelName: stream.channelName,
-                          uid: 0,
-                        );
-                        debugPrint(
-                            '✅ Generated audience token: ${token.length} chars');
+                      if (!mounted) return;
 
-                        if (!mounted) return;
+                      // Increment viewer count
+                      liveStreamService.joinStream(stream.streamId);
 
-                        // Increment viewer count
-                        liveStreamService.joinStream(stream.streamId);
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AgoraLiveStreamScreen(
-                              channelName: stream.channelName,
-                              token: token,
-                              isHost: false,
-                              streamId: stream.streamId,
-                            ),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AgoraLiveStreamScreen(
+                            channelName: stream.channelName,
+                            token: token,
+                            isHost: false, // Viewer mode
+                            streamId: stream.streamId, // Pass streamId for cleanup
                           ),
-                        ).then((_) {
-                          // Decrement viewer count when viewer leaves
-                          liveStreamService.leaveStream(stream.streamId);
-                        });
-                      } catch (e) {
-                        debugPrint('❌ Error generating token: $e');
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'Failed to join stream: ${e.toString()}'),
-                              backgroundColor: Colors.red,
-                              duration: const Duration(seconds: 3),
-                            ),
-                          );
-                        }
+                        ),
+                      ).then((_) {
+                        // Decrement viewer count when viewer leaves
+                        liveStreamService.leaveStream(stream.streamId);
+                      });
+                    } catch (e) {
+                      debugPrint('❌ Error generating token: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to join stream: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
                       }
-                    },
+                    }
+                  },
+                  child: _buildLiveStreamCard(
+                    hostName: stream.hostName,
+                    title: stream.title,
+                    viewers: stream.viewerCount,
+                    thumbnail: Icons.live_tv,
+                    isLive: true,
+                    hostPhotoUrl: stream.hostPhotoUrl,
+                    streamId: stream.streamId, // Pass streamId for chat
+                    hostId: stream.hostId, // Pass hostId to fetch user data
                   ),
                 );
               },
@@ -1961,59 +1957,149 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== FOLLOWING CONTENT ==========
   Widget _buildFollowingContent() {
-    // Following feature - Shows live streams from followed hosts
-    // Note: This feature requires a follow/unfollow system to be implemented in the database
+    // Show real-time live streams from Firebase (same as Explore tab)
+    final liveStreamService = LiveStreamService();
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFEC4899), Color(0xFFEF4444)],
+    return StreamBuilder<List<LiveStreamModel>>(
+      stream: liveStreamService.getActiveLiveStreams(),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFFFF69B4),
+            ),
+          );
+        }
+
+        // Error state
+        if (snapshot.hasError) {
+          if (!mounted) return const SizedBox.shrink();
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.errorLoadingStreams,
+                  style: TextStyle(color: Colors.grey[600]),
                 ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFEC4899).withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    spreadRadius: 5,
+              ],
+            ),
+          );
+        }
+
+        // No data state
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          if (!mounted) return const SizedBox.shrink();
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.live_tv, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 20),
+                Text(
+                  AppLocalizations.of(context)!.noLiveStreamsAtMoment,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
                   ),
-                ],
-              ),
-              child: const Icon(
-                Icons.favorite_rounded,
-                color: Colors.white,
-                size: 50,
-              ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  AppLocalizations.of(context)!.beFirstToGoLive,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.followingTabTitle,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+          );
+        }
+
+        // Display streams
+        final liveStreams = snapshot.data!;
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.85,
+          ),
+          physics: const ClampingScrollPhysics(),
+          shrinkWrap: true,
+          itemCount: liveStreams.length > 20
+              ? 20
+              : liveStreams.length, // Limit to 20 items
+          itemBuilder: (context, index) {
+            final stream = liveStreams[index];
+            return GestureDetector(
+              onTap: () async {
+                if (!mounted) return;
+                // Navigate to live stream as viewer
+                // Generate token dynamically using AgoraTokenService
+                debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
+                debugPrint('📺 Channel: ${stream.channelName}');
+
+                try {
+                  final tokenService = AgoraTokenService();
+                  final token = await tokenService.getAudienceToken(
+                    channelName: stream.channelName,
+                    uid: 0,
+                  );
+                  debugPrint(
+                      '✅ Generated audience token: ${token.length} chars');
+
+                  if (!mounted) return;
+
+                  // Increment viewer count
+                  liveStreamService.joinStream(stream.streamId);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AgoraLiveStreamScreen(
+                        channelName: stream.channelName,
+                        token: token,
+                        isHost: false, // Viewer mode
+                        streamId: stream.streamId, // Pass streamId for cleanup
+                      ),
+                    ),
+                  ).then((_) {
+                    // Decrement viewer count when viewer leaves
+                    liveStreamService.leaveStream(stream.streamId);
+                  });
+                } catch (e) {
+                  debugPrint('❌ Error generating token: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to join stream: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: _buildLiveStreamCard(
+                hostName: stream.hostName,
+                title: stream.title,
+                viewers: stream.viewerCount,
+                thumbnail: Icons.live_tv,
+                isLive: true,
+                hostPhotoUrl: stream.hostPhotoUrl,
+                streamId: stream.streamId, // Pass streamId for chat
+                hostId: stream.hostId, // Pass hostId to fetch user data
               ),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              AppLocalizations.of(context)!.followingTabDescription,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey[600],
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -2149,56 +2235,15 @@ class _HomeScreenState extends State<HomeScreen>
                   }
                 }
               },
-              child: LiveStreamPreviewCard(
-                key: ValueKey('preview_${stream.streamId}'),
-                stream: stream,
-                shouldShowPreview: _hasInitialDelayPassed,
+              child: _buildLiveStreamCard(
+                hostName: stream.hostName,
+                title: stream.title,
+                viewers: stream.viewerCount,
+                thumbnail: Icons.live_tv,
+                isLive: true,
                 hostPhotoUrl: stream.hostPhotoUrl,
-                onTap: () async {
-                  if (!mounted) return;
-                  debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
-                  debugPrint('📺 Channel: ${stream.channelName}');
-
-                  try {
-                    final tokenService = AgoraTokenService();
-                    final token = await tokenService.getAudienceToken(
-                      channelName: stream.channelName,
-                      uid: 0,
-                    );
-                    debugPrint(
-                        '✅ Generated audience token: ${token.length} chars');
-
-                    if (!mounted) return;
-
-                    liveStreamService.joinStream(stream.streamId);
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AgoraLiveStreamScreen(
-                          channelName: stream.channelName,
-                          token: token,
-                          isHost: false,
-                          streamId: stream.streamId,
-                        ),
-                      ),
-                    ).then((_) {
-                      liveStreamService.leaveStream(stream.streamId);
-                    });
-                  } catch (e) {
-                    debugPrint('❌ Error generating token: $e');
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                              Text('Failed to join stream: ${e.toString()}'),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  }
-                },
+                streamId: stream.streamId, // Pass streamId for chat
+                hostId: stream.hostId, // Pass hostId to fetch user data
               ),
             );
           },

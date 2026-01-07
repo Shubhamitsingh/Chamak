@@ -1149,7 +1149,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get earnMoney => 'Earn Money';
 
   @override
-  String get promotion => 'Promotion';
+  String get promotion => 'प्रोमोशन';
 
   @override
   String get shareAndEarnRewards => 'Share & Earn Rewards';
@@ -1175,28 +1175,69 @@ class AppLocalizationsHi extends AppLocalizations {
       'When rate is 0%, the downline have no earnings.';
 
   @override
-  String get shareURL => 'Share URL';
+  String get shareURL => 'URL साझा करें';
 
   @override
-  String get saveQRCode => 'Save QR Code';
+  String get saveQRCode => 'QR कोड सहेजें';
 
   @override
-  String get appLinkCopied => 'App link copied to clipboard!';
+  String get appLinkCopied => 'ऐप लिंक क्लिपबोर्ड पर कॉपी हो गई!';
 
   @override
-  String get qrCodeSaved => 'QR code saved to gallery!';
+  String get qrCodeSaved => 'QR कोड गैलरी में सहेजा गया!';
 
   @override
-  String get imageUploaded => 'Image uploaded successfully!';
+  String get imageUploaded => 'छवि सफलतापूर्वक अपलोड की गई!';
 
   @override
   String rewardEarned(int coins) {
-    return 'You earned $coins coins!';
+    return 'आपने $coins सिक्के कमाए!';
   }
 
   @override
-  String get selectImage => 'Select Image';
+  String get selectImage => 'छवि चुनें';
 
   @override
-  String get takePhoto => 'Take Photo';
+  String get takePhoto => 'फोटो लें';
+
+  @override
+  String get inviteFriendsEarnInstantly =>
+      'दोस्तों को आमंत्रित करें। तुरंत कमाएं।';
+
+  @override
+  String get shareReferralLinkDescription =>
+      'अपना रेफरल लिंक साझा करें और हर दोस्त के लिए पुरस्कार पाएं जो शामिल होता है!';
+
+  @override
+  String checkOutChamakzDownloadApp(String link) {
+    return 'Chamakz देखें! ऐप डाउनलोड करें: $link';
+  }
+
+  @override
+  String get chamakzApp => 'Chamakz ऐप';
+
+  @override
+  String appLinkCopiedAndShared(int coins) {
+    return 'ऐप लिंक कॉपी और साझा की गई! आपने $coins सिक्के कमाए!';
+  }
+
+  @override
+  String get failedToShareURL => 'URL साझा करने में विफल';
+
+  @override
+  String get unableToGenerateShareLink => 'शेयर लिंक उत्पन्न करने में असमर्थ';
+
+  @override
+  String get unableToGenerateQRCode => 'QR कोड उत्पन्न करने में असमर्थ';
+
+  @override
+  String get chamakzQRCode => 'Chamakz QR कोड';
+
+  @override
+  String get failedToSaveQRCode => 'QR कोड सहेजने में विफल';
+
+  @override
+  String qrCodeSavedYouEarned(int coins) {
+    return 'QR कोड सहेजा गया! आपने $coins सिक्के कमाए!';
+  }
 }

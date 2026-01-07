@@ -109,9 +109,9 @@ class _PromotionScreenState extends State<PromotionScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Promotion',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context)!.promotion,
+          style: const TextStyle(
             color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -238,7 +238,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
       child: Column(
         children: [
           Text(
-            'Invite friends. Earn instantly.',
+            AppLocalizations.of(context)!.inviteFriendsEarnInstantly,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: titleFontSize,
@@ -250,7 +250,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Share your referral link and get rewarded for every friend who joins!',
+            AppLocalizations.of(context)!.shareReferralLinkDescription,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: subtitleFontSize,
@@ -295,7 +295,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
               minimumSize: Size(buttonWidth, buttonHeight),
             ),
             child: Text(
-              'Share URL',
+              AppLocalizations.of(context)!.shareURL,
               style: TextStyle(
                 fontSize: buttonFontSize,
                 fontWeight: FontWeight.w600,
@@ -334,7 +334,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
   Future<void> _handleShareURL() async {
     final userId = _auth.currentUser?.uid;
     if (userId == null || _appLink == null) {
-      _showError('Unable to generate share link');
+      _showError(AppLocalizations.of(context)!.unableToGenerateShareLink);
       return;
     }
 
@@ -356,14 +356,14 @@ class _PromotionScreenState extends State<PromotionScreen> {
         // Share image along with text
         await Share.shareXFiles(
           [XFile(tempFilePath)],
-          text: 'Check out Chamakz! Download the app: $_appLink',
-          subject: 'Chamakz App',
+          text: AppLocalizations.of(context)!.checkOutChamakzDownloadApp(_appLink!),
+          subject: AppLocalizations.of(context)!.chamakzApp,
         );
       } else {
         // Fallback to text-only share if watermarking fails
         await Share.share(
-          'Check out Chamakz! Download the app: $_appLink',
-          subject: 'Chamakz App',
+          AppLocalizations.of(context)!.checkOutChamakzDownloadApp(_appLink!),
+          subject: AppLocalizations.of(context)!.chamakzApp,
         );
       }
 
@@ -380,12 +380,12 @@ class _PromotionScreenState extends State<PromotionScreen> {
       );
 
       if (mounted) {
-        _showSuccess('App link copied and shared! You earned $reward coins!');
+        _showSuccess(AppLocalizations.of(context)!.appLinkCopiedAndShared(reward));
       }
     } catch (e) {
       debugPrint('Error sharing URL: $e');
       if (mounted) {
-        _showError('Failed to share URL');
+        _showError(AppLocalizations.of(context)!.failedToShareURL);
       }
     }
   }
@@ -393,7 +393,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
   Future<void> _handleSaveQRCode() async {
     final userId = _auth.currentUser?.uid;
     if (userId == null || _qrCodeData == null) {
-      _showError('Unable to generate QR code');
+      _showError(AppLocalizations.of(context)!.unableToGenerateQRCode);
       return;
     }
 
@@ -413,7 +413,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
       // Share to save (this will allow user to save to gallery)
       await Share.shareXFiles(
         [XFile(filePath)],
-        text: 'Chamakz QR Code',
+        text: AppLocalizations.of(context)!.chamakzQRCode,
       );
 
       // Calculate and award reward
@@ -429,12 +429,12 @@ class _PromotionScreenState extends State<PromotionScreen> {
       );
 
       if (mounted) {
-        _showSuccess('${AppLocalizations.of(context)!.qrCodeSaved} You earned $reward coins!');
+        _showSuccess(AppLocalizations.of(context)!.qrCodeSavedYouEarned(reward));
       }
     } catch (e) {
       debugPrint('Error saving QR code: $e');
       if (mounted) {
-        _showError('Failed to save QR code');
+        _showError(AppLocalizations.of(context)!.failedToSaveQRCode);
       }
     }
   }

@@ -159,6 +159,23 @@
   "pleaseEnterIfscCode": "దయచేసి IFSC కోడ్‌ను నమోదు చేయండి",
   "enterValidIfscCode": "చెల్లుబాటు అయ్యే IFSC కోడ్‌ను నమోదు చేయండి (11 అక్షరాలు)",
   "pleaseEnterWalletAddress": "దయచేసి వాలెట్ చిరునామాను నమోదు చేయండి",
-  "enterValidWalletAddress": "చెల్లుబాటు అయ్యే వాలెట్ చిరునామాను నమోదు చేయండి (కనీసం 26 అక్షరాలు)"
+  "enterValidWalletAddress": "చెల్లుబాటు అయ్యే వాలెట్ చిరునామాను నమోదు చేయండి (కనీసం 26 అక్షరాలు)",
+  "promotion": "Promotion",
+  "shareURL": "URL షేర్ చేయండి",
+  "saveQRCode": "QR కోడ్‌ను సేవ్ చేయండి",
+  "inviteFriendsEarnInstantly": "స్నేహితులను ఆహ్వానించండి. వెంటనే సంపాదించండి.",
+  "shareReferralLinkDescription": "మీ రెఫరల్ లింక్‌ను షేర్ చేసి, చేరిన ప్రతి స్నేహితుకు బహుమతి పొందండి!",
+  "checkOutChamakzDownloadApp": "Chamakz ని చూడండి! అప్‌ను డౌన్‌లోడ్ చేయండి: {link}",
+  "@checkOutChamakzDownloadApp": {"placeholders": {"link": {"type": "String"}}},
+  "chamakzApp": "Chamakz అప్",
+  "appLinkCopiedAndShared": "అప్ లింక్ కాపీ చేయబడింది మరియు షేర్ చేయబడింది! మీరు {coins} నాణేలను సంపాదించారు!",
+  "@appLinkCopiedAndShared": {"placeholders": {"coins": {"type": "int"}}},
+  "failedToShareURL": "URL షేర్ చేయడంలో విఫలమైంది",
+  "unableToGenerateShareLink": "షేర్ లింక్‌ను సృష్టించలేకపోయింది",
+  "unableToGenerateQRCode": "QR కోడ్‌ను సృష్టించలేకపోయింది",
+  "chamakzQRCode": "Chamakz QR కోడ్",
+  "failedToSaveQRCode": "QR కోడ్‌ను సేవ్ చేయడంలో విఫలమైంది",
+  "qrCodeSavedYouEarned": "QR కోడ్ సేవ్ చేయబడింది! మీరు {coins} నాణేలను సంపాదించారు!",
+  "@qrCodeSavedYouEarned": {"placeholders": {"coins": {"type": "int"}}}
 }
 

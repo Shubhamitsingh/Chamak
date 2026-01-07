@@ -159,6 +159,23 @@
   "pleaseEnterIfscCode": "IFSC குறியீட்டை உள்ளிடவும்",
   "enterValidIfscCode": "சரியான IFSC குறியீட்டை உள்ளிடவும் (11 எழுத்துக்கள்)",
   "pleaseEnterWalletAddress": "வாலட் முகவரியை உள்ளிடவும்",
-  "enterValidWalletAddress": "சரியான வாலட் முகவரியை உள்ளிடவும் (குறைந்தது 26 எழுத்துக்கள்)"
+  "enterValidWalletAddress": "சரியான வாலட் முகவரியை உள்ளிடவும் (குறைந்தது 26 எழுத்துக்கள்)",
+  "promotion": "Promotion",
+  "shareURL": "URL பகிரவும்",
+  "saveQRCode": "QR குறியீட்டை சேமிக்கவும்",
+  "inviteFriendsEarnInstantly": "நண்பர்களை அழைக்கவும். உடனடியாக சம்பாதிக்கவும்.",
+  "shareReferralLinkDescription": "உங்கள் பரிந்துரை இணைப்பை பகிர்ந்து, சேரும் ஒவ்வொரு நண்பருக்கும் வெகுமதி பெறவும்!",
+  "checkOutChamakzDownloadApp": "Chamakz ஐ பாருங்கள்! ஆப்ஸை பதிவிறக்கவும்: {link}",
+  "@checkOutChamakzDownloadApp": {"placeholders": {"link": {"type": "String"}}},
+  "chamakzApp": "Chamakz ஆப்",
+  "appLinkCopiedAndShared": "ஆப் இணைப்பு நகலெடுக்கப்பட்டு பகிரப்பட்டது! நீங்கள் {coins} நாணயங்களை சம்பாதித்தீர்கள்!",
+  "@appLinkCopiedAndShared": {"placeholders": {"coins": {"type": "int"}}},
+  "failedToShareURL": "URL பகிர முடியவில்லை",
+  "unableToGenerateShareLink": "பகிர் இணைப்பை உருவாக்க முடியவில்லை",
+  "unableToGenerateQRCode": "QR குறியீட்டை உருவாக்க முடியவில்லை",
+  "chamakzQRCode": "Chamakz QR குறியீடு",
+  "failedToSaveQRCode": "QR குறியீட்டை சேமிக்க முடியவில்லை",
+  "qrCodeSavedYouEarned": "QR குறியீடு சேமிக்கப்பட்டது! நீங்கள் {coins} நாணயங்களை சம்பாதித்தீர்கள்!",
+  "@qrCodeSavedYouEarned": {"placeholders": {"coins": {"type": "int"}}}
 }
 

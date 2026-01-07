@@ -1149,7 +1149,7 @@ class AppLocalizationsMr extends AppLocalizations {
   String get earnMoney => 'Earn Money';
 
   @override
-  String get promotion => 'Promotion';
+  String get promotion => 'प्रचार';
 
   @override
   String get shareAndEarnRewards => 'Share & Earn Rewards';
@@ -1175,10 +1175,10 @@ class AppLocalizationsMr extends AppLocalizations {
       'When rate is 0%, the downline have no earnings.';
 
   @override
-  String get shareURL => 'Share URL';
+  String get shareURL => 'URL शेअर करा';
 
   @override
-  String get saveQRCode => 'Save QR Code';
+  String get saveQRCode => 'QR कोड सेव्ह करा';
 
   @override
   String get appLinkCopied => 'App link copied to clipboard!';
@@ -1199,4 +1199,44 @@ class AppLocalizationsMr extends AppLocalizations {
 
   @override
   String get takePhoto => 'Take Photo';
+
+  @override
+  String get inviteFriendsEarnInstantly => 'मित्रांना आमंत्रित करा. लगेच कमवा.';
+
+  @override
+  String get shareReferralLinkDescription =>
+      'आपली रेफरल लिंक शेअर करा आणि जोडलेल्या प्रत्येक मित्रासाठी बक्षीस मिळवा!';
+
+  @override
+  String checkOutChamakzDownloadApp(String link) {
+    return 'Chamakz पहा! अॅप डाउनलोड करा: $link';
+  }
+
+  @override
+  String get chamakzApp => 'Chamakz अॅप';
+
+  @override
+  String appLinkCopiedAndShared(int coins) {
+    return 'अॅप लिंक कॉपी आणि शेअर केली! तुम्ही $coins नाणी कमावली!';
+  }
+
+  @override
+  String get failedToShareURL => 'URL शेअर करण्यात अयशस्वी';
+
+  @override
+  String get unableToGenerateShareLink => 'शेअर लिंक तयार करू शकले नाही';
+
+  @override
+  String get unableToGenerateQRCode => 'QR कोड तयार करू शकले नाही';
+
+  @override
+  String get chamakzQRCode => 'Chamakz QR कोड';
+
+  @override
+  String get failedToSaveQRCode => 'QR कोड सेव्ह करण्यात अयशस्वी';
+
+  @override
+  String qrCodeSavedYouEarned(int coins) {
+    return 'QR कोड सेव्ह केला! तुम्ही $coins नाणी कमावली!';
+  }
 }

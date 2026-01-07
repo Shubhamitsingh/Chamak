@@ -454,6 +454,38 @@
   },
   "selectImage": "Select Image",
   "takePhoto": "Take Photo",
-  "chooseFromGallery": "Choose from Gallery"
+  "chooseFromGallery": "Choose from Gallery",
+  "inviteFriendsEarnInstantly": "Invite friends. Earn instantly.",
+  "shareReferralLinkDescription": "Share your referral link and get rewarded for every friend who joins!",
+  "checkOutChamakzDownloadApp": "Check out Chamakz! Download the app: {link}",
+  "@checkOutChamakzDownloadApp": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "chamakzApp": "Chamakz App",
+  "appLinkCopiedAndShared": "App link copied and shared! You earned {coins} coins!",
+  "@appLinkCopiedAndShared": {
+    "placeholders": {
+      "coins": {
+        "type": "int"
+      }
+    }
+  },
+  "failedToShareURL": "Failed to share URL",
+  "unableToGenerateShareLink": "Unable to generate share link",
+  "unableToGenerateQRCode": "Unable to generate QR code",
+  "chamakzQRCode": "Chamakz QR Code",
+  "failedToSaveQRCode": "Failed to save QR code",
+  "qrCodeSavedYouEarned": "QR code saved! You earned {coins} coins!",
+  "@qrCodeSavedYouEarned": {
+    "placeholders": {
+      "coins": {
+        "type": "int"
+      }
+    }
+  }
 }
 

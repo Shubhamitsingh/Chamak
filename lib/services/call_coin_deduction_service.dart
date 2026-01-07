@@ -7,8 +7,8 @@ import '../models/call_transaction_model.dart';
 class CallCoinDeductionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
-  // Coin deduction rate: 1000 U Coins per minute
-  static const int COINS_PER_MINUTE = 1000;
+  // Coin deduction rate: 300 U Coins per minute
+  static const int COINS_PER_MINUTE = 300;
   static const int DEDUCTION_INTERVAL_SECONDS = 60; // Deduct every 60 seconds
   
   /// Check if user has enough coins to start a call
@@ -63,7 +63,7 @@ class CallCoinDeductionService {
     }
   }
   
-  /// Deduct coins for a call minute (1000 U Coins)
+  /// Deduct coins for a call minute (300 U Coins)
   /// Returns true if successful, false if insufficient balance
   Future<bool> deductCallMinute({
     required String callerId,

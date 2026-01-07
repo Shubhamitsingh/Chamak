@@ -1164,7 +1164,7 @@ class AppLocalizationsKn extends AppLocalizations {
   String get earnMoney => 'Earn Money';
 
   @override
-  String get promotion => 'Promotion';
+  String get promotion => 'ಪ್ರಚಾರ';
 
   @override
   String get shareAndEarnRewards => 'Share & Earn Rewards';
@@ -1190,16 +1190,16 @@ class AppLocalizationsKn extends AppLocalizations {
       'When rate is 0%, the downline have no earnings.';
 
   @override
-  String get shareURL => 'Share URL';
+  String get shareURL => 'URL ಹಂಚಿಕೊಳ್ಳಿ';
 
   @override
-  String get saveQRCode => 'Save QR Code';
+  String get saveQRCode => 'QR ಕೋಡ್ ಉಳಿಸಿ';
 
   @override
-  String get appLinkCopied => 'App link copied to clipboard!';
+  String get appLinkCopied => 'ಅಪ್ಲಿಕೇಶನ್ ಲಿಂಕ್ ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ಗೆ ನಕಲಿಸಲಾಗಿದೆ!';
 
   @override
-  String get qrCodeSaved => 'QR code saved to gallery!';
+  String get qrCodeSaved => 'QR ಕೋಡ್ ಗ್ಯಾಲರಿಗೆ ಉಳಿಸಲಾಗಿದೆ!';
 
   @override
   String get imageUploaded => 'Image uploaded successfully!';
@@ -1214,4 +1214,45 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get takePhoto => 'Take Photo';
+
+  @override
+  String get inviteFriendsEarnInstantly =>
+      'ಸ್ನೇಹಿತರನ್ನು ಆಹ್ವಾನಿಸಿ. ತಕ್ಷಣ ಗಳಿಸಿ.';
+
+  @override
+  String get shareReferralLinkDescription =>
+      'ನಿಮ್ಮ ರೆಫರಲ್ ಲಿಂಕ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಿ ಮತ್ತು ಜೋಡಿಸುವ ಪ್ರತಿ ಸ್ನೇಹಿತರಿಗೆ ಬಹುಮಾನ ಪಡೆಯಿರಿ!';
+
+  @override
+  String checkOutChamakzDownloadApp(String link) {
+    return 'Chamakz ಅನ್ನು ಪರಿಶೀಲಿಸಿ! ಅಪ್ಲಿಕೇಶನ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ: $link';
+  }
+
+  @override
+  String get chamakzApp => 'Chamakz ಅಪ್ಲಿಕೇಶನ್';
+
+  @override
+  String appLinkCopiedAndShared(int coins) {
+    return 'ಅಪ್ಲಿಕೇಶನ್ ಲಿಂಕ್ ನಕಲಿಸಲಾಗಿದೆ ಮತ್ತು ಹಂಚಲಾಗಿದೆ! ನೀವು $coins ನಾಣ್ಯಗಳನ್ನು ಗಳಿಸಿದ್ದೀರಿ!';
+  }
+
+  @override
+  String get failedToShareURL => 'URL ಹಂಚಲು ವಿಫಲವಾಗಿದೆ';
+
+  @override
+  String get unableToGenerateShareLink => 'ಶೇಯರ್ ಲಿಂಕ್ ರಚಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ';
+
+  @override
+  String get unableToGenerateQRCode => 'QR ಕೋಡ್ ರಚಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ';
+
+  @override
+  String get chamakzQRCode => 'Chamakz QR ಕೋಡ್';
+
+  @override
+  String get failedToSaveQRCode => 'QR ಕೋಡ್ ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ';
+
+  @override
+  String qrCodeSavedYouEarned(int coins) {
+    return 'QR ಕೋಡ್ ಉಳಿಸಲಾಗಿದೆ! ನೀವು $coins ನಾಣ್ಯಗಳನ್ನು ಗಳಿಸಿದ್ದೀರಿ!';
+  }
 }

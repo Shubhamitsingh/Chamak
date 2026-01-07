@@ -7,9 +7,12 @@ import 'package:intl/intl.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'contact_support_screen.dart';
 import 'coin_purchase_history_screen.dart';
+import 'payprime_payment_webview_screen.dart';
+import 'upi_payment_selection_screen.dart';
 import '../services/database_service.dart';
 import '../services/gift_service.dart';
 import '../services/coin_service.dart';
+import '../services/payprime_payment_service.dart';
 
 class WalletScreen extends StatefulWidget {
   final String phoneNumber;
@@ -31,6 +34,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   final DatabaseService _databaseService = DatabaseService();
   final GiftService _giftService = GiftService();
   final CoinService _coinService = CoinService();
+  final PayPrimePaymentService _paymentService = PayPrimePaymentService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Real coin data - fetched from Firestore
@@ -398,7 +402,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
@@ -502,18 +506,18 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   // Coin Balance Card
                   _buildBalanceCard(),
             
-            const SizedBox(height: 8),
+            const SizedBox(height: 2),
             
             // Host Earnings (if user is host)
             if (widget.isHost) ...[
               _buildHostEarningsCard(),
-              const SizedBox(height: 8),
+              const SizedBox(height: 2),
             ],
             
             // Recharge Packages
             _buildFlatRechargeTab(),
             
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
             
             // Trust Text Above Trust Badges
             Padding(
@@ -638,72 +642,78 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     );
   }
 
-  // ========== BALANCE CARD - Ultra Dynamic Gold & Brown ==========
+  // ========== BALANCE CARD - Modern Pink Theme ==========
   Widget _buildBalanceCard() {
     return FadeInDown(
       child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 2, 12, 5),
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 2),
         height: 120,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [
-              Color(0xFFFFB800),
-              Color(0xFFF59E0B),
-              Color(0xFFD97706),
-              Color(0xFF92400E),
+              Color(0xFFFF1B7C), // Primary pink (bright pink)
+              Color(0xFFFF69B4), // Hot pink
+              Color(0xFFE91E63), // Deep pink
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF1B7C).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Stack(
           children: [
-            // Decorative elements - Multiple circles for depth
+            // Decorative elements - Modern pink circles
             Positioned(
-              top: -15,
-              right: -15,
+              top: -20,
+              right: -20,
               child: Container(
-                width: 70,
-                height: 70,
-              decoration: BoxDecoration(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.white.withValues(alpha:0.15),
-                      Colors.white.withValues(alpha:0.0),
+                      Colors.white.withOpacity(0.2),
+                      Colors.white.withOpacity(0.0),
                     ],
                   ),
                 ),
               ),
             ),
             Positioned(
-              bottom: -20,
-              left: -20,
+              bottom: -25,
+              left: -25,
               child: Container(
-                width: 90,
-                height: 90,
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      Colors.white.withValues(alpha:0.1),
-                      Colors.white.withValues(alpha:0.0),
+                      Colors.white.withOpacity(0.15),
+                      Colors.white.withOpacity(0.0),
                     ],
                   ),
                 ),
               ),
             ),
-            // Shimmer effect circle
+            // Accent circle
             Positioned(
-              top: 40,
-              right: 30,
+              top: 35,
+              right: 25,
               child: Container(
-                width: 40,
-                height: 40,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha:0.08),
+                  color: Colors.white.withOpacity(0.1),
                 ),
               ),
             ),
@@ -801,8 +811,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     return FadeInUp(
       delay: const Duration(milliseconds: 200),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12),
-        padding: const EdgeInsets.all(25),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF04B104), Color(0xFF038103)],
@@ -915,7 +925,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   // ========== FLAT RECHARGE TAB ==========
   Widget _buildFlatRechargeTab() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 15, 12, 5),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -928,7 +938,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
               color: Colors.grey[900],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           // 3-column grid - Flexible
           LayoutBuilder(
             builder: (context, constraints) {
@@ -980,20 +990,19 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     final bool showBadgeText = (index == 3 || index == 5 || index == 7) && package['badge'] != null; // Show badge text for 4th (index 3), 6th (index 5), and 8th (index 7) grid items
     
     return GestureDetector(
-      // Payment Gateway removed - onTap disabled (will be set up again step by step)
-      onTap: null,
+      onTap: () => _handleRecharge(package),
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: const Color(0xFFD97706).withValues(alpha:0.3),
+            color: const Color(0xFFFF1B7C).withOpacity(0.2),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFB800).withValues(alpha:0.08),
+              color: const Color(0xFFFF1B7C).withOpacity(0.1),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -1045,7 +1054,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF92400E),
+                            color: Color(0xFFFF1B7C),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1163,7 +1172,171 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   }
 
   // ========== PAYMENT HANDLERS ==========
-  // Payment Gateway (PayPrime) removed - will be set up again step by step
+  /// Handle recharge package selection and initiate PayPrime payment
+  Future<void> _handleRecharge(Map<String, dynamic> package) async {
+    if (!mounted) return;
+    
+    debugPrint('🔄 _handleRecharge called with package: $package');
+    
+    final int coins = package['coins'] as int;
+    final int inr = package['inr'] as int;
+    
+    debugPrint('💰 Payment details: ₹$inr for $coins coins');
+    
+    try {
+      // Check if user is authenticated
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        debugPrint('❌ User not authenticated');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please login to continue'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+      
+      debugPrint('✅ User authenticated: ${currentUser.uid}');
+      
+      // Show loading dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFFFF1B7C),
+            ),
+          ),
+        );
+      }
+
+      debugPrint('📞 Calling payment service...');
+      
+      // Initiate payment
+      final result = await _paymentService.initiatePayment(
+        amount: inr.toDouble(),
+        coins: coins,
+        currency: "INR",
+      );
+
+      debugPrint('📥 Payment service response: $result');
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (result['success'] == true) {
+        debugPrint('✅ Payment initiated successfully');
+        debugPrint('   Payment URL: ${result['paymentUrl']}');
+        debugPrint('   Payment ID: ${result['paymentId']}');
+        
+        // Check if we have multiple UPI URLs - show selection screen
+        final upiUrlsRaw = result['upiUrls'];
+        Map<String, String> upiUrls = {};
+        
+        if (upiUrlsRaw != null) {
+          // Convert to Map<String, String> safely
+          if (upiUrlsRaw is Map) {
+            upiUrls = Map<String, String>.from(
+              upiUrlsRaw.map((key, value) => MapEntry(
+                key.toString(),
+                value.toString(),
+              ))
+            );
+          }
+        }
+        
+        final hasMultipleUpiOptions = upiUrls.length > 1;
+        
+        debugPrint('📊 UPI URLs received: ${upiUrls.length} options');
+        debugPrint('   Options: ${upiUrls.keys.join(", ")}');
+        
+        // Navigate to payment screen
+        if (mounted) {
+          bool? success;
+          
+          if (hasMultipleUpiOptions) {
+            // Show UPI selection screen
+            debugPrint('🚀 Showing UPI selection screen...');
+            success = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UpiPaymentSelectionScreen(
+                  upiUrls: upiUrls,
+                  paymentId: result['paymentId'] as String,
+                  orderId: result['orderId'] as String,
+                  amount: (result['amount'] as num).toDouble(),
+                  coins: result['coins'] as int,
+                ),
+              ),
+            );
+          } else {
+            // Single URL or web URL - go directly to WebView
+            debugPrint('🚀 Navigating to payment WebView...');
+            success = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PayPrimePaymentWebViewScreen(
+                  paymentUrl: result['paymentUrl'] as String,
+                  paymentId: result['paymentId'] as String,
+                  orderId: result['orderId'] as String,
+                  amount: (result['amount'] as num).toDouble(),
+                  coins: result['coins'] as int,
+                ),
+              ),
+            );
+          }
+
+          debugPrint('📊 Payment screen returned: $success');
+
+          // If payment successful, refresh wallet balance
+          // Note: Success dialog is already shown in payment screen
+          // Real-time listener will automatically update the balance
+          if (success == true && mounted) {
+            _loadCoinBalance(); // Refresh to ensure latest balance
+          }
+        }
+      } else {
+        debugPrint('❌ Payment initiation failed: ${result['message']}');
+        // Show error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to initiate payment'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error in _handleRecharge: $e');
+      debugPrint('📚 Stack trace: $stackTrace');
+      
+      // Close loading dialog if still open
+      if (mounted) {
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {
+          // Dialog might already be closed
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
 
   // ========== DIALOGS ==========
   void _showWithdrawalDialog() {

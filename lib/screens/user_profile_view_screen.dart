@@ -98,7 +98,17 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
 
   Future<void> _openChat() async {
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to start a chat'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     // Show loading
     if (!mounted) return;
@@ -117,7 +127,38 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
           .doc(currentUser.uid)
           .get();
       
+      if (!currentUserDoc.exists || currentUserDoc.data() == null) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User profile not found. Please complete your profile first.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+      
       final currentUserModel = UserModel.fromFirestore(currentUserDoc);
+
+      // Validate that both users have required fields (name getter returns 'User' if displayName is null)
+      final currentUserName = currentUserModel.name;
+      final otherUserName = widget.user.name;
+      
+      if (currentUserName == 'User' || otherUserName == 'User' || 
+          currentUserName.isEmpty || otherUserName.isEmpty) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot start chat: User information incomplete. Please complete your profile.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
 
       // Create or get chat
       final chatId = await _chatService.createOrGetChat(currentUserModel, widget.user);
@@ -137,12 +178,34 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
         ),
       );
     } catch (e) {
+      debugPrint('❌ Error opening chat: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
+      if (e is FirebaseException) {
+        debugPrint('❌ Firebase error code: ${e.code}');
+        debugPrint('❌ Firebase error message: ${e.message}');
+      }
+      
       if (!mounted) return;
       Navigator.pop(context); // Close loading
+      
+      String errorMessage = 'Failed to open chat';
+      if (e is FirebaseException) {
+        if (e.code == 'permission-denied') {
+          errorMessage = 'Permission denied. Please check your account settings.';
+        } else if (e.code == 'unavailable') {
+          errorMessage = 'Service temporarily unavailable. Please try again later.';
+        } else {
+          errorMessage = 'Failed to open chat: ${e.message ?? e.code}';
+        }
+      } else if (e.toString().contains('name') || e.toString().contains('Name')) {
+        errorMessage = 'Cannot start chat: User information incomplete';
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to open chat'),
+        SnackBar(
+          content: Text(errorMessage),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
         ),
       );
     }

@@ -2351,6 +2351,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Take Photo'**
   String get takePhoto;
+
+  /// No description provided for @inviteFriendsEarnInstantly.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite friends. Earn instantly.'**
+  String get inviteFriendsEarnInstantly;
+
+  /// No description provided for @shareReferralLinkDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your referral link and get rewarded for every friend who joins!'**
+  String get shareReferralLinkDescription;
+
+  /// No description provided for @checkOutChamakzDownloadApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Check out Chamakz! Download the app: {link}'**
+  String checkOutChamakzDownloadApp(String link);
+
+  /// No description provided for @chamakzApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Chamakz App'**
+  String get chamakzApp;
+
+  /// No description provided for @appLinkCopiedAndShared.
+  ///
+  /// In en, this message translates to:
+  /// **'App link copied and shared! You earned {coins} coins!'**
+  String appLinkCopiedAndShared(int coins);
+
+  /// No description provided for @failedToShareURL.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to share URL'**
+  String get failedToShareURL;
+
+  /// No description provided for @unableToGenerateShareLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to generate share link'**
+  String get unableToGenerateShareLink;
+
+  /// No description provided for @unableToGenerateQRCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to generate QR code'**
+  String get unableToGenerateQRCode;
+
+  /// No description provided for @chamakzQRCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Chamakz QR Code'**
+  String get chamakzQRCode;
+
+  /// No description provided for @failedToSaveQRCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save QR code'**
+  String get failedToSaveQRCode;
+
+  /// No description provided for @qrCodeSavedYouEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'QR code saved! You earned {coins} coins!'**
+  String qrCodeSavedYouEarned(int coins);
 }
 
 class _AppLocalizationsDelegate

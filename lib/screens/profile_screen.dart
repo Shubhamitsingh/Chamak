@@ -16,6 +16,8 @@ import 'help_feedback_screen.dart';
 import 'warning_screen.dart';
 import 'event_screen.dart';
 import 'promotion_screen.dart';
+import 'followers_list_screen.dart';
+import 'following_list_screen.dart';
 import '../services/database_service.dart';
 import '../services/id_generator_service.dart';
 import '../services/chat_service.dart';
@@ -621,17 +623,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   count: user.followersCount.toString(),
                   label: AppLocalizations.of(context)!.followers,
                   onTap: () {
-                    if (!mounted) return;
-                    // TODO: Navigate to followers list
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(AppLocalizations.of(context)!.followersListComingSoon),
-                        backgroundColor: const Color(0xFF9C27B0),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
+                      if (!mounted) return;
+                      _stopAutoScroll(); // Stop slider when navigating
+                      try {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FollowersListScreen(
+                              userId: user.uid,
+                              userName: user.displayName ?? AppLocalizations.of(context)!.setYourName,
+                            ),
+                          ),
+                        ).then((_) {
+                          // Resume slider when returning
+                          if (mounted) {
+                            _startAutoScroll();
+                          }
+                        });
+                      } catch (e) {
+                        debugPrint('Navigation error: $e');
+                      }
+                    },
+                  ),
                 Container(
                   width: 1,
                   height: 30,
@@ -643,14 +656,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: AppLocalizations.of(context)!.following,
                   onTap: () {
                     if (!mounted) return;
-                    // TODO: Navigate to following list
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(AppLocalizations.of(context)!.followingListComingSoon),
-                        backgroundColor: const Color(0xFF9C27B0),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                    _stopAutoScroll(); // Stop slider when navigating
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FollowingListScreen(
+                            userId: user.uid,
+                            userName: user.displayName ?? AppLocalizations.of(context)!.setYourName,
+                          ),
+                        ),
+                      ).then((_) {
+                        // Resume slider when returning
+                        if (mounted) {
+                          _startAutoScroll();
+                        }
+                      });
+                    } catch (e) {
+                      debugPrint('Navigation error: $e');
+                    }
                   },
                 ),
                 Container(
@@ -951,8 +975,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Promotion Screen - placed just below Messages
             _buildMenuOption(
               icon: Icons.campaign_rounded,
-              title: 'Promotion',
-              subtitle: 'Share app & earn rewards',
+              title: AppLocalizations.of(context)!.promotion,
+              subtitle: AppLocalizations.of(context)!.shareAndEarnRewards,
               color: const Color(0xFFFF1B7C), // Pink - matches app theme
               onTap: () {
                 if (!mounted) return;

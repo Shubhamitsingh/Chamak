@@ -1197,4 +1197,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get takePhoto => 'Take Photo';
+
+  @override
+  String get inviteFriendsEarnInstantly => 'Invite friends. Earn instantly.';
+
+  @override
+  String get shareReferralLinkDescription =>
+      'Share your referral link and get rewarded for every friend who joins!';
+
+  @override
+  String checkOutChamakzDownloadApp(String link) {
+    return 'Check out Chamakz! Download the app: $link';
+  }
+
+  @override
+  String get chamakzApp => 'Chamakz App';
+
+  @override
+  String appLinkCopiedAndShared(int coins) {
+    return 'App link copied and shared! You earned $coins coins!';
+  }
+
+  @override
+  String get failedToShareURL => 'Failed to share URL';
+
+  @override
+  String get unableToGenerateShareLink => 'Unable to generate share link';
+
+  @override
+  String get unableToGenerateQRCode => 'Unable to generate QR code';
+
+  @override
+  String get chamakzQRCode => 'Chamakz QR Code';
+
+  @override
+  String get failedToSaveQRCode => 'Failed to save QR code';
+
+  @override
+  String qrCodeSavedYouEarned(int coins) {
+    return 'QR code saved! You earned $coins coins!';
+  }
 }

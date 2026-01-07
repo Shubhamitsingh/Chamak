@@ -159,6 +159,23 @@
   "pleaseEnterIfscCode": "ദയവായി IFSC കോഡ് നൽകുക",
   "enterValidIfscCode": "സാധുവായ IFSC കോഡ് നൽകുക (11 പ്രതീകങ്ങൾ)",
   "pleaseEnterWalletAddress": "ദയവായി വാലറ്റ് വിലാസം നൽകുക",
-  "enterValidWalletAddress": "സാധുവായ വാലറ്റ് വിലാസം നൽകുക (കുറഞ്ഞത് 26 പ്രതീകങ്ങൾ)"
+  "enterValidWalletAddress": "സാധുവായ വാലറ്റ് വിലാസം നൽകുക (കുറഞ്ഞത് 26 പ്രതീകങ്ങൾ)",
+  "promotion": "Promotion",
+  "shareURL": "URL പങ്കിടുക",
+  "saveQRCode": "QR കോഡ് സേവ് ചെയ്യുക",
+  "inviteFriendsEarnInstantly": "സൈന്യങ്ങളെ ക്ഷണിക്കുക. ഉടൻ കാര്യം നേടുക.",
+  "shareReferralLinkDescription": "നിങ്ങളുടെ റഫറൽ ലിങ്ക് പങ്കിട്ട്, ചേരുന്ന ഓരോ സ്നേഹിതനും പുരസ്കാരം നേടുക!",
+  "checkOutChamakzDownloadApp": "Chamakz പരിശോധിക്കുക! ആപ്പ് ഡൗൺലോഡ് ചെയ്യുക: {link}",
+  "@checkOutChamakzDownloadApp": {"placeholders": {"link": {"type": "String"}}},
+  "chamakzApp": "Chamakz ആപ്പ്",
+  "appLinkCopiedAndShared": "ആപ്പ് ലിങ്ക് കോപ്പി ചെയ്ത് പങ്കിട്ടു! നിങ്ങൾ {coins} നാണയങ്ങൾ നേടി!",
+  "@appLinkCopiedAndShared": {"placeholders": {"coins": {"type": "int"}}},
+  "failedToShareURL": "URL പങ്കിടാൻ പരാജയപ്പെട്ടു",
+  "unableToGenerateShareLink": "പങ്കിടൽ ലിങ്ക് സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല",
+  "unableToGenerateQRCode": "QR കോഡ് സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല",
+  "chamakzQRCode": "Chamakz QR കോഡ്",
+  "failedToSaveQRCode": "QR കോഡ് സേവ് ചെയ്യാൻ പരാജയപ്പെട്ടു",
+  "qrCodeSavedYouEarned": "QR കോഡ് സേവ് ചെയ്തു! നിങ്ങൾ {coins} നാണയങ്ങൾ നേടി!",
+  "@qrCodeSavedYouEarned": {"placeholders": {"coins": {"type": "int"}}}
 }
 

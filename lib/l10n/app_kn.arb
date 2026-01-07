@@ -279,7 +279,44 @@
       }
     }
   },
-  "buyNow": "ಈಗ ಖರೀದಿಸಿ"
+  "buyNow": "ಈಗ ಖರೀದಿಸಿ",
+  "promotion": "ಪ್ರಚಾರ",
+  "shareURL": "URL ಹಂಚಿಕೊಳ್ಳಿ",
+  "saveQRCode": "QR ಕೋಡ್ ಉಳಿಸಿ",
+  "appLinkCopied": "ಅಪ್ಲಿಕೇಶನ್ ಲಿಂಕ್ ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ಗೆ ನಕಲಿಸಲಾಗಿದೆ!",
+  "qrCodeSaved": "QR ಕೋಡ್ ಗ್ಯಾಲರಿಗೆ ಉಳಿಸಲಾಗಿದೆ!",
+  "inviteFriendsEarnInstantly": "ಸ್ನೇಹಿತರನ್ನು ಆಹ್ವಾನಿಸಿ. ತಕ್ಷಣ ಗಳಿಸಿ.",
+  "shareReferralLinkDescription": "ನಿಮ್ಮ ರೆಫರಲ್ ಲಿಂಕ್ ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಿ ಮತ್ತು ಜೋಡಿಸುವ ಪ್ರತಿ ಸ್ನೇಹಿತರಿಗೆ ಬಹುಮಾನ ಪಡೆಯಿರಿ!",
+  "checkOutChamakzDownloadApp": "Chamakz ಅನ್ನು ಪರಿಶೀಲಿಸಿ! ಅಪ್ಲಿಕೇಶನ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ: {link}",
+  "@checkOutChamakzDownloadApp": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "chamakzApp": "Chamakz ಅಪ್ಲಿಕೇಶನ್",
+  "appLinkCopiedAndShared": "ಅಪ್ಲಿಕೇಶನ್ ಲಿಂಕ್ ನಕಲಿಸಲಾಗಿದೆ ಮತ್ತು ಹಂಚಲಾಗಿದೆ! ನೀವು {coins} ನಾಣ್ಯಗಳನ್ನು ಗಳಿಸಿದ್ದೀರಿ!",
+  "@appLinkCopiedAndShared": {
+    "placeholders": {
+      "coins": {
+        "type": "int"
+      }
+    }
+  },
+  "failedToShareURL": "URL ಹಂಚಲು ವಿಫಲವಾಗಿದೆ",
+  "unableToGenerateShareLink": "ಶೇಯರ್ ಲಿಂಕ್ ರಚಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ",
+  "unableToGenerateQRCode": "QR ಕೋಡ್ ರಚಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ",
+  "chamakzQRCode": "Chamakz QR ಕೋಡ್",
+  "failedToSaveQRCode": "QR ಕೋಡ್ ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ",
+  "qrCodeSavedYouEarned": "QR ಕೋಡ್ ಉಳಿಸಲಾಗಿದೆ! ನೀವು {coins} ನಾಣ್ಯಗಳನ್ನು ಗಳಿಸಿದ್ದೀರಿ!",
+  "@qrCodeSavedYouEarned": {
+    "placeholders": {
+      "coins": {
+        "type": "int"
+      }
+    }
+  }
 }
 
 

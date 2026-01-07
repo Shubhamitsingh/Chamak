@@ -165,66 +165,153 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
           .where('userId', isEqualTo: userId)
           .orderBy('createdAt', descending: true)
           .snapshots(),
-      builder: (context, snapshot) {
-        // Loading state
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
-          );
-        }
+      builder: (context, paymentSnapshot) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: _firestore
+              .collection('callTransactions')
+              .where('callerId', isEqualTo: userId)
+              .limit(100)
+              .snapshots(),
+          builder: (context, callSnapshot) {
+            // Loading state
+            if (paymentSnapshot.connectionState == ConnectionState.waiting ||
+                callSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
+              );
+            }
 
-        // Error or No data state - show empty state
-        if (snapshot.hasError || !snapshot.hasData) {
-          return _buildEmptyState();
-        }
+            // Combine transactions
+            List<Map<String, dynamic>> allTransactions = [];
 
-        // Get all transactions
-        final allTransactions = snapshot.data!.docs;
-
-        // Filter by date if selected
-        final filteredTransactions = _selectedDate == null
-            ? allTransactions
-            : allTransactions.where((doc) {
+            // Add payment transactions
+            if (paymentSnapshot.hasData && paymentSnapshot.data != null) {
+              for (var doc in paymentSnapshot.data!.docs) {
                 final data = doc.data() as Map<String, dynamic>;
                 final createdAt = data['createdAt'] as Timestamp?;
-                if (createdAt == null) return false;
                 
-                final transactionDate = createdAt.toDate();
-                final selectedDate = _selectedDate!;
+                allTransactions.add({
+                  'type': 'purchase',
+                  'id': doc.id,
+                  'coins': data['coins'] as int? ?? 0,
+                  'amount': data['amount'] as int? ?? 0,
+                  'utrNumber': data['utrNumber'] as String? ?? '',
+                  'status': data['status'] as String? ?? 'pending',
+                  'timestamp': createdAt,
+                  'createdAt': createdAt,
+                  'completedAt': data['completedAt'] as Timestamp?,
+                });
+              }
+            }
+
+            // Add call deduction transactions
+            if (callSnapshot.hasData && callSnapshot.data != null) {
+              for (var doc in callSnapshot.data!.docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                Timestamp? transactionTimestamp;
                 
-                // Check if transaction date matches selected date (ignore time)
-                return transactionDate.year == selectedDate.year &&
-                       transactionDate.month == selectedDate.month &&
-                       transactionDate.day == selectedDate.day;
-              }).toList();
+                // Handle timestamp - can be Timestamp, String, or DateTime
+                if (data['timestamp'] != null) {
+                  if (data['timestamp'] is Timestamp) {
+                    transactionTimestamp = data['timestamp'] as Timestamp;
+                  } else if (data['timestamp'] is String) {
+                    try {
+                      final dateTime = DateTime.parse(data['timestamp'] as String);
+                      transactionTimestamp = Timestamp.fromDate(dateTime);
+                    } catch (e) {
+                      debugPrint('Error parsing timestamp string: $e');
+                      transactionTimestamp = Timestamp.now();
+                    }
+                  } else if (data['timestamp'] is DateTime) {
+                    transactionTimestamp = Timestamp.fromDate(data['timestamp'] as DateTime);
+                  } else {
+                    transactionTimestamp = Timestamp.now();
+                  }
+                } else {
+                  transactionTimestamp = Timestamp.now();
+                }
+                
+                allTransactions.add({
+                  'type': 'deduction',
+                  'id': doc.id,
+                  'coins': data['uCoinsDeducted'] as int? ?? 0,
+                  'timestamp': transactionTimestamp,
+                  'duration': data['durationSeconds'] as int? ?? 0,
+                  'hostId': data['hostId'] as String? ?? '',
+                });
+              }
+            }
 
-        // Show empty state if no transactions after filtering
-        if (filteredTransactions.isEmpty) {
-          return _buildEmptyState();
-        }
+            // Sort by timestamp (newest first)
+            allTransactions.sort((a, b) {
+              Timestamp? aTime = a['timestamp'] as Timestamp?;
+              Timestamp? bTime = b['timestamp'] as Timestamp?;
+              
+              // Fallback to createdAt for purchases
+              if (aTime == null && a['createdAt'] != null) {
+                aTime = a['createdAt'] as Timestamp?;
+              }
+              if (bTime == null && b['createdAt'] != null) {
+                bTime = b['createdAt'] as Timestamp?;
+              }
+              
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return 1;
+              if (bTime == null) return -1;
+              return bTime.compareTo(aTime);
+            });
 
-        // Display filtered transactions
-        return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: filteredTransactions.length,
-          itemBuilder: (context, index) {
-            final transaction = filteredTransactions[index];
-            final data = transaction.data() as Map<String, dynamic>;
-            
-            final coins = data['coins'] as int? ?? 0;
-            final amount = data['amount'] as int? ?? 0;
-            final utrNumber = data['utrNumber'] as String? ?? '';
-            final status = data['status'] as String? ?? 'pending';
-            final createdAt = data['createdAt'] as Timestamp?;
-            final completedAt = data['completedAt'] as Timestamp?;
+            // Filter by date if selected
+            final filteredTransactions = _selectedDate == null
+                ? allTransactions
+                : allTransactions.where((transaction) {
+                    Timestamp? timestamp = transaction['timestamp'] as Timestamp?;
+                    if (timestamp == null && transaction['createdAt'] != null) {
+                      timestamp = transaction['createdAt'] as Timestamp?;
+                    }
+                    if (timestamp == null) return false;
+                    
+                    final transactionDate = timestamp.toDate();
+                    final selectedDate = _selectedDate!;
+                    
+                    // Check if transaction date matches selected date (ignore time)
+                    return transactionDate.year == selectedDate.year &&
+                           transactionDate.month == selectedDate.month &&
+                           transactionDate.day == selectedDate.day;
+                  }).toList();
 
-            return _buildTransactionCard(
-              coins: coins,
-              amount: amount,
-              utrNumber: utrNumber,
-              status: status,
-              createdAt: createdAt?.toDate(),
-              completedAt: completedAt?.toDate(),
+            // Show empty state if no transactions after filtering
+            if (filteredTransactions.isEmpty) {
+              return _buildEmptyState();
+            }
+
+            // Display filtered transactions
+            return ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: filteredTransactions.length,
+              itemBuilder: (context, index) {
+                final transaction = filteredTransactions[index];
+                final type = transaction['type'] as String;
+                
+                if (type == 'purchase') {
+                  return _buildPurchaseTransactionCard(
+                    coins: transaction['coins'] as int,
+                    amount: transaction['amount'] as int,
+                    utrNumber: transaction['utrNumber'] as String,
+                    status: transaction['status'] as String,
+                    createdAt: (transaction['createdAt'] as Timestamp?)?.toDate(),
+                    completedAt: (transaction['completedAt'] as Timestamp?)?.toDate(),
+                  );
+                } else {
+                  // Deduction transaction
+                  final timestamp = transaction['timestamp'] as Timestamp?;
+                  return _buildDeductionTransactionCard(
+                    coins: transaction['coins'] as int,
+                    timestamp: timestamp?.toDate(),
+                    duration: transaction['duration'] as int,
+                  );
+                }
+              },
             );
           },
         );
@@ -262,7 +349,7 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Your coin purchase transactions will appear here once you make a purchase.',
+              'Your transaction history will appear here once you make purchases or use coins.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -276,7 +363,7 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     );
   }
 
-  Widget _buildTransactionCard({
+  Widget _buildPurchaseTransactionCard({
     required int coins,
     required int amount,
     required String utrNumber,
@@ -497,6 +584,210 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildDeductionTransactionCard({
+    required int coins,
+    DateTime? timestamp,
+    required int duration,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: const Color(0xFFFF9800).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFFFF9800).withOpacity(0.05),
+              const Color(0xFFFF9800).withOpacity(0.02),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Row: Type + Amount
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Type Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF9800),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF9800).withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.remove_circle_rounded, color: Colors.white, size: 14),
+                        SizedBox(width: 5),
+                        Text(
+                          'CALL DEDUCTION',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Amount Column
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      const Text(
+                        '-',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF9800),
+                        ),
+                      ),
+                      Image.asset(
+                        'assets/images/coin3.png',
+                        width: 18,
+                        height: 18,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.monetization_on,
+                            size: 18,
+                            color: Color(0xFFFFB800),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        NumberFormat.decimalPattern().format(coins),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Divider
+              Container(
+                height: 1,
+                color: Colors.grey[200],
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Details Section
+              Row(
+                children: [
+                  // Duration Icon
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.phone_in_talk_rounded,
+                      color: Colors.orange,
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Duration
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Call Duration',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatDuration(duration),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 10),
+              
+              // Date Section
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 14,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatDate(timestamp ?? DateTime.now()),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(int seconds) {
+    if (seconds < 60) {
+      return '${seconds}s';
+    }
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    if (remainingSeconds == 0) {
+      return '${minutes}m';
+    }
+    return '${minutes}m ${remainingSeconds}s';
   }
 
   String _formatDate(DateTime date) {

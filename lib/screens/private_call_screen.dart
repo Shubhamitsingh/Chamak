@@ -132,17 +132,17 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
             });
             
             // Auto-end call if insufficient balance
-            if (newBalance < 1000 && !_lowBalanceWarning) {
+            if (newBalance < 300 && !_lowBalanceWarning) {
               _autoEndCallDueToInsufficientBalance();
             }
             
             // Update low balance warning state
-            if (newBalance < 1000 && !_lowBalanceWarning) {
+            if (newBalance < 300 && !_lowBalanceWarning) {
               setState(() {
                 _lowBalanceWarning = true;
               });
               _showLowBalanceWarning();
-            } else if (newBalance >= 1000 && _lowBalanceWarning) {
+            } else if (newBalance >= 300 && _lowBalanceWarning) {
               setState(() {
                 _lowBalanceWarning = false;
               });
@@ -187,8 +187,8 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
         // No need to check balance periodically anymore
         
         // Show low balance warning at 30 seconds before running out
-        final minutesRemaining = (_userBalance / 1000).floor();
-        if (minutesRemaining <= 1 && _userBalance < 1000 && !_lowBalanceWarning) {
+        final minutesRemaining = (_userBalance / 300).floor();
+        if (minutesRemaining <= 1 && _userBalance < 300 && !_lowBalanceWarning) {
           setState(() {
             _lowBalanceWarning = true;
           });
@@ -235,13 +235,13 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
       if (success) {
         if (mounted) {
           setState(() {
-            _totalCoinsDeducted += 1000;
+            _totalCoinsDeducted += 300;
             _lastDeductionMinute = currentMinute;
-            _userBalance -= 1000;
+            _userBalance -= 300;
           });
         }
         
-        debugPrint('✅ Deducted 1000 coins for minute ${currentMinute + 1}');
+        debugPrint('✅ Deducted 300 coins for minute ${currentMinute + 1}');
       } else {
         debugPrint('❌ Failed to deduct coins - insufficient balance');
         _autoEndCallDueToInsufficientBalance();
@@ -332,7 +332,7 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
       );
       
       if (success) {
-        final coinsToDeduct = ((durationSeconds / 60) * 1000).round();
+        final coinsToDeduct = ((durationSeconds / 60) * 300).round();
         if (mounted) {
           setState(() {
             _totalCoinsDeducted += coinsToDeduct;
@@ -1089,16 +1089,16 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
                             children: [
                               Icon(
                                 Icons.account_balance,
-                                color: _userBalance < 1000 ? Colors.orange : Colors.white70,
+                                color: _userBalance < 300 ? Colors.orange : Colors.white70,
                                 size: 16,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 'Balance: ${NumberFormat.decimalPattern().format(_userBalance)} coins',
                                 style: TextStyle(
-                                  color: _userBalance < 1000 ? Colors.orange : Colors.white70,
+                                  color: _userBalance < 300 ? Colors.orange : Colors.white70,
                                   fontSize: 13,
-                                  fontWeight: _userBalance < 1000 ? FontWeight.w600 : FontWeight.normal,
+                                  fontWeight: _userBalance < 300 ? FontWeight.w600 : FontWeight.normal,
                                 ),
                               ),
                             ],

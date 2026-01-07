@@ -2306,7 +2306,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
           await LowCoinPopup.show(
             context,
             currentBalance: _userBalance,
-            requiredCoins: 1000,
+            requiredCoins: 300,
             phoneNumber: _auth.currentUser?.phoneNumber,
           );
         }
@@ -2927,7 +2927,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
               child: BouncyIconButton(
                 onTap: () async {
                   // Check if button is disabled
-                  if (_isHostInCall || _isCallRequestPending || (!widget.isHost && _userBalance < 1000)) {
+                  if (_isHostInCall || _isCallRequestPending || (!widget.isHost && _userBalance < 300)) {
                     if (_isHostInCall) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -2942,11 +2942,11 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                           duration: Duration(seconds: 2),
                         ),
                       );
-                    } else if (!widget.isHost && _userBalance < 1000) {
+                    } else if (!widget.isHost && _userBalance < 300) {
                       await LowCoinPopup.show(
                         context,
                         currentBalance: _userBalance,
-                        requiredCoins: 1000,
+                        requiredCoins: 300,
                         phoneNumber: _auth.currentUser?.phoneNumber,
                       );
                     }
@@ -2974,7 +2974,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(22),
-                    color: (_isHostInCall || _isCallRequestPending || (!widget.isHost && _userBalance < 1000))
+                    color: (_isHostInCall || _isCallRequestPending || (!widget.isHost && _userBalance < 300))
                         ? Colors.grey
                         : const Color(0xFFFF1B7C), // Solid pink color instead of gradient
                     boxShadow: [
