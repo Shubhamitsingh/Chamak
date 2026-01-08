@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import '../services/call_request_service.dart';
 import '../services/call_coin_deduction_service.dart';
+import '../services/coin_conversion_service.dart';
+import 'call_summary_screen.dart';
 
 // Agora App ID (same as live stream)
 const String agoraAppId = '43bb5e13c835444595c8cf087a0ccaa4';
@@ -68,7 +69,8 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
   Timer? _callTimer;
   Timer? _deductionTimer;
   int _callDurationSeconds = 0;
-  int _totalCoinsDeducted = 0;
+  // ignore: unused_field
+  int _totalCoinsDeducted = 0; // Tracked for potential future use
   int _userBalance = 0;
   bool _isDeducting = false;
   bool _lowBalanceWarning = false;
@@ -625,25 +627,146 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
         
         // If we haven't deducted for the last partial minute, deduct it now
         if (partialSeconds > 0 && _lastDeductionMinute < fullMinutes) {
-          await _deductPartialMinute(partialSeconds);
+          try {
+            await _deductPartialMinute(partialSeconds);
+          } catch (e) {
+            debugPrint('⚠️ Error deducting partial minute: $e');
+            // Continue even if deduction fails
+          }
         }
       }
       
-      // Update call request status and make host available
-      await _callRequestService.endCall(
-        requestId: widget.requestId,
-        streamId: widget.streamId,
-      );
-
-      // Navigate back
-      if (mounted) {
-        Navigator.of(context).pop();
+      // Update call request status and make host available (don't block on this)
+      try {
+        await _callRequestService.endCall(
+          requestId: widget.requestId,
+          streamId: widget.streamId,
+        );
+      } catch (e) {
+        debugPrint('⚠️ Error updating call request status: $e');
+        // Continue even if update fails
       }
-    } catch (e) {
-      debugPrint('❌ Error ending call: $e');
-      // Still navigate back even if update fails
+
+      // Calculate call duration (ensure minimum 1 second)
+      final callDuration = Duration(seconds: _callDurationSeconds > 0 ? _callDurationSeconds : 1);
+      
+      // Calculate coins spent/earned with fallbacks
+      int coinsSpent = 0;
+      int coinsEarned = 0;
+      
+      if (!widget.isHost) {
+        // For caller: calculate coins spent from transactions
+        try {
+          coinsSpent = await _coinDeductionService.getTotalCoinsDeducted(widget.requestId)
+              .timeout(const Duration(seconds: 5));
+          debugPrint('💰 Coins spent from transactions: $coinsSpent');
+        } catch (e) {
+          debugPrint('⚠️ Error getting coins spent from transactions: $e');
+        }
+        
+        // Fallback to calculated value if transaction fetch fails or returns 0
+        if (coinsSpent == 0 && _callDurationSeconds > 0) {
+          final minutes = (_callDurationSeconds / 60).ceil();
+          coinsSpent = minutes * 300; // 300 coins per minute
+          debugPrint('💰 Using calculated coins spent: $coinsSpent (${minutes} minutes)');
+        }
+      } else {
+        // For host: calculate coins earned from transactions
+        try {
+          final transactions = await _firestore
+              .collection('callTransactions')
+              .where('callRequestId', isEqualTo: widget.requestId)
+              .get(const GetOptions(source: Source.server))
+              .timeout(const Duration(seconds: 5));
+          
+          for (var doc in transactions.docs) {
+            final data = doc.data();
+            final cCoins = (data['cCoinsCredited'] as int?) ?? 0;
+            coinsEarned += cCoins;
+          }
+          debugPrint('💰 Coins earned from transactions: $coinsEarned');
+        } catch (e) {
+          debugPrint('⚠️ Error getting coins earned from transactions: $e');
+        }
+        
+        // Fallback calculation if no transactions found
+        if (coinsEarned == 0 && _callDurationSeconds > 0) {
+          final minutes = (_callDurationSeconds / 60).ceil();
+          final uCoins = minutes * 300;
+          // Convert U Coins to C Coins using conversion service
+          coinsEarned = CoinConversionService.convertUtoC(uCoins);
+          debugPrint('💰 Using calculated coins earned: $coinsEarned (${minutes} minutes, $uCoins U Coins)');
+        }
+      }
+
+      debugPrint('📊 Call Summary - Duration: ${callDuration.inSeconds}s, Coins Spent: $coinsSpent, Coins Earned: $coinsEarned');
+
+      // Small delay to ensure cleanup is complete
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Navigate to summary screen (always show, even if data calculation had issues)
       if (mounted) {
-        Navigator.of(context).pop();
+        try {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => CallSummaryScreen(
+                otherUserId: widget.otherUserId,
+                otherUserName: widget.otherUserName,
+                otherUserImage: widget.otherUserImage,
+                callDuration: callDuration,
+                coinsSpent: coinsSpent,
+                coinsEarned: coinsEarned,
+                isHost: widget.isHost,
+              ),
+            ),
+          );
+          debugPrint('✅ Navigated to call summary screen');
+        } catch (navError, stackTrace) {
+          debugPrint('❌ Error navigating to summary screen: $navError');
+          debugPrint('❌ Navigation stack trace: $stackTrace');
+          // Last resort: try to pop back
+          if (mounted) {
+            try {
+              Navigator.of(context).pop();
+            } catch (popError) {
+              debugPrint('❌ Even pop failed: $popError');
+            }
+          }
+        }
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Critical error ending call: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
+      
+      // Even on critical error, try to show summary with default values
+      if (mounted) {
+        try {
+          final callDuration = Duration(seconds: _callDurationSeconds > 0 ? _callDurationSeconds : 1);
+          final defaultCoins = _callDurationSeconds > 0 
+              ? ((_callDurationSeconds / 60).ceil() * 300) 
+              : 0;
+          
+          await Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => CallSummaryScreen(
+                otherUserId: widget.otherUserId,
+                otherUserName: widget.otherUserName,
+                otherUserImage: widget.otherUserImage,
+                callDuration: callDuration,
+                coinsSpent: widget.isHost ? 0 : defaultCoins,
+                coinsEarned: widget.isHost ? CoinConversionService.convertUtoC(defaultCoins) : 0,
+                isHost: widget.isHost,
+              ),
+            ),
+          );
+          debugPrint('✅ Navigated to call summary screen with fallback values');
+        } catch (fallbackError) {
+          debugPrint('❌ Even fallback navigation failed: $fallbackError');
+          // Final fallback: just pop
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        }
       }
     }
   }
@@ -959,26 +1082,26 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
                 ),
               ),
 
-            // Top bar with other user info
+            // Top bar with other user info (reduced size)
             Positioned(
               top: 20,
               left: 20,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(25),
+                  color: Colors.black.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Profile picture
+                    // Profile picture (reduced size)
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        border: Border.all(color: Colors.white, width: 1.5),
                         image: widget.otherUserImage != null &&
                                 widget.otherUserImage!.isNotEmpty
                             ? DecorationImage(
@@ -996,17 +1119,17 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
                           ? const Icon(
                               Icons.person,
                               color: Colors.white,
-                              size: 24,
+                              size: 18,
                             )
                           : null,
                     ),
-                    const SizedBox(width: 12),
-                    // Name
+                    const SizedBox(width: 10),
+                    // Name (reduced font size)
                     Text(
                       widget.otherUserName,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1015,93 +1138,85 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
               ),
             ),
             
-            // Call timer and coin info (only for caller, not host)
+            // Call timer and coin rate (only for caller, not host)
             if (!widget.isHost)
               Positioned(
-                top: 80,
-                left: 20,
+                top: 20,
                 right: 20,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Timer display
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _lowBalanceWarning ? Colors.orange : Colors.white.withValues(alpha: 0.3),
-                          width: 1,
+                    // Timer display (without container)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.timer,
+                                color: _lowBalanceWarning ? Colors.orange : Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _formatDuration(_callDurationSeconds),
+                                style: TextStyle(
+                                  color: _lowBalanceWarning ? Colors.orange : Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  fontFeatures: [const FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Coin rate badge (300 coins/min only)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFFF1744).withValues(alpha: 0.8),
+                            const Color(0xFFE91E63).withValues(alpha: 0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF1744).withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            spreadRadius: 0,
+                          ),
+                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons.timer,
+                            Icons.monetization_on,
                             color: Colors.white,
-                            size: 18,
+                            size: 14,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _formatDuration(_callDurationSeconds),
+                          const SizedBox(width: 6),
+                          const Text(
+                            '300 per min',
                             style: TextStyle(
-                              color: _lowBalanceWarning ? Colors.orange : Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              fontFeatures: [const FontFeature.tabularFigures()],
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Coins info
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.account_balance_wallet,
-                                color: Colors.white70,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Used: ${NumberFormat.decimalPattern().format(_totalCoinsDeducted)} coins',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.account_balance,
-                                color: _userBalance < 300 ? Colors.orange : Colors.white70,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Balance: ${NumberFormat.decimalPattern().format(_userBalance)} coins',
-                                style: TextStyle(
-                                  color: _userBalance < 300 ? Colors.orange : Colors.white70,
-                                  fontSize: 13,
-                                  fontWeight: _userBalance < 300 ? FontWeight.w600 : FontWeight.normal,
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),
@@ -1110,27 +1225,26 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
                     if (_lowBalanceWarning)
                       Container(
                         margin: const EdgeInsets.only(top: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.orange.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.warning,
                               color: Colors.white,
-                              size: 16,
+                              size: 14,
                             ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Low balance! Call will end when coins run out.',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Low balance!',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],

@@ -4173,8 +4173,6 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   @override
   Widget build(BuildContext context) {
     // Only set pink status bar on phones (not tablets/desktop)
-    final isPhone = MediaQuery.of(context).size.shortestSide < 600;
-    
     // Check keyboard visibility only when chat is open (lightweight check)
     final currentKeyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     if (_isChatOpen) {
@@ -4196,9 +4194,10 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     }
     
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: isPhone ? const Color(0xFFFF1B7C) : Colors.transparent, // Pink status bar only on phones
-        statusBarIconBrightness: isPhone ? Brightness.light : Brightness.dark, // Light icons for pink, dark for transparent
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFFFF1B7C), // Pink status bar for live view
+        statusBarIconBrightness: Brightness.light, // White icons on pink
+        statusBarBrightness: Brightness.dark,
         systemNavigationBarColor: Colors.black,
         systemNavigationBarIconBrightness: Brightness.light,
       ),

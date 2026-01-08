@@ -27,24 +27,30 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
   int _totalCoins = 0;
   int _coinsForNextLevel = 1300;
   bool _isLoading = true;
+  bool _isHostLevel = false; // false = User Level, true = Host Level
   
   late AnimationController _progressController;
   late AnimationController _pulseController;
   late Animation<double> _progressAnimation;
   late Animation<double> _pulseAnimation;
 
-  // Level ranges with rewards
-  final List<Map<String, dynamic>> _levelRanges = [
-    {'range': 'Lv.1-9', 'badgeNumber': 8, 'color': const Color(0xFF4CAF50), 'minLevel': 1, 'maxLevel': 9},
-    {'range': 'Lv.10-19', 'badgeNumber': 10, 'color': const Color(0xFF03A9F4), 'minLevel': 10, 'maxLevel': 19},
-    {'range': 'Lv.20-29', 'badgeNumber': 20, 'color': const Color(0xFF9C27B0), 'minLevel': 20, 'maxLevel': 29},
-    {'range': 'Lv.30-39', 'badgeNumber': 30, 'color': const Color(0xFF7B1FA2), 'minLevel': 30, 'maxLevel': 39},
-    {'range': 'Lv.40-49', 'badgeNumber': 40, 'color': const Color(0xFF6A1B9A), 'minLevel': 40, 'maxLevel': 49},
-    {'range': 'Lv.50-59', 'badgeNumber': 50, 'color': const Color(0xFFE91E63), 'minLevel': 50, 'maxLevel': 59},
-    {'range': 'Lv.60-69', 'badgeNumber': 60, 'color': const Color(0xFFC2185B), 'minLevel': 60, 'maxLevel': 69},
-    {'range': 'Lv.70-79', 'badgeNumber': 70, 'color': const Color(0xFFD32F2F), 'minLevel': 70, 'maxLevel': 79},
-    {'range': 'Lv.80-89', 'badgeNumber': 80, 'color': const Color(0xFFB71C1C), 'minLevel': 80, 'maxLevel': 89},
-    {'range': 'Lv.90-99', 'badgeNumber': 90, 'color': const Color(0xFFFF6F00), 'minLevel': 90, 'maxLevel': 99},
+  // Simplified level table for display with pink theme
+  final List<Map<String, dynamic>> _levelTable = [
+    {'label': 'Lv0', 'amount': '0', 'level': 0, 'color': const Color(0xFF9E9E9E)},
+    {'label': 'Lv1', 'amount': '10,000', 'level': 1, 'color': const Color(0xFFFFB3D9)},
+    {'label': 'Lv2', 'amount': '30,000', 'level': 2, 'color': const Color(0xFFFF99CC)},
+    {'label': 'Lv3', 'amount': '100,000', 'level': 3, 'color': const Color(0xFFFF80BF)},
+    {'label': 'Lv4', 'amount': '300,000', 'level': 4, 'color': const Color(0xFFFF66B2)},
+    {'label': 'Lv5', 'amount': '1,000,000', 'level': 5, 'color': const Color(0xFFFF4DA6)},
+    {'label': 'Lv6', 'amount': '3,000,000', 'level': 6, 'color': const Color(0xFFFF3399)},
+    {'label': 'Lv7', 'amount': '10,000,000', 'level': 7, 'color': const Color(0xFFFF1A8C)},
+    {'label': 'Lv8', 'amount': '30,000,000', 'level': 8, 'color': const Color(0xFFFF1B7C)},
+    {'label': 'Lv9', 'amount': '100,000,000', 'level': 9, 'color': const Color(0xFFE91E63)},
+    {'label': 'Lv10', 'amount': '300,000,000', 'level': 10, 'color': const Color(0xFFC2185B)},
+    {'label': 'Lv20', 'amount': '1,000,000,000', 'level': 20, 'color': const Color(0xFFAD1457)},
+    {'label': 'Lv30', 'amount': '3,000,000,000', 'level': 30, 'color': const Color(0xFF880E4F)},
+    {'label': 'Lv40', 'amount': '10,000,000,000', 'level': 40, 'color': const Color(0xFF6A1B9A)},
+    {'label': 'Lv50', 'amount': '30,000,000,000', 'level': 50, 'color': const Color(0xFF4A148C)},
   ];
 
   @override
@@ -94,13 +100,17 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
       if (user != null && mounted) {
         setState(() {
           _user = user;
-          _totalCoins = user.uCoins;
+          // Use appropriate field based on level type
+          _totalCoins = _isHostLevel ? user.totalCoinsReceived : user.totalCoinsPurchased;
+          // Calculate level from coins (always recalculate to ensure accuracy)
           _currentLevel = _calculateLevelFromCoins(_totalCoins);
           _coinsForNextLevel = _calculateCoinsForNextLevel(_currentLevel);
           _isLoading = false;
         });
         
-        if (widget.userLevel == null || _currentLevel != widget.userLevel) {
+        // Update saved level if calculated level differs from saved level
+        final savedLevel = _isHostLevel ? _user!.hostLevel : _user!.userLevel;
+        if (_currentLevel != savedLevel) {
           await _updateUserLevel(_currentLevel);
         }
         
@@ -170,9 +180,15 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
       final userId = _auth.currentUser?.uid;
       if (userId == null) return;
       
-      await _firestore.collection('users').doc(userId).update({
-        'level': newLevel,
-      });
+      // Update the appropriate level field based on type
+      final updateData = _isHostLevel
+          ? {'hostLevel': newLevel}
+          : {'userLevel': newLevel};
+      
+      // Also update legacy level field for backward compatibility
+      updateData['level'] = newLevel;
+      
+      await _firestore.collection('users').doc(userId).update(updateData);
     } catch (e) {
       debugPrint('Error updating level: $e');
     }
@@ -182,6 +198,7 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
     return _currentLevel >= minLevel && _currentLevel <= maxLevel;
   }
 
+  // ignore: unused_element
   bool _hasCompletedLevelRange(int minLevel, int maxLevel) {
     return _currentLevel > maxLevel;
   }
@@ -258,7 +275,15 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.grey[900],
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
@@ -279,8 +304,9 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
           margin: const EdgeInsets.only(right: 12),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50).withOpacity(0.2),
+            color: Colors.white.withOpacity(0.25),
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -289,15 +315,15 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
                 width: 6,
                 height: 6,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF4CAF50),
+                  color: Colors.white,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 5),
-              Text(
+              const Text(
                 'Active',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -309,13 +335,97 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
     );
   }
 
+  Widget _buildLevelTypeToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (!_isHostLevel) return;
+                setState(() {
+                  _isHostLevel = false;
+                  _updateLevelCalculation();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: !_isHostLevel ? Colors.white.withOpacity(0.3) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'User Level',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: !_isHostLevel ? FontWeight.bold : FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_isHostLevel) return;
+                setState(() {
+                  _isHostLevel = true;
+                  _updateLevelCalculation();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _isHostLevel ? Colors.white.withOpacity(0.3) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Host Level',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: _isHostLevel ? FontWeight.bold : FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _updateLevelCalculation() {
+    if (_user == null) return;
+    // Recalculate based on selected level type
+    _totalCoins = _isHostLevel ? _user!.totalCoinsReceived : _user!.totalCoinsPurchased;
+    _currentLevel = _calculateLevelFromCoins(_totalCoins);
+    _coinsForNextLevel = _calculateCoinsForNextLevel(_currentLevel);
+    // Update saved level in Firestore
+    _updateUserLevel(_currentLevel);
+    _progressController.reset();
+    _progressController.forward();
+  }
+
   Widget _buildTopSection(double progress, int coinsNeeded) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: const Color(0xFFFF1B7C).withOpacity(0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -432,6 +542,29 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
                           ),
                         ],
                       ),
+                      const SizedBox(height: 4),
+                      // Total Coins Display
+                      Row(
+                        children: [
+                          Image.asset(
+                            'assets/images/coin3.png',
+                            width: 12,
+                            height: 12,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(Icons.monetization_on, color: Colors.white, size: 12);
+                            },
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_totalCoins.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} ${_isHostLevel ? "received" : "purchased"}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.85),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       // Progress Bar
                       Column(
@@ -518,7 +651,7 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Image.asset(
-                        'assets/images/coin.png',
+                        'assets/images/coin3.png',
                         width: 18,
                         height: 18,
                         errorBuilder: (context, error, stackTrace) {
@@ -548,6 +681,12 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          // Level Type Toggle
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildLevelTypeToggle(),
+          ),
           const SizedBox(height: 18),
         ],
       ),
@@ -555,40 +694,25 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
   }
 
   Widget _buildRewardsSection() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 15,
-            offset: const Offset(0, 3),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF9C27B0), Color(0xFFE91E63)],
-                  ),
+                  color: const Color(0xFFFF1B7C).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.emoji_events, color: Colors.white, size: 16),
+                child: const Icon(Icons.emoji_events, color: Color(0xFFFF1B7C), size: 16),
               ),
               const SizedBox(width: 10),
-              const Text(
-                'Rewards',
-                style: TextStyle(
+              Text(
+                _isHostLevel ? 'Host Level Requirements' : 'User Level Requirements',
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
@@ -597,157 +721,241 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ..._levelRanges.asMap().entries.map((entry) {
-            final index = entry.key;
-            final range = entry.value;
-            return TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: Duration(milliseconds: 250 + (index * 40)),
-              curve: Curves.easeOut,
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, 15 * (1 - value)),
-                    child: child,
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(color: Colors.grey.withOpacity(0.15)),
+              bottom: BorderSide(color: Colors.grey.withOpacity(0.15)),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Header Row
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFFF1B7C).withOpacity(0.1),
+                      const Color(0xFFFF69B4).withOpacity(0.1),
+                    ],
+                  ),
+                  border: Border(
+                    bottom: BorderSide(color: const Color(0xFFFF1B7C).withOpacity(0.2)),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'Level',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: const Color(0xFFFF1B7C),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        _isHostLevel ? 'Coins Received' : 'Coins Purchased',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: const Color(0xFFFF1B7C),
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Data Rows
+              ..._levelTable.asMap().entries.map((entry) {
+                final index = entry.key;
+                final row = entry.value;
+                final rowLevel = row['level'] as int;
+                // Find the highest level in table that user has reached
+                int? nextTableLevel;
+                if (index < _levelTable.length - 1) {
+                  nextTableLevel = _levelTable[index + 1]['level'] as int;
+                }
+                // Highlight if user is at or past this level, but hasn't reached next table level
+                final isCurrentLevel = _currentLevel >= rowLevel && 
+                    (nextTableLevel == null || _currentLevel < nextTableLevel);
+                final isEven = index % 2 == 0;
+                
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isCurrentLevel
+                        ? const Color(0xFFFF1B7C).withOpacity(0.1)
+                        : isEven
+                            ? Colors.white
+                            : Colors.grey.shade50,
+                    border: Border(
+                      left: isCurrentLevel
+                          ? const BorderSide(color: Color(0xFFFF1B7C), width: 3)
+                          : BorderSide.none,
+                      bottom: BorderSide(color: Colors.grey.withOpacity(0.1)),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Row(
+                              children: [
+                                _buildLevelBadge(row['label'] as String, row['color'] as Color),
+                                if (isCurrentLevel) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'Current',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              row['amount'] as String,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isCurrentLevel ? FontWeight.bold : FontWeight.w600,
+                                color: isCurrentLevel
+                                    ? const Color(0xFFFF1B7C)
+                                    : Colors.black87,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (isCurrentLevel && rowLevel == _currentLevel && _coinsForNextLevel > 0) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Progress to next level',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: _getLevelProgress(),
+                                      backgroundColor: Colors.grey[200],
+                                      valueColor: const AlwaysStoppedAnimation<Color>(
+                                        Color(0xFFFF1B7C),
+                                      ),
+                                      minHeight: 6,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Image.asset(
+                                        'assets/images/coin3.png',
+                                        width: 12,
+                                        height: 12,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Icon(Icons.monetization_on, color: Colors.grey, size: 12);
+                                        },
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${(_getTotalCoinsForLevel(_currentLevel + 1) - _totalCoins).clamp(0, _coinsForNextLevel)} coins needed',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 );
-              },
-              child: _buildRewardRow(range, index),
-            );
-          }),
-        ],
-      ),
+              }),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildRewardRow(Map<String, dynamic> range, int index) {
-    final rangeText = range['range'] as String;
-    final badgeNumber = range['badgeNumber'] as int;
-    final badgeColor = range['color'] as Color;
-    final minLevel = range['minLevel'] as int;
-    final maxLevel = range['maxLevel'] as int;
-    
-    final hasReached = _hasReachedLevelRange(minLevel, maxLevel);
-    final hasCompleted = _hasCompletedLevelRange(minLevel, maxLevel);
-    final isActive = hasCompleted || hasReached;
-    
-    return Padding(
-      padding: EdgeInsets.only(bottom: index < _levelRanges.length - 1 ? 12 : 0),
-      child: Row(
-        children: [
-          // Level Range Text
-          SizedBox(
-            width: 65,
-            child: Text(
-              rangeText,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: isActive ? Colors.black87 : Colors.grey[400],
-                letterSpacing: 0.2,
-              ),
-            ),
+  Widget _buildLevelBadge(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
           ),
-          const SizedBox(width: 10),
-          // Badge with Crown
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              gradient: isActive
-                  ? LinearGradient(
-                      colors: [badgeColor, badgeColor.withOpacity(0.85)],
-                    )
-                  : null,
-              color: isActive ? null : Colors.grey[300],
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: isActive
-                  ? [
-                      BoxShadow(
-                        color: badgeColor.withOpacity(0.3),
-                        blurRadius: 6,
-                        spreadRadius: 0.5,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.workspace_premium,
-                  color: isActive ? Colors.white : Colors.grey[600],
-                  size: 12,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '$badgeNumber',
-                  style: TextStyle(
-                    color: isActive ? Colors.white : Colors.grey[600],
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+          child: Icon(
+            Icons.workspace_premium,
+            size: 12,
+            color: Colors.white,
           ),
-          const SizedBox(width: 10),
-          // Ornate Frame
-          Expanded(
-            child: Center(
-              child: _buildOrnateFrame(minLevel, hasCompleted, hasReached),
-            ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
           ),
-          const SizedBox(width: 10),
-          // Status Badge
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              gradient: isActive
-                  ? LinearGradient(
-                      colors: [badgeColor, badgeColor.withOpacity(0.85)],
-                    )
-                  : null,
-              color: isActive ? null : Colors.grey[300],
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.workspace_premium,
-                  color: isActive ? Colors.white : Colors.grey[600],
-                  size: 11,
-                ),
-                const SizedBox(width: 3),
-                Text(
-                  '$badgeNumber',
-                  style: TextStyle(
-                    color: isActive ? Colors.white : Colors.grey[600],
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Joined',
-                  style: TextStyle(
-                    color: isActive ? Colors.white : Colors.grey[600],
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
+  // ignore: unused_element
   Widget _buildOrnateFrame(int minLevel, bool hasCompleted, bool hasReached) {
     final isActive = hasCompleted || hasReached;
     

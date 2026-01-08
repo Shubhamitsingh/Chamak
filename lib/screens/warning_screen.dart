@@ -120,5 +120,3 @@ class WarningScreen extends StatelessWidget {
     );
   }
 }
-
-

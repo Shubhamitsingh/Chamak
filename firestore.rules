@@ -42,14 +42,19 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId
         && !request.resource.data.keys().hasAny(['uCoins', 'coins', 'cCoins']);
       
-      // Users can update their own profile (EXCEPT coin fields)
+      // Users can update their own profile
+      // Allow uCoins updates for call deductions (decrements only - FieldValue.increment with negative value)
       // Users can update followersCount on any user's profile (for follow/unfollow)
       // Admins can update any user's profile including coin fields
       allow update: if (request.auth != null && request.auth.uid == userId
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uCoins', 'coins', 'cCoins']))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'cCoins'])
+            || (request.resource.data.diff(resource.data).affectedKeys().hasAny(['uCoins']) 
+                && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'cCoins'])
+                && request.resource.data.uCoins is int
+                && resource.data.uCoins is int
+                && request.resource.data.uCoins < resource.data.uCoins))) // Allow uCoins decrement for calls
         || (request.auth != null 
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount'])
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uCoins', 'coins', 'cCoins']))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount']))
         || isAdmin();
       
       // Users cannot delete their own profile (only admins can)
@@ -175,9 +180,11 @@ service cloud.firestore {
       // Users can read their own wallet
       allow read: if request.auth != null && request.auth.uid == userId;
       
-      // Users cannot write to wallets (deprecated for users)
-      // Admins can write to wallets (for backward compatibility)
-      allow write: if isAdmin();
+      // Users can update their own wallet for sync with users collection (during coin deductions)
+      // This ensures wallet balance stays in sync with users.uCoins
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      // Only admins can delete
+      allow delete: if isAdmin();
     }
     
     // ============================================
@@ -204,6 +211,14 @@ service cloud.firestore {
           // Only host can delete messages - check if stream exists and user is host
           // Note: Can't easily check in subcollection rules, allowing authenticated users for now
       }
+      
+      // Viewers subcollection - track who is watching the stream
+      match /viewers/{viewerId} {
+        allow read: if true; // Public read for viewer list
+        // Viewers can add/remove themselves from the viewers list
+        allow create, delete: if request.auth != null && request.auth.uid == viewerId;
+        allow update: if false; // Viewers cannot update their viewer document
+      }
     }
     
     // Gifts collection
@@ -218,8 +233,11 @@ service cloud.firestore {
     match /earnings/{userId} {
       // Users can read their own earnings
       allow read: if request.auth != null && request.auth.uid == userId;
-      // Only server/Cloud Functions and admins can write
-      allow write: if isAdmin();
+      // Allow authenticated users to update earnings when crediting hosts during calls
+      // This is needed when callers deduct coins and credit hosts
+      allow create, update: if request.auth != null;
+      // Only admins can delete
+      allow delete: if isAdmin();
     }
     
     // Announcements collection
@@ -332,8 +350,15 @@ service cloud.firestore {
     
     // Call transactions collection
     match /callTransactions/{transactionId} {
+      // Users can read their own call transactions
       allow read: if request.auth != null;
-      allow write: if false; // Only server/Cloud Functions
+      // Users can create call transactions when they make calls (for coin deduction tracking)
+      allow create: if request.auth != null 
+        && request.resource.data != null
+        && request.auth.uid == request.resource.data.callerId;
+      // Only server/Cloud Functions can update/delete
+      allow update: if false;
+      allow delete: if false;
     }
     
     // Call requests collection

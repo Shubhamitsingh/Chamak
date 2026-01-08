@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/coin_popup_service.dart';
+import '../screens/wallet_screen.dart';
 
 /// Beautiful coin purchase popup with bottom sheet design matching the exclusive offer style
 class CoinPurchasePopup {
@@ -352,9 +354,34 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
         ),
         child: ElevatedButton(
           onPressed: () {
+            // Close the popup first
             Navigator.pop(context);
-            // Payment screen removed - payment is now handled via PayPrime API in wallet screen
-            // Users can purchase coins directly from wallet screen packages
+            
+            // Get user phone number from Firebase Auth
+            final currentUser = FirebaseAuth.instance.currentUser;
+            final phoneNumber = currentUser?.phoneNumber ?? '';
+            
+            // Navigate to wallet screen
+            if (phoneNumber.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WalletScreen(
+                    phoneNumber: phoneNumber,
+                    isHost: false,
+                    showBackButton: true,
+                  ),
+                ),
+              );
+            } else {
+              // If no phone number, show error
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Unable to get user information. Please try again.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,

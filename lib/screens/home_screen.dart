@@ -11,6 +11,7 @@ import 'chat_list_screen.dart';
 import 'wallet_screen.dart';
 import 'agora_live_stream_screen.dart';
 import 'host_rules_screen.dart';
+import 'user_profile_view_screen.dart';
 import '../widgets/announcement_panel.dart';
 import '../services/live_stream_service.dart';
 import '../services/chat_service.dart';
@@ -23,9 +24,9 @@ import '../models/announcement_model.dart';
 import '../widgets/coin_purchase_popup.dart';
 import '../services/location_permission_service.dart';
 import '../services/agora_token_service.dart';
-import '../widgets/live_stream_preview_card.dart';
 import 'live_reels_screen.dart';
 import 'dart:async';
+import 'package:flutter/services.dart';
 
 // Optimized Scrolling Text Widget for Banner
 class _ScrollingText extends StatelessWidget {
@@ -111,13 +112,27 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _marqueeController;
 
   // Live stream preview state
-  bool _hasInitialDelayPassed = false;
   Timer? _previewDelayTimer;
   final ValueNotifier<bool> _previewDelayNotifier = ValueNotifier<bool>(false);
+  bool get _isLiveReelsFullScreen =>
+      _currentBottomIndex == 0 && _topTabIndex == 1;
 
   @override
   void initState() {
     super.initState();
+    // Ensure status bar and navigation overlays stay visible (including Live tab)
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.edgeToEdge,
+      overlays: SystemUiOverlay.values,
+    );
+    // Force status bar style so battery/network icons stay visible on light background
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+    );
     // Initialize marquee animation controller
     _marqueeController = AnimationController(
       vsync: this,
@@ -142,9 +157,7 @@ class _HomeScreenState extends State<HomeScreen>
     _previewDelayTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         debugPrint('✅ Preview delay passed - enabling video previews');
-        setState(() {
-          _hasInitialDelayPassed = true;
-        });
+        setState(() {});
         _previewDelayNotifier.value = true; // Notify ValueListenableBuilder
       }
     });
@@ -546,7 +559,8 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
       body: _buildBody(),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar:
+          _isLiveReelsFullScreen ? null : _buildBottomNavigationBar(),
     );
   }
 
@@ -585,36 +599,79 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== HOME TAB (Explore/Live) ==========
   Widget _buildHomeTab() {
-    return SafeArea(
-      child: Column(
-        children: [
-          // Top Bar with Explore/Live Toggle and Search in One Line
-          _buildTopBar(),
+    final overlayStyle = SystemUiOverlayStyle.dark.copyWith(
+      statusBarColor: Colors.transparent, // let top bar background show through
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+    );
 
-          // Scrolling Announcement Bar
-          _buildAnnouncementBar(),
-
-          // Main Content Area - Swipeable PageView
-          Expanded(
-            child: ClipRect(
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() {
-                    _topTabIndex = index;
-                  });
-                },
-                physics: const PageScrollPhysics(),
-                allowImplicitScrolling: false,
-                pageSnapping: true,
-                itemCount: 4,
-                itemBuilder: (context, index) {
-                  return _buildPageContent(index);
-                },
-              ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle,
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                if (!_isLiveReelsFullScreen) _buildTopBar(),
+                if (!_isLiveReelsFullScreen) _buildAnnouncementBar(),
+                Expanded(
+                  child: ClipRect(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _topTabIndex = index;
+                        });
+                      },
+                      physics: const PageScrollPhysics(),
+                      allowImplicitScrolling: false,
+                      pageSnapping: true,
+                      itemCount: 4,
+                      itemBuilder: (context, index) {
+                        return _buildPageContent(index);
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            if (_isLiveReelsFullScreen)
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () {
+                          setState(() {
+                            _topTabIndex = 0;
+                            _pageController.animateToPage(
+                              0,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeInOut,
+                            );
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1164,33 +1221,49 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== LIVE CONTENT ==========
   Widget _buildLiveContent() {
+    return const LiveReelsScreen();
+  }
+
+  // ========== EXPLORE CONTENT ==========
+  Widget _buildExploreContent() {
+    debugPrint('🚀 [EXPLORE] _buildExploreContent() called');
     final liveStreamService = LiveStreamService();
 
-    // Use ValueListenableBuilder to rebuild when _hasInitialDelayPassed changes
-    return ValueListenableBuilder<bool>(
-      valueListenable: _previewDelayNotifier,
-      builder: (context, shouldShowPreview, child) {
-        return StreamBuilder<List<LiveStreamModel>>(
-          stream: liveStreamService.getActiveLiveStreams(),
-          builder: (context, snapshot) {
-            // Loading state
-            if (snapshot.connectionState == ConnectionState.waiting) {
+    // Combine two streams: All hosts + Live streams status
+    return StreamBuilder<List<LiveStreamModel>>(
+      stream: liveStreamService.getActiveLiveStreams(),
+      builder: (context, liveStreamsSnapshot) {
+        debugPrint('📡 [EXPLORE] Live streams snapshot state: ${liveStreamsSnapshot.connectionState}, hasData: ${liveStreamsSnapshot.hasData}, hasError: ${liveStreamsSnapshot.hasError}');
+        // Get all hosts from users collection
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .where('isHost', isEqualTo: true)
+              .limit(200) // Increased significantly to ensure all hosts are included
+              .snapshots(),
+          builder: (context, hostsSnapshot) {
+            debugPrint('👥 [EXPLORE] Hosts snapshot state: ${hostsSnapshot.connectionState}, hasData: ${hostsSnapshot.hasData}, hasError: ${hostsSnapshot.hasError}');
+            debugPrint('📡 [EXPLORE] Live streams snapshot state: ${liveStreamsSnapshot.connectionState}, hasData: ${liveStreamsSnapshot.hasData}, hasError: ${liveStreamsSnapshot.hasError}');
+            
+            // Loading state - wait only if hosts data not yet available
+            if (hostsSnapshot.connectionState == ConnectionState.waiting &&
+                !hostsSnapshot.hasData) {
+              debugPrint('⏳ [EXPLORE] Waiting for hosts data...');
               return const Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFFFF69B4), // pink loader
+                  color: Color(0xFFFF69B4),
                 ),
               );
             }
 
             // Error state
-            if (snapshot.hasError) {
+            if (hostsSnapshot.hasError || liveStreamsSnapshot.hasError) {
               if (!mounted) return const SizedBox.shrink();
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline,
-                        size: 60, color: Colors.grey[400]),
+                    Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
                     const SizedBox(height: 16),
                     Text(
                       AppLocalizations.of(context)!.errorLoadingStreams,
@@ -1201,28 +1274,97 @@ class _HomeScreenState extends State<HomeScreen>
               );
             }
 
-            // No data state
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            // No hosts returned - try fallback to live streams list
+            if (!hostsSnapshot.hasData || hostsSnapshot.data!.docs.isEmpty) {
+              debugPrint('⚠️ [EXPLORE] No hosts data available from users collection');
+              
+              // Fallback: if we have live streams, show them directly
+              if (liveStreamsSnapshot.hasData &&
+                  liveStreamsSnapshot.data != null &&
+                  liveStreamsSnapshot.data!.isNotEmpty) {
+                final liveStreams = liveStreamsSnapshot.data!;
+                debugPrint('✅ [EXPLORE] Fallback: showing ${liveStreams.length} live streams without host docs');
+                
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 0.85,
+                  ),
+                  physics: const ClampingScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: liveStreams.length > 200 ? 200 : liveStreams.length,
+                  itemBuilder: (context, index) {
+                    final stream = liveStreams[index];
+                    return GestureDetector(
+                      onTap: () async {
+                        if (!mounted) return;
+                        try {
+                          final tokenService = AgoraTokenService();
+                          final token = await tokenService.getAudienceToken(
+                            channelName: stream.channelName,
+                            uid: 0,
+                          );
+
+                          if (!mounted) return;
+
+                          liveStreamService.joinStream(stream.streamId);
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AgoraLiveStreamScreen(
+                                channelName: stream.channelName,
+                                token: token,
+                                isHost: false,
+                                streamId: stream.streamId,
+                              ),
+                            ),
+                          ).then((_) {
+                            liveStreamService.leaveStream(stream.streamId);
+                          });
+                        } catch (e) {
+                          debugPrint('❌ Error joining stream (fallback): $e');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to join stream: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: _buildLiveStreamCard(
+                        hostName: stream.hostName,
+                        title: stream.title,
+                        viewers: stream.viewerCount,
+                        thumbnail: Icons.live_tv,
+                        isLive: true,
+                        hostPhotoUrl: stream.hostPhotoUrl,
+                        streamId: stream.streamId,
+                        hostId: stream.hostId,
+                      ),
+                    );
+                  },
+                );
+              }
+
               if (!mounted) return const SizedBox.shrink();
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.live_tv, size: 80, color: Colors.grey[400]),
+                    Icon(Icons.person, size: 80, color: Colors.grey[400]),
                     const SizedBox(height: 20),
                     Text(
-                      AppLocalizations.of(context)!.noLiveStreamsAtMoment,
+                      'No hosts available',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      AppLocalizations.of(context)!.beFirstToGoLive,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[500],
                       ),
                     ),
                   ],
@@ -1230,8 +1372,83 @@ class _HomeScreenState extends State<HomeScreen>
               );
             }
 
-            // Display streams
-            final liveStreams = snapshot.data!;
+            debugPrint('✅ [EXPLORE] Hosts data ready - proceeding with host matching');
+            debugPrint('   - Hosts count: ${hostsSnapshot.data!.docs.length}');
+            debugPrint('   - Live streams hasData: ${liveStreamsSnapshot.hasData}');
+            debugPrint('   - Live streams connectionState: ${liveStreamsSnapshot.connectionState}');
+            if (liveStreamsSnapshot.hasData) {
+              debugPrint('   - Live streams count: ${liveStreamsSnapshot.data!.length}');
+            } else {
+              debugPrint('   ⚠️ Live streams not ready yet - will show all hosts, live status will update when ready');
+            }
+            
+            // Create a map of live streams by hostId for quick lookup
+            // If live streams aren't ready yet, we'll just show all hosts without live indicators
+            // The grid will update automatically when live streams data arrives
+            final liveStreamsMap = <String, LiveStreamModel>{};
+            final liveHostIds = <String>{};
+            if (liveStreamsSnapshot.hasData) {
+              debugPrint('📺 [EXPLORE] Found ${liveStreamsSnapshot.data!.length} active live streams');
+              for (var stream in liveStreamsSnapshot.data!) {
+                liveStreamsMap[stream.hostId] = stream;
+                liveHostIds.add(stream.hostId);
+                debugPrint('   ✅ Live: ${stream.hostName} (hostId: ${stream.hostId})');
+              }
+              debugPrint('🔍 [EXPLORE] Live hostIds: ${liveHostIds.toList()}');
+            } else {
+              debugPrint('📺 [EXPLORE] No live streams found');
+            }
+
+            // Get all hosts
+            final hosts = hostsSnapshot.data!.docs;
+            debugPrint('👥 [EXPLORE] Found ${hosts.length} total hosts');
+            
+            // Debug: Check if any host IDs match live stream hostIds
+            debugPrint('🔍 [EXPLORE] Checking host ID matches...');
+            for (var host in hosts) {
+              if (liveHostIds.contains(host.id)) {
+                final hostData = host.data() as Map<String, dynamic>?;
+                final hostName = hostData?['displayName'] ?? 'Unknown';
+                debugPrint('   ✅ MATCH FOUND: Host $hostName (ID: ${host.id}) matches live stream!');
+              }
+            }
+            
+            // Separate live hosts and non-live hosts
+            final liveHosts = <DocumentSnapshot>[];
+            final nonLiveHosts = <DocumentSnapshot>[];
+            
+            for (var host in hosts) {
+              if (liveStreamsMap.containsKey(host.id)) {
+                liveHosts.add(host);
+                final hostData = host.data() as Map<String, dynamic>?;
+                final hostName = hostData?['displayName'] ?? 'Unknown';
+                debugPrint('   ✅ Host $hostName (ID: ${host.id}) is LIVE - will show in grid');
+              } else {
+                nonLiveHosts.add(host);
+                // Debug: Log first few non-live host IDs for comparison
+                if (nonLiveHosts.length <= 3) {
+                  debugPrint('   ⚪ Non-live host ID: ${host.id}');
+                }
+              }
+            }
+            
+            // Combine: Live hosts first, then others
+            final sortedHosts = [...liveHosts, ...nonLiveHosts];
+            debugPrint('📊 [EXPLORE] Sorted: ${liveHosts.length} live hosts + ${nonLiveHosts.length} non-live = ${sortedHosts.length} total');
+            
+            // Debug: Check current user
+            final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+            if (currentUserId != null) {
+              debugPrint('🔍 [EXPLORE] Current user ID: $currentUserId');
+              debugPrint('   - Is in live streams: ${liveStreamsMap.containsKey(currentUserId)}');
+              debugPrint('   - Is in hosts list: ${hosts.any((h) => h.id == currentUserId)}');
+              if (liveStreamsMap.containsKey(currentUserId)) {
+                debugPrint('   ✅ CURRENT USER IS LIVE! Should appear in grid.');
+              } else {
+                debugPrint('   ⚠️ Current user is NOT in live streams map');
+                debugPrint('   - Check if hostId in live_streams document matches user ID');
+              }
+            }
 
             return GridView.builder(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -1243,220 +1460,115 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const ClampingScrollPhysics(),
               shrinkWrap: true,
-              itemCount: liveStreams.length > 20
-                  ? 20
-                  : liveStreams.length, // Limit to 20 items
+              itemCount: sortedHosts.length > 200 ? 200 : sortedHosts.length,
               itemBuilder: (context, index) {
-                final stream = liveStreams[index];
+                final hostDoc = sortedHosts[index];
+                final hostData = hostDoc.data() as Map<String, dynamic>;
+                final hostId = hostDoc.id;
+                final hostName = hostData['displayName'] ?? 'Host';
+                final hostPhotoUrl = hostData['photoURL'];
+
+                // Check if this host is live
+                final isLive = liveStreamsMap.containsKey(hostId);
+                final liveStream = isLive ? liveStreamsMap[hostId] : null;
+                
+                // Debug: Log if this is the current user
+                final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+                if (currentUserId == hostId) {
+                  debugPrint('🔍 [EXPLORE] Current user found at index $index: $hostName');
+                  debugPrint('   - isLive: $isLive');
+                  debugPrint('   - liveStream: ${liveStream != null ? liveStream.streamId : "null"}');
+                  if (isLive && liveStream != null) {
+                    debugPrint('   ✅ Current user IS LIVE and should appear in grid!');
+                  } else {
+                    debugPrint('   ⚠️ Current user is NOT detected as live');
+                    debugPrint('   - Check if liveStreams collection has entry with hostId: $hostId');
+                    debugPrint('   - Check if isActive == true in liveStreams document');
+                  }
+                }
+
                 return GestureDetector(
                   onTap: () async {
                     if (!mounted) return;
-                    // Navigate to live stream as viewer
-                    // Generate token dynamically using AgoraTokenService
-                    debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
-                    debugPrint('📺 Channel: ${stream.channelName}');
-
-                    try {
-                      final tokenService = AgoraTokenService();
-                      final token = await tokenService.getAudienceToken(
-                        channelName: stream.channelName,
-                        uid: 0,
-                      );
-                      debugPrint(
-                          '✅ Generated audience token: ${token.length} chars');
-
-                      if (!mounted) return;
-
-                      // Increment viewer count
-                      liveStreamService.joinStream(stream.streamId);
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AgoraLiveStreamScreen(
-                            channelName: stream.channelName,
-                            token: token,
-                            isHost: false, // Viewer mode
-                            streamId: stream.streamId, // Pass streamId for cleanup
-                          ),
-                        ),
-                      ).then((_) {
-                        // Decrement viewer count when viewer leaves
-                        liveStreamService.leaveStream(stream.streamId);
-                      });
-                    } catch (e) {
-                      debugPrint('❌ Error generating token: $e');
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to join stream: ${e.toString()}'),
-                            backgroundColor: Colors.red,
-                            duration: const Duration(seconds: 3),
-                          ),
+                    
+                    if (isLive && liveStream != null) {
+                      // Navigate to live stream
+                      try {
+                        final tokenService = AgoraTokenService();
+                        final token = await tokenService.getAudienceToken(
+                          channelName: liveStream.channelName,
+                          uid: 0,
                         );
+
+                        if (!mounted) return;
+
+                        liveStreamService.joinStream(liveStream.streamId);
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AgoraLiveStreamScreen(
+                              channelName: liveStream.channelName,
+                              token: token,
+                              isHost: false,
+                              streamId: liveStream.streamId,
+                            ),
+                          ),
+                        ).then((_) {
+                          liveStreamService.leaveStream(liveStream.streamId);
+                        });
+                      } catch (e) {
+                        debugPrint('❌ Error joining stream: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to join stream: ${e.toString()}'),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      }
+                    } else {
+                      // Navigate to host profile - fetch user data first
+                      try {
+                        final userData = await DatabaseService().getUserData(hostId);
+                        if (userData != null && mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserProfileViewScreen(
+                                user: userData,
+                              ),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        debugPrint('❌ Error loading user profile: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to load profile'),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
                       }
                     }
                   },
                   child: _buildLiveStreamCard(
-                    hostName: stream.hostName,
-                    title: stream.title,
-                    viewers: stream.viewerCount,
+                    hostName: hostName,
+                    title: liveStream?.title ?? '',
+                    viewers: liveStream?.viewerCount ?? 0,
                     thumbnail: Icons.live_tv,
-                    isLive: true,
-                    hostPhotoUrl: stream.hostPhotoUrl,
-                    streamId: stream.streamId, // Pass streamId for chat
-                    hostId: stream.hostId, // Pass hostId to fetch user data
+                    isLive: isLive,
+                    hostPhotoUrl: hostPhotoUrl,
+                    streamId: liveStream?.streamId,
+                    hostId: hostId,
                   ),
                 );
               },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // ========== EXPLORE CONTENT ==========
-  Widget _buildExploreContent() {
-    // Show real-time live streams from Firebase (same as Live tab)
-    final liveStreamService = LiveStreamService();
-
-    return StreamBuilder<List<LiveStreamModel>>(
-      stream: liveStreamService.getActiveLiveStreams(),
-      builder: (context, snapshot) {
-        // Loading state
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFFFF69B4),
-            ),
-          );
-        }
-
-        // Error state
-        if (snapshot.hasError) {
-          if (!mounted) return const SizedBox.shrink();
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  AppLocalizations.of(context)!.errorLoadingStreams,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // No data state
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          if (!mounted) return const SizedBox.shrink();
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.live_tv, size: 80, color: Colors.grey[400]),
-                const SizedBox(height: 20),
-                Text(
-                  AppLocalizations.of(context)!.noLiveStreamsAtMoment,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  AppLocalizations.of(context)!.beFirstToGoLive,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Display streams
-        final liveStreams = snapshot.data!;
-
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 0.85,
-          ),
-          physics: const ClampingScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: liveStreams.length > 20
-              ? 20
-              : liveStreams.length, // Limit to 20 items
-          itemBuilder: (context, index) {
-            final stream = liveStreams[index];
-            return GestureDetector(
-              onTap: () async {
-                if (!mounted) return;
-                // Navigate to live stream as viewer
-                // Generate token dynamically using AgoraTokenService
-                debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
-                debugPrint('📺 Channel: ${stream.channelName}');
-
-                try {
-                  final tokenService = AgoraTokenService();
-                  final token = await tokenService.getAudienceToken(
-                    channelName: stream.channelName,
-                    uid: 0,
-                  );
-                  debugPrint(
-                      '✅ Generated audience token: ${token.length} chars');
-
-                  if (!mounted) return;
-
-                  // Increment viewer count
-                  liveStreamService.joinStream(stream.streamId);
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AgoraLiveStreamScreen(
-                        channelName: stream.channelName,
-                        token: token,
-                        isHost: false, // Viewer mode
-                        streamId: stream.streamId, // Pass streamId for cleanup
-                      ),
-                    ),
-                  ).then((_) {
-                    // Decrement viewer count when viewer leaves
-                    liveStreamService.leaveStream(stream.streamId);
-                  });
-                } catch (e) {
-                  debugPrint('❌ Error generating token: $e');
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to join stream: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                  }
-                }
-              },
-              child: _buildLiveStreamCard(
-                hostName: stream.hostName,
-                title: stream.title,
-                viewers: stream.viewerCount,
-                thumbnail: Icons.live_tv,
-                isLive: true,
-                hostPhotoUrl: stream.hostPhotoUrl,
-                streamId: stream.streamId, // Pass streamId for chat
-                hostId: stream.hostId, // Pass hostId to fetch user data
-              ),
             );
           },
         );
@@ -1958,145 +2070,256 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== FOLLOWING CONTENT ==========
   Widget _buildFollowingContent() {
-    // Show real-time live streams from Firebase (same as Explore tab)
     final liveStreamService = LiveStreamService();
 
+    // Combine two streams: All hosts + Live streams status
     return StreamBuilder<List<LiveStreamModel>>(
       stream: liveStreamService.getActiveLiveStreams(),
-      builder: (context, snapshot) {
-        // Loading state
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFFFF69B4),
-            ),
-          );
-        }
-
-        // Error state
-        if (snapshot.hasError) {
-          if (!mounted) return const SizedBox.shrink();
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  AppLocalizations.of(context)!.errorLoadingStreams,
-                  style: TextStyle(color: Colors.grey[600]),
+      builder: (context, liveStreamsSnapshot) {
+        // Get all hosts from users collection
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .where('isHost', isEqualTo: true)
+              .limit(100) // Increased to ensure live hosts are included
+              .snapshots(),
+          builder: (context, hostsSnapshot) {
+            // Loading state - wait only for hosts data
+            if (hostsSnapshot.connectionState == ConnectionState.waiting &&
+                !hostsSnapshot.hasData) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFF69B4),
                 ),
-              ],
-            ),
-          );
-        }
+              );
+            }
 
-        // No data state
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          if (!mounted) return const SizedBox.shrink();
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.live_tv, size: 80, color: Colors.grey[400]),
-                const SizedBox(height: 20),
-                Text(
-                  AppLocalizations.of(context)!.noLiveStreamsAtMoment,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  AppLocalizations.of(context)!.beFirstToGoLive,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Display streams
-        final liveStreams = snapshot.data!;
-
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 0.85,
-          ),
-          physics: const ClampingScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: liveStreams.length > 20
-              ? 20
-              : liveStreams.length, // Limit to 20 items
-          itemBuilder: (context, index) {
-            final stream = liveStreams[index];
-            return GestureDetector(
-              onTap: () async {
-                if (!mounted) return;
-                // Navigate to live stream as viewer
-                // Generate token dynamically using AgoraTokenService
-                debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
-                debugPrint('📺 Channel: ${stream.channelName}');
-
-                try {
-                  final tokenService = AgoraTokenService();
-                  final token = await tokenService.getAudienceToken(
-                    channelName: stream.channelName,
-                    uid: 0,
-                  );
-                  debugPrint(
-                      '✅ Generated audience token: ${token.length} chars');
-
-                  if (!mounted) return;
-
-                  // Increment viewer count
-                  liveStreamService.joinStream(stream.streamId);
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AgoraLiveStreamScreen(
-                        channelName: stream.channelName,
-                        token: token,
-                        isHost: false, // Viewer mode
-                        streamId: stream.streamId, // Pass streamId for cleanup
-                      ),
+            // Error state
+            if (hostsSnapshot.hasError || liveStreamsSnapshot.hasError) {
+              if (!mounted) return const SizedBox.shrink();
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context)!.errorLoadingStreams,
+                      style: TextStyle(color: Colors.grey[600]),
                     ),
-                  ).then((_) {
-                    // Decrement viewer count when viewer leaves
-                    liveStreamService.leaveStream(stream.streamId);
-                  });
-                } catch (e) {
-                  debugPrint('❌ Error generating token: $e');
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to join stream: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                        duration: const Duration(seconds: 3),
+                  ],
+                ),
+              );
+            }
+
+            // No hosts: fallback to live streams if available
+            if (!hostsSnapshot.hasData || hostsSnapshot.data!.docs.isEmpty) {
+              if (liveStreamsSnapshot.hasData &&
+                  liveStreamsSnapshot.data != null &&
+                  liveStreamsSnapshot.data!.isNotEmpty) {
+                final liveStreams = liveStreamsSnapshot.data!;
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 0.85,
+                  ),
+                  physics: const ClampingScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: liveStreams.length > 100 ? 100 : liveStreams.length,
+                  itemBuilder: (context, index) {
+                    final stream = liveStreams[index];
+                    return GestureDetector(
+                      onTap: () async {
+                        if (!mounted) return;
+                        try {
+                          final tokenService = AgoraTokenService();
+                          final token = await tokenService.getAudienceToken(
+                            channelName: stream.channelName,
+                            uid: 0,
+                          );
+
+                          if (!mounted) return;
+
+                          liveStreamService.joinStream(stream.streamId);
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AgoraLiveStreamScreen(
+                                channelName: stream.channelName,
+                                token: token,
+                                isHost: false,
+                                streamId: stream.streamId,
+                              ),
+                            ),
+                          ).then((_) {
+                            liveStreamService.leaveStream(stream.streamId);
+                          });
+                        } catch (e) {
+                          debugPrint('❌ Error joining stream (fallback following): $e');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to join stream: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: _buildLiveStreamCard(
+                        hostName: stream.hostName,
+                        title: stream.title,
+                        viewers: stream.viewerCount,
+                        thumbnail: Icons.live_tv,
+                        isLive: true,
+                        hostPhotoUrl: stream.hostPhotoUrl,
+                        streamId: stream.streamId,
+                        hostId: stream.hostId,
                       ),
                     );
-                  }
-                }
-              },
-              child: _buildLiveStreamCard(
-                hostName: stream.hostName,
-                title: stream.title,
-                viewers: stream.viewerCount,
-                thumbnail: Icons.live_tv,
-                isLive: true,
-                hostPhotoUrl: stream.hostPhotoUrl,
-                streamId: stream.streamId, // Pass streamId for chat
-                hostId: stream.hostId, // Pass hostId to fetch user data
+                  },
+                );
+              }
+
+              if (!mounted) return const SizedBox.shrink();
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.person, size: 80, color: Colors.grey[400]),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No hosts available',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Create a map of live streams by hostId for quick lookup
+            final liveStreamsMap = <String, LiveStreamModel>{};
+            if (liveStreamsSnapshot.hasData) {
+              for (var stream in liveStreamsSnapshot.data!) {
+                liveStreamsMap[stream.hostId] = stream;
+              }
+            }
+
+            // Get all hosts
+            final hosts = hostsSnapshot.data!.docs;
+
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.85,
               ),
+              physics: const ClampingScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: hosts.length > 50 ? 50 : hosts.length,
+              itemBuilder: (context, index) {
+                final hostDoc = hosts[index];
+                final hostData = hostDoc.data() as Map<String, dynamic>;
+                final hostId = hostDoc.id;
+                final hostName = hostData['displayName'] ?? 'Host';
+                final hostPhotoUrl = hostData['photoURL'];
+
+                // Check if this host is live
+                final isLive = liveStreamsMap.containsKey(hostId);
+                final liveStream = isLive ? liveStreamsMap[hostId] : null;
+
+                return GestureDetector(
+                  onTap: () async {
+                    if (!mounted) return;
+                    
+                    if (isLive && liveStream != null) {
+                      // Navigate to live stream
+                      try {
+                        final tokenService = AgoraTokenService();
+                        final token = await tokenService.getAudienceToken(
+                          channelName: liveStream.channelName,
+                          uid: 0,
+                        );
+
+                        if (!mounted) return;
+
+                        liveStreamService.joinStream(liveStream.streamId);
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AgoraLiveStreamScreen(
+                              channelName: liveStream.channelName,
+                              token: token,
+                              isHost: false,
+                              streamId: liveStream.streamId,
+                            ),
+                          ),
+                        ).then((_) {
+                          liveStreamService.leaveStream(liveStream.streamId);
+                        });
+                      } catch (e) {
+                        debugPrint('❌ Error joining stream: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to join stream: ${e.toString()}'),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      }
+                    } else {
+                      // Navigate to host profile - fetch user data first
+                      try {
+                        final userData = await DatabaseService().getUserData(hostId);
+                        if (userData != null && mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserProfileViewScreen(
+                                user: userData,
+                              ),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        debugPrint('❌ Error loading user profile: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to load profile'),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: _buildLiveStreamCard(
+                    hostName: hostName,
+                    title: liveStream?.title ?? '',
+                    viewers: liveStream?.viewerCount ?? 0,
+                    thumbnail: Icons.live_tv,
+                    isLive: isLive,
+                    hostPhotoUrl: hostPhotoUrl,
+                    streamId: liveStream?.streamId,
+                    hostId: hostId,
+                  ),
+                );
+              },
             );
           },
         );
@@ -2106,146 +2329,256 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== NEW HOSTS CONTENT ==========
   Widget _buildNewHostsContent() {
-    // Show real-time live streams (same as Live and Explore tabs)
     final liveStreamService = LiveStreamService();
 
+    // Combine two streams: All hosts + Live streams status
     return StreamBuilder<List<LiveStreamModel>>(
       stream: liveStreamService.getActiveLiveStreams(),
-      builder: (context, snapshot) {
-        // Loading state
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFFFF69B4),
-            ),
-          );
-        }
-
-        // Error state
-        if (snapshot.hasError) {
-          if (!mounted) return const SizedBox.shrink();
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  AppLocalizations.of(context)!.errorLoadingStreams,
-                  style: TextStyle(color: Colors.grey[600]),
+      builder: (context, liveStreamsSnapshot) {
+        // Get all hosts from users collection
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .where('isHost', isEqualTo: true)
+              .limit(100) // Increased to ensure live hosts are included
+              .snapshots(),
+          builder: (context, hostsSnapshot) {
+            // Loading state - wait only for hosts data
+            if (hostsSnapshot.connectionState == ConnectionState.waiting &&
+                !hostsSnapshot.hasData) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFF69B4),
                 ),
-              ],
-            ),
-          );
-        }
+              );
+            }
 
-        // No data state
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          if (!mounted) return const SizedBox.shrink();
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.live_tv, size: 80, color: Colors.grey[400]),
-                const SizedBox(height: 20),
-                Text(
-                  AppLocalizations.of(context)!.noLiveStreamsAtMoment,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  AppLocalizations.of(context)!.beFirstToGoLive,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Display streams
-        final liveStreams = snapshot.data!;
-
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 0.85,
-          ),
-          physics: const ClampingScrollPhysics(),
-          shrinkWrap: true,
-          addAutomaticKeepAlives: false,
-          itemCount: liveStreams.length > 20
-              ? 20
-              : liveStreams.length, // Limit to 20 items
-          itemBuilder: (context, index) {
-            final stream = liveStreams[index];
-            return GestureDetector(
-              onTap: () async {
-                if (!mounted) return;
-                // Navigate to live stream as viewer
-                // Generate token dynamically using AgoraTokenService
-                debugPrint('👁️ Viewer joining stream: ${stream.streamId}');
-                debugPrint('📺 Channel: ${stream.channelName}');
-
-                try {
-                  final tokenService = AgoraTokenService();
-                  final token = await tokenService.getAudienceToken(
-                    channelName: stream.channelName,
-                    uid: 0,
-                  );
-                  debugPrint(
-                      '✅ Generated audience token: ${token.length} chars');
-
-                  if (!mounted) return;
-
-                  // Increment viewer count
-                  liveStreamService.joinStream(stream.streamId);
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AgoraLiveStreamScreen(
-                        channelName: stream.channelName,
-                        token: token,
-                        isHost: false, // Viewer mode
-                        streamId: stream.streamId, // Pass streamId for cleanup
-                      ),
+            // Error state
+            if (hostsSnapshot.hasError || liveStreamsSnapshot.hasError) {
+              if (!mounted) return const SizedBox.shrink();
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context)!.errorLoadingStreams,
+                      style: TextStyle(color: Colors.grey[600]),
                     ),
-                  ).then((_) {
-                    // Decrement viewer count when viewer leaves
-                    liveStreamService.leaveStream(stream.streamId);
-                  });
-                } catch (e) {
-                  debugPrint('❌ Error generating token: $e');
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to join stream: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                        duration: const Duration(seconds: 3),
+                  ],
+                ),
+              );
+            }
+
+            // No hosts: fallback to live streams if available
+            if (!hostsSnapshot.hasData || hostsSnapshot.data!.docs.isEmpty) {
+              if (liveStreamsSnapshot.hasData &&
+                  liveStreamsSnapshot.data != null &&
+                  liveStreamsSnapshot.data!.isNotEmpty) {
+                final liveStreams = liveStreamsSnapshot.data!;
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 0.85,
+                  ),
+                  physics: const ClampingScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: liveStreams.length > 100 ? 100 : liveStreams.length,
+                  itemBuilder: (context, index) {
+                    final stream = liveStreams[index];
+                    return GestureDetector(
+                      onTap: () async {
+                        if (!mounted) return;
+                        try {
+                          final tokenService = AgoraTokenService();
+                          final token = await tokenService.getAudienceToken(
+                            channelName: stream.channelName,
+                            uid: 0,
+                          );
+
+                          if (!mounted) return;
+
+                          liveStreamService.joinStream(stream.streamId);
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AgoraLiveStreamScreen(
+                                channelName: stream.channelName,
+                                token: token,
+                                isHost: false,
+                                streamId: stream.streamId,
+                              ),
+                            ),
+                          ).then((_) {
+                            liveStreamService.leaveStream(stream.streamId);
+                          });
+                        } catch (e) {
+                          debugPrint('❌ Error joining stream (fallback new): $e');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to join stream: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: _buildLiveStreamCard(
+                        hostName: stream.hostName,
+                        title: stream.title,
+                        viewers: stream.viewerCount,
+                        thumbnail: Icons.live_tv,
+                        isLive: true,
+                        hostPhotoUrl: stream.hostPhotoUrl,
+                        streamId: stream.streamId,
+                        hostId: stream.hostId,
                       ),
                     );
-                  }
-                }
-              },
-              child: _buildLiveStreamCard(
-                hostName: stream.hostName,
-                title: stream.title,
-                viewers: stream.viewerCount,
-                thumbnail: Icons.live_tv,
-                isLive: true,
-                hostPhotoUrl: stream.hostPhotoUrl,
-                streamId: stream.streamId, // Pass streamId for chat
-                hostId: stream.hostId, // Pass hostId to fetch user data
+                  },
+                );
+              }
+
+              if (!mounted) return const SizedBox.shrink();
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.person, size: 80, color: Colors.grey[400]),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No hosts available',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Create a map of live streams by hostId for quick lookup
+            final liveStreamsMap = <String, LiveStreamModel>{};
+            if (liveStreamsSnapshot.hasData) {
+              for (var stream in liveStreamsSnapshot.data!) {
+                liveStreamsMap[stream.hostId] = stream;
+              }
+            }
+
+            // Get all hosts
+            final hosts = hostsSnapshot.data!.docs;
+
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.85,
               ),
+              physics: const ClampingScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: hosts.length > 50 ? 50 : hosts.length,
+              itemBuilder: (context, index) {
+                final hostDoc = hosts[index];
+                final hostData = hostDoc.data() as Map<String, dynamic>;
+                final hostId = hostDoc.id;
+                final hostName = hostData['displayName'] ?? 'Host';
+                final hostPhotoUrl = hostData['photoURL'];
+
+                // Check if this host is live
+                final isLive = liveStreamsMap.containsKey(hostId);
+                final liveStream = isLive ? liveStreamsMap[hostId] : null;
+
+                return GestureDetector(
+                  onTap: () async {
+                    if (!mounted) return;
+                    
+                    if (isLive && liveStream != null) {
+                      // Navigate to live stream
+                      try {
+                        final tokenService = AgoraTokenService();
+                        final token = await tokenService.getAudienceToken(
+                          channelName: liveStream.channelName,
+                          uid: 0,
+                        );
+
+                        if (!mounted) return;
+
+                        liveStreamService.joinStream(liveStream.streamId);
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AgoraLiveStreamScreen(
+                              channelName: liveStream.channelName,
+                              token: token,
+                              isHost: false,
+                              streamId: liveStream.streamId,
+                            ),
+                          ),
+                        ).then((_) {
+                          liveStreamService.leaveStream(liveStream.streamId);
+                        });
+                      } catch (e) {
+                        debugPrint('❌ Error joining stream: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to join stream: ${e.toString()}'),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      }
+                    } else {
+                      // Navigate to host profile - fetch user data first
+                      try {
+                        final userData = await DatabaseService().getUserData(hostId);
+                        if (userData != null && mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserProfileViewScreen(
+                                user: userData,
+                              ),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        debugPrint('❌ Error loading user profile: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to load profile'),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: _buildLiveStreamCard(
+                    hostName: hostName,
+                    title: liveStream?.title ?? '',
+                    viewers: liveStream?.viewerCount ?? 0,
+                    thumbnail: Icons.live_tv,
+                    isLive: isLive,
+                    hostPhotoUrl: hostPhotoUrl,
+                    streamId: liveStream?.streamId,
+                    hostId: hostId,
+                  ),
+                );
+              },
             );
           },
         );

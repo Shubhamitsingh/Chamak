@@ -623,9 +623,17 @@ class LiveStreamService {
         });
         print('✅ Viewer count set to 0');
       }
-    } catch (e) {
+    } on FirebaseException catch (e, st) {
+      if (e.code == 'permission-denied') {
+        // Some viewers may not have write access per Firestore rules; skip silently
+        print('⚠️ Permission denied when leaving stream; skipping viewer decrement.');
+        return;
+      }
+      print('❌ Firebase error leaving stream: ${e.code} - ${e.message}');
+      print('   Stack trace: $st');
+    } catch (e, st) {
       print('❌ Error leaving stream: $e');
-      print('   Stack trace: ${StackTrace.current}');
+      print('   Stack trace: $st');
     }
   }
   

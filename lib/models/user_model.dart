@@ -19,10 +19,14 @@ class UserModel {
   final bool isActive;
   final int followersCount;
   final int followingCount;
-  final int level;
+  final int level; // Legacy field (kept for compatibility)
+  final int userLevel; // User level based on coins purchased
+  final int hostLevel; // Host level based on coins received
   final int coins; // Legacy field (kept for compatibility)
   final int uCoins; // User Coins - what users buy and spend
   final int cCoins; // Host Coins (C Coins) - what hosts earn
+  final int totalCoinsPurchased; // Lifetime total coins purchased (for user level)
+  final int totalCoinsReceived; // Lifetime total coins received as gifts (for host level)
   final String? fcmToken; // FCM token for push notifications
 
   UserModel({
@@ -44,10 +48,14 @@ class UserModel {
     this.isActive = true,
     this.followersCount = 0,
     this.followingCount = 0,
-    this.level = 1,
+    this.level = 1, // Legacy field
+    this.userLevel = 1, // User level starts at 1
+    this.hostLevel = 1, // Host level starts at 1
     this.coins = 0, // Default 0 coins for new users
     this.uCoins = 0, // Default 0 U Coins (user spends these)
     this.cCoins = 0, // Default 0 C Coins (hosts earn these)
+    this.totalCoinsPurchased = 0, // Lifetime total coins purchased
+    this.totalCoinsReceived = 0, // Lifetime total coins received
     this.fcmToken,
   });
 
@@ -84,10 +92,14 @@ class UserModel {
       isActive: data['isActive'] ?? true,
       followersCount: data['followersCount'] ?? 0,
       followingCount: data['followingCount'] ?? 0,
-      level: data['level'] ?? 1,
+      level: data['level'] ?? 1, // Legacy field
+      userLevel: data['userLevel'] ?? data['level'] ?? 1, // Fallback to level if not set
+      hostLevel: data['hostLevel'] ?? data['level'] ?? 1, // Fallback to level if not set
       coins: data['coins'] ?? 0, // Default 0 coins
       uCoins: data['uCoins'] ?? 0, // User Coins
       cCoins: data['cCoins'] ?? 0, // Host/Creator Coins
+      totalCoinsPurchased: data['totalCoinsPurchased'] ?? 0, // Lifetime purchases
+      totalCoinsReceived: data['totalCoinsReceived'] ?? 0, // Lifetime received
       fcmToken: data['fcmToken'],
     );
   }
@@ -113,10 +125,14 @@ class UserModel {
       'isActive': isActive,
       'followersCount': followersCount,
       'followingCount': followingCount,
-      'level': level,
+      'level': level, // Legacy field
+      'userLevel': userLevel, // User level
+      'hostLevel': hostLevel, // Host level
       'coins': coins, // Store coins balance
       'uCoins': uCoins, // User Coins
       'cCoins': cCoins, // Host Coins
+      'totalCoinsPurchased': totalCoinsPurchased, // Lifetime purchases
+      'totalCoinsReceived': totalCoinsReceived, // Lifetime received
       'fcmToken': fcmToken,
     };
   }
@@ -138,9 +154,13 @@ class UserModel {
     int? followersCount,
     int? followingCount,
     int? level,
+    int? userLevel,
+    int? hostLevel,
     int? coins,
     int? uCoins,
     int? cCoins,
+    int? totalCoinsPurchased,
+    int? totalCoinsReceived,
     String? fcmToken,
   }) {
     return UserModel(
@@ -163,9 +183,13 @@ class UserModel {
       followersCount: followersCount ?? this.followersCount,
       followingCount: followingCount ?? this.followingCount,
       level: level ?? this.level,
+      userLevel: userLevel ?? this.userLevel,
+      hostLevel: hostLevel ?? this.hostLevel,
       coins: coins ?? this.coins,
       uCoins: uCoins ?? this.uCoins,
       cCoins: cCoins ?? this.cCoins,
+      totalCoinsPurchased: totalCoinsPurchased ?? this.totalCoinsPurchased,
+      totalCoinsReceived: totalCoinsReceived ?? this.totalCoinsReceived,
       fcmToken: fcmToken ?? this.fcmToken,
     );
   }
