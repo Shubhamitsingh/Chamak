@@ -299,7 +299,13 @@ class LiveStreamService {
                 _fixViewerCount(doc.id);
               }
               
-              return LiveStreamModel.fromMap(data);
+              // IMPORTANT: Use document ID as streamId to ensure consistency
+              // The document ID is the source of truth, not the streamId field
+              // This prevents issues when documents are reused for the same host
+              final modelData = Map<String, dynamic>.from(data);
+              modelData['streamId'] = doc.id; // Override with actual document ID
+              
+              return LiveStreamModel.fromMap(modelData);
             } catch (e) {
               print('❌ Error parsing stream document ${doc.id}: $e');
               return null;
@@ -355,13 +361,47 @@ class LiveStreamService {
   }
   
   /// Get live stream once (not a stream)
+  /// Tries to find stream by document ID first, then by streamId field if not found
   Future<LiveStreamModel?> getLiveStreamOnce(String streamId) async {
     try {
+      // First, try to get by document ID (most common case)
       final doc = await _firestore.collection(_collection).doc(streamId).get();
       
       if (doc.exists && doc.data() != null) {
+        print('✅ Found stream by document ID: $streamId');
         return LiveStreamModel.fromMap(doc.data()!);
       }
+      
+      // If not found by document ID, try to find by streamId field
+      // This handles cases where document ID differs from streamId field
+      print('⚠️ Stream not found by document ID: $streamId, searching by streamId field...');
+      final querySnapshot = await _firestore
+          .collection(_collection)
+          .where('streamId', isEqualTo: streamId)
+          .where('isActive', isEqualTo: true)
+          .limit(1)
+          .get();
+      
+      if (querySnapshot.docs.isNotEmpty) {
+        final doc = querySnapshot.docs.first;
+        print('✅ Found stream by streamId field: ${doc.id} (streamId field: $streamId)');
+        return LiveStreamModel.fromMap(doc.data());
+      }
+      
+      // Also try without isActive filter (in case stream is temporarily inactive)
+      final querySnapshot2 = await _firestore
+          .collection(_collection)
+          .where('streamId', isEqualTo: streamId)
+          .limit(1)
+          .get();
+      
+      if (querySnapshot2.docs.isNotEmpty) {
+        final doc = querySnapshot2.docs.first;
+        print('✅ Found stream by streamId field (without isActive filter): ${doc.id}');
+        return LiveStreamModel.fromMap(doc.data());
+      }
+      
+      print('❌ Stream not found by document ID or streamId field: $streamId');
       return null;
     } catch (e) {
       print('❌ Error getting live stream: $e');
@@ -776,12 +816,18 @@ class LiveStreamService {
   Future<bool> isHostInCall(String streamId) async {
     try {
       final doc = await _firestore.collection(_collection).doc(streamId).get();
-      if (!doc.exists) return false;
+      if (!doc.exists) {
+        print('⚠️ Stream document does not exist: $streamId - returning false (host not busy)');
+        return false;
+      }
       final data = doc.data();
       final hostStatus = data?['hostStatus'] ?? 'live';
-      return hostStatus == 'in_call';
+      final isInCall = hostStatus == 'in_call';
+      print('📊 Host status check - StreamId: $streamId, hostStatus: $hostStatus, isInCall: $isInCall');
+      return isInCall;
     } catch (e) {
       print('❌ Error checking if host is in call: $e');
+      // Return false on error to allow call requests (fail open)
       return false;
     }
   }

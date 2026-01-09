@@ -13,7 +13,6 @@ import '../widgets/bouncy_icon_button.dart';
 import '../widgets/gift_selection_sheet.dart';
 import '../models/gift_model.dart';
 import '../services/live_chat_service.dart';
-import '../services/live_stream_chat_service.dart';
 import '../services/database_service.dart';
 import '../services/follow_service.dart';
 import '../models/user_model.dart';
@@ -26,7 +25,7 @@ import '../services/agora_token_service.dart';
 import '../services/call_coin_deduction_service.dart';
 import '../services/chat_service.dart';
 import '../models/chat_model.dart';
-import '../models/live_stream_chat_message.dart';
+import '../models/live_chat_message_model.dart';
 import 'user_profile_view_screen.dart';
 import 'private_call_screen.dart';
 import 'messages_screen.dart';
@@ -121,7 +120,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   final TextEditingController _chatMessageController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   final FocusNode _chatFocusNode = FocusNode();
-  final LiveStreamChatService _liveStreamChatService = LiveStreamChatService();
+  final LiveChatService _liveChatService = LiveChatService();
   double _previousKeyboardHeight = 0.0; // Track keyboard height to detect dismissal
   
 
@@ -190,6 +189,29 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
         });
       }
     });
+  }
+  
+  // Resolve best-available host display name from user data or stream data
+  String _resolveHostDisplayName({
+    LiveStreamModel? stream,
+    Map<String, dynamic>? userData,
+  }) {
+    final candidates = <String?>[
+      userData?['displayName'] as String?,
+      userData?['name'] as String?,
+      userData?['username'] as String?,
+      userData?['userName'] as String?,
+      userData?['fullName'] as String?,
+      userData?['nickname'] as String?,
+      stream?.hostName,
+    ];
+    
+    for (final value in candidates) {
+      if (value != null && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return 'Host';
   }
 
   // Fetch stream start time for host
@@ -1005,7 +1027,6 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
         }
         
         final stream = snapshot.data;
-        final hostName = stream?.hostName ?? 'Host';
         final hostPhotoUrl = stream?.hostPhotoUrl;
         final viewerCount = stream?.viewerCount ?? 0;
         final hostId = stream?.hostId;
@@ -1018,126 +1039,189 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
         final screenWidth = MediaQuery.of(context).size.width;
         final isSmallScreen = screenWidth < 360;
         
-        return GestureDetector(
-          onTap: () async {
-            if (hostId != null && hostId.isNotEmpty) {
-              await _showProfileBottomSheet(hostId, hostName, hostPhotoUrl);
+        // Fetch host name from users collection (same as home page grid does)
+        final currentHostId = hostId;
+        return StreamBuilder<DocumentSnapshot>(
+          stream: currentHostId != null && currentHostId.isNotEmpty
+              ? FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentHostId)
+                  .snapshots()
+              : null,
+          builder: (context, userSnapshot) {
+            // Get displayName from users collection (same as home page grid - line 1468)
+            Map<String, dynamic>? userData;
+            String? resolvedPhotoUrl = hostPhotoUrl;
+            
+            if (userSnapshot.hasData && userSnapshot.data!.exists) {
+              userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+              
+              // Update photo URL from user data if available
+              final photoFromUser = userData?['photoURL'] as String?;
+              if (photoFromUser != null && photoFromUser.isNotEmpty) {
+                resolvedPhotoUrl = photoFromUser;
+              }
             }
-          },
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: screenWidth * 0.75,
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 8 : 10, 
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+            
+            // Resolve host name - prioritize user data, then stream data
+            String hostName = 'Host'; // Default fallback
+            if (userData != null) {
+              // Try user data fields first
+              hostName = _resolveHostDisplayName(
+                stream: stream,
+                userData: userData,
+              );
+            } else if (stream != null && stream.hostName.isNotEmpty && stream.hostName != 'Host') {
+              // Fallback to stream hostName if user data not loaded yet
+              hostName = stream.hostName;
+            }
+            
+            // If still "Host", show loading state or wait for user data
+            if (hostName == 'Host' && userSnapshot.connectionState == ConnectionState.waiting) {
+              // User data is still loading, show loading indicator
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Host Profile Image with Pink Border
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFFF1B7C), // Solid pink color instead of gradient
-                  ),
-                  padding: const EdgeInsets.all(2),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     ),
-                    child: ClipOval(
-                      child: hostPhotoUrl != null && hostPhotoUrl.isNotEmpty
-                          ? Image.network(
-                              hostPhotoUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
+                    SizedBox(width: 6),
+                    Text(
+                      'Loading...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            
+            return GestureDetector(
+              onTap: () async {
+                if (currentHostId != null && currentHostId.isNotEmpty) {
+                  await _showProfileBottomSheet(currentHostId, hostName, resolvedPhotoUrl);
+                }
+              },
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: screenWidth * 0.75,
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 8 : 10, 
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Host Profile Image with Pink Border
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFFF1B7C), // Solid pink color instead of gradient
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black,
+                        ),
+                        child: ClipOval(
+                          child: resolvedPhotoUrl != null && resolvedPhotoUrl.isNotEmpty
+                              ? Image.network(
+                                  resolvedPhotoUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.person,
+                                        color: Colors.grey,
+                                        size: 20,
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Container(
                                   color: Colors.grey[300],
                                   child: const Icon(
                                     Icons.person,
                                     color: Colors.grey,
                                     size: 20,
                                   ),
-                                );
-                              },
-                            )
-                          : Container(
-                              color: Colors.grey[300],
-                              child: const Icon(
-                                Icons.person,
-                                color: Colors.grey,
-                                size: 20,
-                              ),
-                            ),
+                                ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Host Info Column - Made flexible to prevent overflow
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Name + Age + Verified Badge
-                      Row(
+                    const SizedBox(width: 8),
+                    // Host Info Column - Made flexible to prevent overflow
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Flexible(
-                            child: Text(
-                              hostName,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: isSmallScreen ? 11 : 13,
+                          // Name + Age + Verified Badge
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  hostName,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: isSmallScreen ? 11 : 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          // Age (if available)
-                          StreamBuilder<DocumentSnapshot>(
-                            stream: hostId != null
-                                ? FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(hostId)
-                                    .snapshots()
-                                : null,
-                            builder: (context, userSnapshot) {
-                              if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                                final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
-                                final age = userData?['age'] as int?;
-                                if (age != null) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(left: 4),
-                                    child: Text(
-                                      ', $age',
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: isSmallScreen ? 10 : 12,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                              return const SizedBox.shrink();
-                            },
-                          ),
+                              // Age (if available) - Get from same userSnapshot
+                              if (userSnapshot.hasData && userSnapshot.data!.exists)
+                                Builder(
+                                  builder: (context) {
+                                    final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                                    final age = userData?['age'] as int?;
+                                    if (age != null) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(left: 4),
+                                        child: Text(
+                                          ', $age',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: isSmallScreen ? 10 : 12,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
                           const SizedBox(width: 4),
                           // Verified Badge
                           const Icon(
@@ -1216,10 +1300,10 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                 ),
                 const SizedBox(width: 8),
                 // Pink Plus/Follow Button
-                if (!widget.isHost && hostId != null && hostId.isNotEmpty)
+                if (!widget.isHost && currentHostId != null && currentHostId.isNotEmpty)
                   GestureDetector(
                     onTap: () async {
-                      await _toggleFollowHost(hostId, hostName);
+                      await _toggleFollowHost(currentHostId, hostName);
                     },
                     child: Container(
                       width: isSmallScreen ? 24 : 28,
@@ -1256,6 +1340,8 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
               ],
             ),
           ),
+        );
+          },
         );
       },
     );
@@ -1530,26 +1616,73 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     if (currentUser == null) return;
 
     try {
-      // Check if host is in a call
-      if (_isHostInCall) {
+      // Validate stream exists before proceeding
+      debugPrint('🔍 Looking up stream for call request: ${widget.streamId}');
+      final stream = await _liveStreamService.getLiveStreamOnce(widget.streamId!)
+          .timeout(const Duration(seconds: 10));
+      if (stream == null) {
+        debugPrint('❌ Stream not found: ${widget.streamId}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Host is currently busy in a private video call'),
-              backgroundColor: Colors.orange,
+              content: Text('Stream not found. Please try again later.'),
+              backgroundColor: Colors.red,
               duration: Duration(seconds: 3),
             ),
           );
         }
         return;
       }
+      debugPrint('✅ Stream found: ${stream.streamId}, host: ${stream.hostId}, status: ${stream.hostStatus}');
+
+      // Check if host is in a call (double-check with server)
+      // First check local state, then verify with server
+      if (_isHostInCall) {
+        debugPrint('⚠️ Local state shows host is busy, verifying with server...');
+        // Double-check with server to ensure accuracy
+        try {
+          final isHostBusy = await _liveStreamService.isHostInCall(widget.streamId!)
+              .timeout(const Duration(seconds: 5));
+          if (isHostBusy) {
+            debugPrint('✅ Server confirms host is busy');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Host is currently busy in a private video call'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+            return;
+          } else {
+            debugPrint('⚠️ Server says host is NOT busy, updating local state');
+            // Server says host is not busy, update local state
+            setState(() {
+              _isHostInCall = false;
+            });
+            // Continue with call request
+          }
+        } catch (e) {
+          debugPrint('❌ Error verifying host status: $e - allowing call request');
+          // On error, allow the call request (fail open)
+          setState(() {
+            _isHostInCall = false;
+          });
+        }
+      }
+
+      // Get user data for better caller info
+      final databaseService = DatabaseService();
+      final userData = await databaseService.getUserData(currentUser.uid)
+          .timeout(const Duration(seconds: 10));
 
       // Send call request
       await _callRequestService.sendCallRequest(
         streamId: widget.streamId!,
         callerId: currentUser.uid,
-        callerName: currentUser.displayName ?? 'User',
-        callerImage: currentUser.photoURL,
+        callerName: userData?.displayName ?? userData?.name ?? currentUser.displayName ?? 'User',
+        callerImage: userData?.photoURL ?? currentUser.photoURL,
         hostId: hostId,
       );
 
@@ -1565,11 +1698,17 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     } catch (e) {
       debugPrint('❌ Error creating call request: $e');
       if (mounted) {
+        String errorMessage = 'Failed to send call request. Please try again.';
+        if (e.toString().contains('Insufficient')) {
+          errorMessage = e.toString().replaceAll('Exception: ', '');
+        } else if (e.toString().contains('Stream not found')) {
+          errorMessage = 'Stream not found. The live stream may have ended.';
+        } else if (e.toString().contains('timeout')) {
+          errorMessage = 'Request timed out. Please check your connection and try again.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().contains('Insufficient') 
-                ? e.toString() 
-                : 'Failed to send call request. Please try again.'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -2046,23 +2185,53 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
 
   // Setup listener for host status (viewer only)
   void _setupHostStatusListener() {
-    if (widget.streamId == null) return;
+    if (widget.streamId == null) {
+      debugPrint('⚠️ Cannot setup host status listener: streamId is null');
+      return;
+    }
 
+    debugPrint('📡 Setting up host status listener for stream: ${widget.streamId}');
+    
     // Use Firestore stream directly
     _hostStatusSubscription = FirebaseFirestore.instance
         .collection('live_streams')
         .doc(widget.streamId!)
         .snapshots()
         .listen((snapshot) {
-      if (!mounted || !snapshot.exists) return;
+      if (!mounted) {
+        debugPrint('⚠️ Host status listener: widget not mounted');
+        return;
+      }
+      
+      if (!snapshot.exists) {
+        debugPrint('⚠️ Host status listener: Stream document does not exist: ${widget.streamId}');
+        // If stream doesn't exist, assume host is available (not busy)
+        if (_isHostInCall != false) {
+          setState(() {
+            _isHostInCall = false;
+          });
+        }
+        return;
+      }
       
       final data = snapshot.data();
       final hostStatus = data?['hostStatus'] ?? 'live';
       final isInCall = hostStatus == 'in_call';
       
+      debugPrint('📊 Host status update - StreamId: ${widget.streamId}, hostStatus: $hostStatus, isInCall: $isInCall');
+      
       if (_isHostInCall != isInCall) {
+        debugPrint('🔄 Updating _isHostInCall: $isInCall (was: $_isHostInCall)');
         setState(() {
           _isHostInCall = isInCall;
+        });
+      }
+    }, onError: (error) {
+      debugPrint('❌ Error in host status listener: $error');
+      // On error, assume host is available (fail open)
+      if (mounted && _isHostInCall != false) {
+        setState(() {
+          _isHostInCall = false;
         });
       }
     });
@@ -2277,14 +2446,38 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   
   Future<void> _sendCallRequest() async {
     if (widget.streamId == null) return;
-    if (_isHostInCall) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Host is currently busy in a private video call'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
+    // Check host status with server (more reliable than local state)
+    try {
+      final isHostBusy = await _liveStreamService.isHostInCall(widget.streamId!)
+          .timeout(const Duration(seconds: 5));
+      if (isHostBusy) {
+        debugPrint('✅ Server confirms host is busy - blocking call request');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Host is currently busy in a private video call'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      } else {
+        debugPrint('✅ Server confirms host is available - allowing call request');
+        // Update local state to match server
+        if (_isHostInCall != false) {
+          setState(() {
+            _isHostInCall = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking host status: $e - allowing call request');
+      // On error, allow the call request (fail open)
+      if (_isHostInCall != false) {
+        setState(() {
+          _isHostInCall = false;
+        });
+      }
     }
 
     if (_isCallRequestPending) {
@@ -2322,11 +2515,38 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       if (currentUser == null) return;
 
       // Get stream info to get host ID (with timeout)
+      if (widget.streamId == null || widget.streamId!.isEmpty) {
+        setState(() => _isCallRequestPending = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Stream ID is missing. Please try again.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      debugPrint('🔍 Looking up stream for call request: ${widget.streamId}');
       final stream = await _liveStreamService.getLiveStreamOnce(widget.streamId!)
           .timeout(const Duration(seconds: 10));
       if (stream == null) {
-        throw Exception('Stream not found');
+        debugPrint('❌ Stream not found: ${widget.streamId}');
+        setState(() => _isCallRequestPending = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Stream not found. The live stream may have ended.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
       }
+      debugPrint('✅ Stream found: ${stream.streamId}, host: ${stream.hostId}, status: ${stream.hostStatus}');
 
       // Get user data for caller name and image (with timeout)
       final databaseService = DatabaseService();
@@ -2753,22 +2973,22 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   
   // Build gift row (horizontal scrollable gifts above bottom nav)
   Widget _buildGiftRow() {
-    // Match UI exactly: Ganesha (199), Sunflowers (199), Star (400), Donut (250), Pac-Man (429), Throne (499)
+    // Featured gifts starting from 500 with increments
     final featuredGifts = [
-      GiftModel(id: 'ganesha', name: 'Ganesha', cost: 199, category: 'Hot', emoji: '🕉️'),
-      GiftModel(id: 'sunflowers', name: 'Sunflowers', cost: 199, category: 'Hot', emoji: '🌻'),
-      GiftModel(id: 'star', name: 'Star', cost: 400, category: 'Hot', emoji: '⭐'),
-      GiftModel(id: 'donut', name: 'Donut', cost: 250, category: 'Funny', emoji: '🍩'),
-      GiftModel(id: 'pacman', name: 'Pac-Man', cost: 429, category: 'Funny', emoji: '👾'),
-      GiftModel(id: 'throne', name: 'Throne', cost: 499, category: 'Luxury', emoji: '👑'),
+      GiftModel(id: 'ganesha', name: 'Ganesha', cost: 500, category: 'Hot', emoji: '🕉️'),
+      GiftModel(id: 'sunflowers', name: 'Sunflowers', cost: 600, category: 'Hot', emoji: '🌻'),
+      GiftModel(id: 'star', name: 'Star', cost: 700, category: 'Hot', emoji: '⭐'),
+      GiftModel(id: 'donut', name: 'Donut', cost: 800, category: 'Funny', emoji: '🍩'),
+      GiftModel(id: 'pacman', name: 'Pac-Man', cost: 900, category: 'Funny', emoji: '👾'),
+      GiftModel(id: 'throne', name: 'Throne', cost: 1000, category: 'Luxury', emoji: '👑'),
     ];
     final newGiftIndices = [0, 1, 4, 5]; // Ganesha, Sunflowers, Pac-Man, Throne have NEW badge
     
-    return Container(
+    return SizedBox(
       height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         itemCount: featuredGifts.length,
         itemBuilder: (context, index) {
           final gift = featuredGifts[index];
@@ -2778,28 +2998,27 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
             onTap: () {
               _showGiftSelectionSheet();
             },
-            child: Container(
+            child: SizedBox(
               width: 70,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
               child: Stack(
                 children: [
-                  // Gift content
+                  // Gift content - only text, no containers
                   Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         // Gift emoji
                         Text(
                           gift.emoji ?? '🎁',
-                          style: const TextStyle(fontSize: 28),
+                          style: const TextStyle(
+                            fontSize: 38,
+                            height: 1.0,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.visible,
                         ),
                         const SizedBox(height: 4),
                         // Gift cost
@@ -2809,17 +3028,23 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                           children: [
                             Image.asset(
                               'assets/images/coin3.png',
-                              width: 12,
-                              height: 12,
+                              width: 14,
+                              height: 14,
                               fit: BoxFit.contain,
                             ),
-                            const SizedBox(width: 2),
+                            const SizedBox(width: 3),
                             Text(
                               _formatNumber((gift.cost ?? 0).toDouble()),
-                              style: const TextStyle(
-                                color: Colors.amber,
-                                fontSize: 10,
+                              style: TextStyle(
+                                color: const Color(0xFFFFD700), // Gold
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
+                                shadows: [
+                                  Shadow(
+                                    color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+                                    blurRadius: 4,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -2836,7 +3061,12 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                            colors: [
+                              Color(0xFFFF1B7C), // App theme pink
+                              Color(0xFF9C27B0), // Purple
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -2878,22 +3108,11 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
         mainAxisSize: MainAxisSize.max,
         children: [
           // Left: Chat Button (Black rounded rectangle)
+          // Chat input functionality will be implemented later
           BouncyIconButton(
             onTap: () {
-              final newChatState = !_isChatOpen;
-              setState(() {
-                _isChatOpen = newChatState;
-              });
-              // Focus the chat input field to show keyboard
-              if (newChatState) {
-                Future.delayed(const Duration(milliseconds: 150), () {
-                  if (mounted && _isChatOpen) {
-                    _chatFocusNode.requestFocus();
-                  }
-                });
-              } else {
-                _chatFocusNode.unfocus();
-              }
+              // Chat input field disabled - will be implemented later
+              // Do nothing for now, just keep the icon visible
             },
             child: Container(
               width: isVerySmallScreen ? 28 : (isSmallScreen ? 32 : 36),
@@ -3425,10 +3644,10 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
             maxHeight: maxChatHeight, // Dynamic max height based on available space
             maxWidth: MediaQuery.of(context).size.width * 0.75,
           ),
-              child: StreamBuilder<List<LiveStreamChatMessage>>(
+              child: StreamBuilder<List<LiveChatMessageModel>>(
           key: ValueKey('chatMessages_${widget.streamId}'), // Prevent unnecessary rebuilds
                 stream: widget.streamId != null
-                    ? _liveStreamChatService.getMessages(widget.streamId!)
+                    ? _liveChatService.getLiveChatMessages(widget.streamId!)
                     : Stream.value([]),
                 builder: (context, snapshot) {
             debugPrint('📥 Viewer chat StreamBuilder - StreamId: ${widget.streamId}, HasData: ${snapshot.hasData}, MessageCount: ${snapshot.data?.length ?? 0}');
@@ -3454,7 +3673,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: visibleMessages.map((message) {
-                      final isCurrentUser = message.userId == _auth.currentUser?.uid;
+                      final isCurrentUser = message.senderId == _auth.currentUser?.uid;
                       
                       return FadeInLeft(
                         duration: const Duration(milliseconds: 300),
@@ -3469,7 +3688,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                                 // User avatar (only for other users)
-                            if (!isCurrentUser && message.userPhotoUrl != null)
+                            if (!isCurrentUser && message.senderImage != null)
                               Container(
                                     width: 20,
                                     height: 20,
@@ -3479,7 +3698,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                                 ),
                                 child: ClipOval(
                                   child: Image.network(
-                                    message.userPhotoUrl!,
+                                    message.senderImage!,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
@@ -3518,7 +3737,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                                   children: [
                                     if (!isCurrentUser)
                                       Text(
-                                        message.userName,
+                                        message.senderName,
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 10,
@@ -3579,10 +3798,10 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
             maxHeight: 200, // Fixed max height
             maxWidth: MediaQuery.of(context).size.width * 0.75,
           ),
-          child: StreamBuilder<List<LiveStreamChatMessage>>(
+          child: StreamBuilder<List<LiveChatMessageModel>>(
             key: ValueKey('chatMessages_host_${widget.streamId}'), // Prevent unnecessary rebuilds
             stream: widget.streamId != null
-                ? _liveStreamChatService.getMessages(widget.streamId!)
+                ? _liveChatService.getLiveChatMessages(widget.streamId!)
                 : Stream.value([]),
             builder: (context, snapshot) {
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -3602,7 +3821,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: visibleMessages.map((message) {
-                      final isCurrentUser = message.userId == _auth.currentUser?.uid;
+                      final isCurrentUser = message.senderId == _auth.currentUser?.uid;
                       
                       return FadeInLeft(
                         duration: const Duration(milliseconds: 300),
@@ -3613,7 +3832,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // User avatar (only for other users)
-                              if (!isCurrentUser && message.userPhotoUrl != null)
+                              if (!isCurrentUser && message.senderImage != null)
                               Container(
                                   width: 20,
                                   height: 20,
@@ -3623,7 +3842,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                                 ),
                                 child: ClipOval(
                                   child: Image.network(
-                                    message.userPhotoUrl!,
+                                    message.senderImage!,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
@@ -3659,7 +3878,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                 children: [
                                       if (!isCurrentUser)
                                         Text(
-                                          message.userName,
+                                          message.senderName,
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 10,
@@ -3723,11 +3942,11 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     
     debugPrint('📤 Sending chat message - StreamId: ${widget.streamId}, IsHost: ${widget.isHost}, UserId: ${currentUser.uid}, Message: $messageText');
     
-    final success = await _liveStreamChatService.sendMessage(
-      streamId: widget.streamId!,
-      userId: currentUser.uid,
-      userName: userName,
-      userPhotoUrl: userPhotoUrl,
+    final success = await _liveChatService.sendLiveChatMessage(
+      liveStreamId: widget.streamId!,
+      senderId: currentUser.uid,
+      senderName: userName,
+      senderImage: userPhotoUrl,
       message: messageText,
       isHost: widget.isHost,
     );
@@ -3767,8 +3986,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     if (currentUser == null) return;
     
     try {
-      final chatService = LiveChatService();
-      final success = await chatService.sendGiftMessage(
+      final success = await _liveChatService.sendGiftMessage(
         liveStreamId: widget.streamId!,
         senderId: currentUser.uid,
         senderName: currentUser.displayName ?? 'User',
@@ -4278,8 +4496,14 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                   ),
                 )
               : GestureDetector(
+                  // Keep child gestures (e.g., profile tap) working and only swap views when we actually have a local preview.
+                  behavior: HitTestBehavior.deferToChild,
                   onTapDown: (TapDownDetails details) {
-                    // Toggle view swap on tap
+                    final canSwapViews = widget.isHost || _localPreviewReady;
+                    if (!canSwapViews) {
+                      debugPrint('⚠️ Swap ignored: viewer local preview not ready');
+                      return;
+                    }
                     setState(() {
                       _isViewsSwapped = !_isViewsSwapped;
                     });
@@ -4494,75 +4718,8 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                         ),
                       ),
                       
-                      // Chat Input Panel (always visible for host)
-                      if (widget.streamId != null)
-                        Positioned(
-                          left: 16,
-                          right: 16,
-                          bottom: MediaQuery.of(context).viewInsets.bottom + 32, // Adjust for keyboard with more padding
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.9),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: Colors.transparent,
-                                  width: 0.8,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.4),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _chatMessageController,
-                                      focusNode: _chatFocusNode,
-                                      style: const TextStyle(color: Colors.white, fontSize: 10),
-                                      decoration: InputDecoration(
-                                        hintText: 'Type a message...',
-                                        hintStyle: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.5),
-                                          fontSize: 10,
-                                        ),
-                                        border: InputBorder.none,
-                                        contentPadding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 3,
-                                        ),
-                                      ),
-                                      onSubmitted: (_) {
-                                        _sendChatMessage();
-                                        _chatMessageController.clear();
-                                      },
-                                      onTap: () {
-                                        // Ensure keyboard stays open when tapping input
-                                        _chatFocusNode.requestFocus();
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  IconButton(
-                                    icon: const Icon(Icons.send, color: Colors.white, size: 14),
-                                    onPressed: () {
-                                      _sendChatMessage();
-                                      _chatMessageController.clear();
-                                    },
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ),
+                      // Chat Input Panel - DISABLED (will be implemented later)
+                      // Host chat input field removed - no need for now
                     ],
                     
                     // ========== VIEWER UI ==========
@@ -4731,87 +4888,8 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                       
                       // Live Streaming Chat removed - only chat icon is shown on viewer screen
                       // Chat bubbles are not displayed on viewer screen
-                      
-                      // Chat Input Panel (shows when chat icon is tapped)
-                      if (_isChatOpen && !widget.isHost && widget.streamId != null)
-                        Builder(
-                          builder: (context) {
-                            final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-                            final safeAreaBottom = MediaQuery.of(context).padding.bottom;
-                            const bottomIconsHeight = 60.0;
-                            const spacing = 8.0;
-                            
-                            // Calculate bottom position: above keyboard if visible, otherwise above bottom icons
-                            // Bottom icons are now at bottom: 0 with SafeArea, so they're at safeAreaBottom + bottomIconsHeight
-                            final chatInputBottom = keyboardHeight > 0
-                                ? keyboardHeight + spacing
-                                : safeAreaBottom + bottomIconsHeight + spacing;
-                            
-                            return Positioned(
-                              left: 16,
-                              right: 16,
-                              bottom: chatInputBottom, // Adjust for keyboard and bottom icons
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _chatMessageController,
-                                    focusNode: _chatFocusNode,
-                                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                                    decoration: InputDecoration(
-                                      hintText: 'Type a message...',
-                                      hintStyle: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.5),
-                                        fontSize: 12,
-                                      ),
-                                      border: InputBorder.none,
-                                      contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                    ),
-                                    onSubmitted: (_) {
-                                      _sendChatMessage();
-                                      setState(() {
-                                        _isChatOpen = false;
-                                      });
-                                      _chatFocusNode.unfocus();
-                                    },
-                                    onTap: () {
-                                      // Ensure keyboard stays open when tapping input
-                                      _chatFocusNode.requestFocus();
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  icon: const Icon(Icons.send, color: Colors.white, size: 18),
-                                  onPressed: () {
-                                    _sendChatMessage();
-                                    setState(() {
-                                      _isChatOpen = false;
-                                    });
-                                    _chatFocusNode.unfocus();
-                                  },
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ],
-                            ),
-                          ),
-                            );
-                          },
-                        ),
+                      // Chat Input Panel - DISABLED (will be implemented later)
+                      // The chat icon is visible but clicking it does nothing for now
                       
                       // Bottom icon row (Chat, Start Video Chat, Gift) - Fixed position
                       if (!widget.isHost && widget.streamId != null)

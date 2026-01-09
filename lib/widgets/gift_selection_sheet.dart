@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:math';
 import '../models/gift_model.dart';
 import '../screens/wallet_screen.dart';
 
@@ -24,10 +25,94 @@ class GiftSelectionSheet extends StatefulWidget {
   State<GiftSelectionSheet> createState() => _GiftSelectionSheetState();
 }
 
-class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
-  String _selectedCategory = 'Hot';
+class _GiftSelectionSheetState extends State<GiftSelectionSheet> with TickerProviderStateMixin {
+  String _selectedCategory = 'Funny';
   String? _selectedGiftId; // Track selected gift by ID
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // Category list in order
+  final List<String> _categories = ['Funny', 'Hot', 'Lucky', 'Luxury'];
+  
+  // Animation controllers for category menu items
+  late List<AnimationController> _categoryAnimationControllers;
+  late List<Animation<double>> _categoryAnimations;
+  final Random _random = Random();
+  
+  @override
+  void initState() {
+    super.initState();
+    // Initialize animation controllers for each category
+    _categoryAnimationControllers = List.generate(
+      _categories.length,
+      (index) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 800),
+      ),
+    );
+    
+    // Create animations with random delays
+    _categoryAnimations = _categoryAnimationControllers.map((controller) {
+      return Tween<double>(begin: 20.0, end: 0.0).animate(
+        CurvedAnimation(
+          parent: controller,
+          curve: Curves.easeOut,
+        ),
+      );
+    }).toList();
+    
+    // Start random animations
+    _startRandomAnimations();
+  }
+  
+  void _startRandomAnimations() {
+    // Randomly select 1-2 categories to animate
+    final numToAnimate = _random.nextInt(2) + 1; // 1 or 2
+    final indicesToAnimate = <int>{};
+    
+    while (indicesToAnimate.length < numToAnimate) {
+      indicesToAnimate.add(_random.nextInt(_categories.length));
+    }
+    
+    // Start animations with random delays
+    for (final index in indicesToAnimate) {
+      final delay = _random.nextInt(300); // 0-300ms delay
+      Future.delayed(Duration(milliseconds: delay), () {
+        if (mounted) {
+          _categoryAnimationControllers[index].forward();
+        }
+      });
+    }
+  }
+  
+  @override
+  void dispose() {
+    for (final controller in _categoryAnimationControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+  
+  // Change category (next or previous)
+  void _changeCategory(bool next) {
+    final currentIndex = _categories.indexOf(_selectedCategory);
+    if (next) {
+      // Next category
+      if (currentIndex < _categories.length - 1) {
+        setState(() {
+          _selectedCategory = _categories[currentIndex + 1];
+          _selectedGiftId = null; // Clear selection when changing category
+        });
+      }
+    } else {
+      // Previous category
+      if (currentIndex > 0) {
+        setState(() {
+          _selectedCategory = _categories[currentIndex - 1];
+          _selectedGiftId = null; // Clear selection when changing category
+        });
+      }
+    }
+  }
 
   List<GiftModel> get _currentGifts {
     switch (_selectedCategory) {
@@ -53,67 +138,73 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
 
   // Build gift content (emoji, name, cost) - extracted for reuse
   Widget _buildGiftContent(GiftModel gift, int giftCost, String giftName, String giftEmoji, bool canAfford) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Gift emoji/icon
-        Flexible(
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            child: Text(
-              giftEmoji,
-              style: const TextStyle(fontSize: 28),
+    return Padding(
+      padding: EdgeInsets.zero,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Gift emoji/icon - Larger size, no clipping
+          Text(
+            giftEmoji,
+            style: const TextStyle(
+              fontSize: 40,
+              height: 1.0, // Prevent line height from clipping
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.visible,
           ),
-        ),
-        // Gift name
-        Flexible(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: Text(
-              giftName,
-              style: TextStyle(
-                color: Colors.white, // White text for dark background
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          // Gift name with better typography
+          Text(
+            giftName,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        const SizedBox(height: 2),
-        // Gift cost with star icon container (same as wallet page)
-        Flexible(
-          child: Row(
+          // Gift cost with pink accent for affordable items
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Image.asset(
                 'assets/images/coin3.png',
-                width: 20,
-                height: 20,
+                width: 14,
+                height: 14,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  '$giftCost',
-                  style: TextStyle(
-                    color: canAfford ? Colors.amber : Colors.grey,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              const SizedBox(width: 3),
+              Text(
+                '$giftCost',
+                style: TextStyle(
+                  color: canAfford 
+                      ? const Color(0xFFFFD700) // Gold for affordable
+                      : Colors.grey[500],
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  shadows: canAfford
+                      ? [
+                          Shadow(
+                            color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+                            blurRadius: 3,
+                          ),
+                        ]
+                      : null,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -194,23 +285,41 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
+          // Handle bar - Pink themed
           Container(
             margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
+            width: 50,
+            height: 5,
             decoration: BoxDecoration(
-              color: Colors.grey[600],
-              borderRadius: BorderRadius.circular(2),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFFF1B7C), // App theme pink
+                  Color(0xFF9C27B0), // Purple
+                ],
+              ),
+              borderRadius: BorderRadius.circular(3),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
+                  blurRadius: 4,
+                  spreadRadius: 0,
+                ),
+              ],
             ),
           ),
-          // Categories
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Reduced vertical padding
+          // Categories - Only text, no containers/borders with random animations
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
-              children: ['Hot', 'Lucky', 'Funny', 'Luxury'].map((category) {
+              children: _categories.asMap().entries.map((entry) {
+                final index = entry.key;
+                final category = entry.value;
                 final isSelected = _selectedCategory == category;
+                final hasAnimation = _categoryAnimationControllers[index].isAnimating ||
+                    _categoryAnimationControllers[index].value > 0;
+                
                 return Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -219,63 +328,92 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
                         _selectedGiftId = null; // Clear selection when changing category
                       });
                     },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF9C27B0) // Purple when selected
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        category,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey[400],
-                          fontSize: 14,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ),
+                    child: hasAnimation
+                        ? AnimatedBuilder(
+                            animation: _categoryAnimations[index],
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(0, _categoryAnimations[index].value),
+                                child: Opacity(
+                                  opacity: 1.0 - (_categoryAnimations[index].value / 20.0).clamp(0.0, 1.0),
+                                  child: Text(
+                                    category,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.grey[400],
+                                      fontSize: 14,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Text(
+                            category,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.grey[400],
+                              fontSize: 14,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                   ),
                 );
               }).toList(),
             ),
           ),
-          // Gift grid with real-time balance
+          // Gift grid with real-time balance and swipe support
           Expanded(
-            child: StreamBuilder<DocumentSnapshot>(
-              stream: _firestore.collection('wallets').doc(widget.senderId).snapshots(),
-              builder: (context, walletSnapshot) {
-                // Fallback to users collection if wallets doesn't exist
-                return StreamBuilder<DocumentSnapshot>(
-                  stream: _firestore.collection('users').doc(widget.senderId).snapshots(),
-                  builder: (context, userSnapshot) {
-                    // Get balance from wallets collection first, then fallback to users
-                    int userBalance = 0;
-                    if (walletSnapshot.hasData && walletSnapshot.data!.exists) {
-                      final walletData = walletSnapshot.data!.data() as Map<String, dynamic>?;
-                      final balance = (walletData?['balance'] as int?) ?? 0;
-                      final coins = (walletData?['coins'] as int?) ?? 0;
-                      userBalance = balance > 0 ? balance : coins;
-                    } else if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                      final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
-                      final uCoins = (userData?['uCoins'] as int?) ?? 0;
-                      final coins = (userData?['coins'] as int?) ?? 0;
-                      // ALWAYS use uCoins as primary (it's always updated during deductions)
-                      // Only use coins if uCoins is 0 and coins has value (legacy data)
-                      userBalance = uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
-                    }
+            child: GestureDetector(
+              onHorizontalDragEnd: (details) {
+                // Swipe left (negative velocity) = next category
+                // Swipe right (positive velocity) = previous category
+                if (details.primaryVelocity != null) {
+                  if (details.primaryVelocity! < -500) {
+                    // Swipe left - next category
+                    _changeCategory(true);
+                  } else if (details.primaryVelocity! > 500) {
+                    // Swipe right - previous category
+                    _changeCategory(false);
+                  }
+                }
+              },
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: _firestore.collection('wallets').doc(widget.senderId).snapshots(),
+                builder: (context, walletSnapshot) {
+                  // Fallback to users collection if wallets doesn't exist
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: _firestore.collection('users').doc(widget.senderId).snapshots(),
+                    builder: (context, userSnapshot) {
+                      // Get balance from wallets collection first, then fallback to users
+                      int userBalance = 0;
+                      if (walletSnapshot.hasData && walletSnapshot.data!.exists) {
+                        final walletData = walletSnapshot.data!.data() as Map<String, dynamic>?;
+                        final balance = (walletData?['balance'] as int?) ?? 0;
+                        final coins = (walletData?['coins'] as int?) ?? 0;
+                        userBalance = balance > 0 ? balance : coins;
+                      } else if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                        final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                        final uCoins = (userData?['uCoins'] as int?) ?? 0;
+                        final coins = (userData?['coins'] as int?) ?? 0;
+                        // ALWAYS use uCoins as primary (it's always updated during deductions)
+                        // Only use coins if uCoins is 0 and coins has value (legacy data)
+                        userBalance = uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
+                      }
 
-                    return GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 0.75,
-                      ),
+                      return GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                        shrinkWrap: true,
+                        physics: const ClampingScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          crossAxisSpacing: 1, // Minimal horizontal spacing
+                          mainAxisSpacing: 0, // No vertical spacing between rows
+                          childAspectRatio: 0.80, // More compact layout
+                        ),
                       itemCount: _currentGifts.length,
                       itemBuilder: (context, index) {
                         final gift = _currentGifts[index];
@@ -286,41 +424,11 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
                         final isSelected = _selectedGiftId == gift.id;
                         return GestureDetector(
                           onTap: () => _selectGift(gift),
-                          child: isSelected
-                              ? Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xFF9C27B0), // Purple
-                                        Color(0xFFE91E63), // Pink
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.all(1.5),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1A1A1A),
-                                      borderRadius: BorderRadius.circular(10.5),
-                                    ),
-                                    child: _buildGiftContent(gift, giftCost, giftName, giftEmoji, canAfford),
-                                  ),
-                                )
-                              : Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.transparent,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: canAfford
-                                          ? Colors.white.withValues(alpha: 0.2)
-                                          : Colors.grey.withValues(alpha: 0.3),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: _buildGiftContent(gift, giftCost, giftName, giftEmoji, canAfford),
-                                ),
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: isSelected ? 1.0 : (canAfford ? 1.0 : 0.6),
+                            child: _buildGiftContent(gift, giftCost, giftName, giftEmoji, canAfford),
+                          ),
                         );
                       },
                     );
@@ -328,13 +436,29 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
                 );
               },
             ),
+            ),
           ),
           // Bottom section: Balance, pagination, send button
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8), // Reduced top padding to remove gap
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.8),
+                  Colors.black.withValues(alpha: 0.95),
+                ],
+              ),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
+                  blurRadius: 10,
+                  spreadRadius: 0,
+                  offset: const Offset(0, -2),
+                ),
+              ],
             ),
             child: SafeArea(
               top: false,
@@ -387,24 +511,25 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
                               children: [
                                 Image.asset(
                                   'assets/images/coin3.png',
-                                  width: 20,
-                                  height: 20,
+                                  width: 22,
+                                  height: 22,
                                   fit: BoxFit.contain,
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 8),
                                 Text(
                                   '$userBalance',
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 18,
+                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 6),
                                 const Icon(
                                   Icons.arrow_forward_ios,
-                                  color: Colors.grey,
-                                  size: 10,
+                                  color: Color(0xFFFF1B7C),
+                                  size: 12,
                                 ),
                               ],
                             ),
@@ -417,39 +542,32 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Send icon with gradient rectangular container
-                      Container(
-                        width: 40,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF9C27B0), // Purple
-                              Color(0xFFE91E63), // Pink
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                      // Send button - Clean pink theme
+                      GestureDetector(
+                        onTap: _sendSelectedGift,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF1B7C), // App theme pink
+                            shape: BoxShape.circle,
                           ),
-                          borderRadius: BorderRadius.circular(6), // Rectangular with rounded corners
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: const Icon(
-                            Icons.send,
-                            color: Colors.white, // White icon for gradient background
+                          child: const Icon(
+                            Icons.send_rounded,
+                            color: Colors.white,
                             size: 22,
                           ),
-                          onPressed: _sendSelectedGift,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       // Close icon
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                        onPressed: () => Navigator.of(context).pop(),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       ),
                     ],
                   ),
