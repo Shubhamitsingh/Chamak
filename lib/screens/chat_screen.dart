@@ -7,6 +7,7 @@ import 'package:animate_do/animate_do.dart';
 import 'dart:async';
 import '../models/user_model.dart';
 import '../models/message_model.dart';
+import '../models/gift_model.dart';
 import '../models/call_request_model.dart';
 import '../services/chat_service.dart';
 import '../services/call_request_service.dart';
@@ -228,14 +229,66 @@ class _ChatScreenState extends State<ChatScreen> {
                     Row(
                       children: [
                         Flexible(
-                          child: Text(
-                      widget.otherUser.name,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                          child: StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(widget.otherUser.uid)
+                                .snapshots(),
+                            builder: (context, userSnapshot) {
+                              int hostLevel = 1;
+                              bool isHost = false;
+                              
+                              if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                                final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                                // Get hostLevel - try hostLevel first, then level, default to 1
+                                hostLevel = userData?['hostLevel'] ?? userData?['level'] ?? 1;
+                                isHost = userData?['isHost'] ?? false;
+                              }
+                              
+                              // Show level badge if user is a host (isHost = true)
+                              final shouldShowLevel = isHost;
+                              
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      widget.otherUser.name,
+                                      style: const TextStyle(
+                                        color: Colors.black87,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                  if (shouldShowLevel) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFFFF1B7C), Color(0xFFE91E63)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'Lv.$hostLevel',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          height: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(width: 4),
@@ -468,6 +521,51 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Gift Icon Button
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFB800), Color(0xFFFFD700)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x80FFB800),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _showGiftPopup,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Center(
+                          child: Image.asset(
+                            'assets/images/gift-box.png',
+                            width: 22,
+                            height: 22,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.card_giftcard_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -748,6 +846,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageBubble(MessageModel message, bool isSentByMe) {
+    // Check if message is a gift
+    final isGift = message.type == MessageType.gift;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -755,20 +856,44 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              constraints: BoxConstraints(
+                maxWidth: isGift ? MediaQuery.of(context).size.width * 0.55 : double.infinity,
+              ),
+              margin: EdgeInsets.symmetric(
+                horizontal: isGift ? 8 : 0,
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: isGift ? 12 : 16,
+                vertical: isGift ? 12 : 10,
+              ),
               decoration: BoxDecoration(
-                // Use a slightly darker purple for my messages, keep others white
-                color: isSentByMe ? const Color(0xFFFF69B4) : Colors.white,
+                color: isGift
+                    ? isSentByMe
+                        ? const Color(0xFFFFB800).withValues(alpha: 0.15)
+                        : Colors.white
+                    : isSentByMe
+                        ? const Color(0xFFFF69B4)
+                        : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
                   bottomLeft: Radius.circular(isSentByMe ? 16 : 4),
                   bottomRight: Radius.circular(isSentByMe ? 4 : 16),
                 ),
+                border: isGift
+                    ? Border.all(
+                        color: isSentByMe
+                            ? const Color(0xFFFFB800).withValues(alpha: 0.5)
+                            : const Color(0xFFFFB800).withValues(alpha: 0.3),
+                        width: 1.5,
+                      )
+                    : null,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha:0.05),
-                    blurRadius: 5,
+                    color: isGift
+                        ? const Color(0xFFFFB800).withValues(alpha: 0.2)
+                        : Colors.black.withValues(alpha: 0.05),
+                    blurRadius: isGift ? 8 : 5,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -776,25 +901,81 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    message.message,
-                    style: TextStyle(
-                      color: isSentByMe ? Colors.white : Colors.black87,
-                      fontSize: 15,
+                  if (isGift) ...[
+                    // Gift Display
+                    Center(
+                      child: Column(
+                        children: [
+                          // Gift Icon/Emoji (compact size)
+                          Text(
+                            message.giftEmoji ?? '🎁',
+                            style: const TextStyle(fontSize: 32),
+                          ),
+                          const SizedBox(height: 6),
+                          // Gift Name
+                          Text(
+                            '${message.giftEmoji ?? ''} ${message.giftName ?? 'Gift'}',
+                            style: TextStyle(
+                              color: isSentByMe ? Colors.black87 : Colors.black87,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (message.giftCost != null) ...[
+                            const SizedBox(height: 3),
+                              Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/images/coin3.png',
+                                  width: 12,
+                                  height: 12,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(Icons.monetization_on, size: 12, color: Color(0xFFFFB800));
+                                  },
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${message.giftCost}',
+                                  style: TextStyle(
+                                    color: const Color(0xFFFFB800),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
+                  ] else ...[
+                    // Regular Text Message
+                    Text(
+                      message.message,
+                      style: TextStyle(
+                        color: isSentByMe ? Colors.white : Colors.black87,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         _formatMessageTime(message.timestamp),
                         style: TextStyle(
-                          color: isSentByMe ? Colors.white70 : Colors.grey[500],
+                          color: isGift
+                              ? Colors.grey[600]
+                              : isSentByMe
+                                  ? Colors.white70
+                                  : Colors.grey[500],
                           fontSize: 11,
                         ),
                       ),
-                      if (isSentByMe) ...[
+                      if (isSentByMe && !isGift) ...[
                         const SizedBox(width: 4),
                         Icon(
                           message.isRead ? Icons.done_all : Icons.done,
@@ -1512,6 +1693,366 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  // Show Gift Selection Popup
+  void _showGiftPopup() {
+    if (_currentUserId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _GiftSelectionPopup(
+        onGiftSelected: (gift) async {
+          Navigator.pop(context); // Close popup
+          await _sendGift(gift);
+        },
+        currentUserId: _currentUserId!,
+        chatId: widget.chatId,
+        receiverId: widget.otherUser.uid,
+      ),
+    );
+  }
+
+  // Send Gift
+  Future<void> _sendGift(GiftModel gift) async {
+    if (_currentUserId == null) return;
+
+    // Show loading
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFFFF1B7C),
+        ),
+      ),
+    );
+
+    try {
+      final success = await _chatService.sendGift(
+        chatId: widget.chatId,
+        senderId: _currentUserId!,
+        receiverId: widget.otherUser.uid,
+        gift: gift,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      if (success) {
+        // Scroll to bottom after sending gift
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Text('${gift.emoji} ${gift.name} sent!'),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                ],
+              ),
+              backgroundColor: const Color(0xFFFF1B7C),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      String errorMessage = 'Failed to send gift. Please try again.';
+      if (e.toString().contains('Insufficient')) {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(errorMessage)),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
+}
+
+// Gift Selection Popup Widget
+class _GiftSelectionPopup extends StatefulWidget {
+  final Function(GiftModel) onGiftSelected;
+  final String currentUserId;
+  final String chatId;
+  final String receiverId;
+
+  const _GiftSelectionPopup({
+    required this.onGiftSelected,
+    required this.currentUserId,
+    required this.chatId,
+    required this.receiverId,
+  });
+
+  @override
+  State<_GiftSelectionPopup> createState() => _GiftSelectionPopupState();
+}
+
+class _GiftSelectionPopupState extends State<_GiftSelectionPopup> {
+  final ChatService _chatService = ChatService();
+  int _userCoinBalance = 0;
+  bool _isLoadingBalance = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCoinBalance();
+  }
+
+  Future<void> _loadCoinBalance() async {
+    try {
+      final balance = await _chatService.getUserCoinBalance(widget.currentUserId);
+      if (mounted) {
+        setState(() {
+          _userCoinBalance = balance;
+          _isLoadingBalance = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading coin balance: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingBalance = false;
+        });
+      }
+    }
+  }
+
+  List<GiftModel> get _currentGifts {
+    // Use default gifts for chat (simple gift selection)
+    return GiftModel.getDefaultGifts();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag Handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Title and Coin Balance
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Send Gift',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  if (_isLoadingBalance)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Image.asset(
+                          'assets/images/coin3.png',
+                          width: 18,
+                          height: 18,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.monetization_on, size: 18, color: Color(0xFFFFB800));
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatCoinBalance(_userCoinBalance),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFFFB800),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1),
+
+              // Gift Grid
+              Flexible(
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.85,
+                  ),
+                  itemCount: _currentGifts.length,
+                  itemBuilder: (context, index) {
+                    final gift = _currentGifts[index];
+                    final canAfford = _userCoinBalance >= gift.cost;
+                    
+                    return _buildGiftCard(gift, canAfford);
+                  },
+                ),
+              ),
+
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGiftCard(GiftModel gift, bool canAfford) {
+    return GestureDetector(
+      onTap: canAfford ? () => widget.onGiftSelected(gift) : null,
+      child: Container(
+        decoration: BoxDecoration(
+          color: canAfford ? Colors.white : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: canAfford 
+                ? const Color(0xFFFF1B7C).withValues(alpha: 0.3)
+                : Colors.grey[300]!,
+            width: 1.5,
+          ),
+          boxShadow: canAfford
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Gift Emoji
+            Text(
+              gift.emoji,
+              style: TextStyle(
+                fontSize: 32,
+                color: canAfford ? null : Colors.grey[400],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Gift Name
+            Text(
+              gift.name,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: canAfford ? Colors.black87 : Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            // Gift Cost
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'assets/images/coin3.png',
+                  width: 12,
+                  height: 12,
+                  fit: BoxFit.contain,
+                  color: canAfford ? null : Colors.grey[400],
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.monetization_on,
+                      size: 12,
+                      color: canAfford ? const Color(0xFFFFB800) : Colors.grey[400],
+                    );
+                  },
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  '${gift.cost}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: canAfford ? const Color(0xFFFFB800) : Colors.grey[400],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatCoinBalance(int balance) {
+    final balanceStr = balance.toString();
+    final buffer = StringBuffer();
+    
+    for (int i = 0; i < balanceStr.length; i++) {
+      if (i > 0 && (balanceStr.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(balanceStr[i]);
+    }
+    
+    return buffer.toString();
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../models/user_model.dart';
 import '../models/chat_model.dart';
@@ -509,16 +510,76 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Name (keep black, just bolder on unread)
-                        Flexible(
-                          child: Text(
-                            otherUserName,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                        // Name with Host Level (Lv.)
+                        Expanded(
+                          child: StreamBuilder<DocumentSnapshot>(
+                            key: ValueKey('user_level_$otherUserId'), // Ensure proper real-time updates
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(otherUserId)
+                                .snapshots(),
+                            builder: (context, userSnapshot) {
+                              // Initialize with defaults
+                              int userLevel = 1;
+                              int hostLevel = 1;
+                              bool isHost = false;
+                              
+                              // Real-time update: Get level from Firestore stream
+                              if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                                final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                                // Get both userLevel and hostLevel - updates in real-time
+                                userLevel = (userData?['userLevel'] ?? userData?['level'] ?? 1) as int;
+                                hostLevel = (userData?['hostLevel'] ?? userData?['level'] ?? 1) as int;
+                                isHost = userData?['isHost'] ?? false;
+                              }
+                              
+                              // Show level for all users: hostLevel if host, userLevel if regular user
+                              // This updates in real-time when Firestore data changes
+                              final displayLevel = isHost ? hostLevel : userLevel;
+                              // Always show level badge for all users (real-time)
+                              final shouldShowLevel = true;
+                              
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      otherUserName,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black87,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                  if (shouldShowLevel) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFFFF1B7C), Color(0xFFE91E63)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'Lv.$displayLevel',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          height: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(width: 8),

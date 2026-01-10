@@ -972,7 +972,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildDivider(),
             
-            // Promotion Screen - placed just below Messages
+            // Level - placed just below Messages
+            _buildMenuOption(
+              icon: Icons.military_tech,
+              title: AppLocalizations.of(context)!.level,
+              subtitle: AppLocalizations.of(context)!.yourProgressAchievements,
+              color: const Color(0xFFF59E0B),
+              showLevel: true,
+              userLevel: user.level,
+              onTap: () {
+                if (!mounted) return;
+                _stopAutoScroll();
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LevelScreen(userLevel: user.level),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
+              },
+            ),
+            _buildDivider(),
+            
+            // Promotion Screen
             _buildMenuOption(
               icon: Icons.campaign_rounded,
               title: AppLocalizations.of(context)!.promotion,
@@ -1138,32 +1167,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildDivider(),
             
             _buildMenuOption(
-              icon: Icons.military_tech,
-              title: AppLocalizations.of(context)!.level,
-              subtitle: AppLocalizations.of(context)!.yourProgressAchievements,
-              color: const Color(0xFFF59E0B),
-              onTap: () {
-                if (!mounted) return;
-                _stopAutoScroll();
-                try {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LevelScreen(userLevel: user.level),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      _startAutoScroll();
-                    }
-                  });
-                } catch (e) {
-                  debugPrint('Navigation error: $e');
-                }
-              },
-            ),
-            _buildDivider(),
-            
-            _buildMenuOption(
               icon: Icons.verified_user_rounded,
               title: AppLocalizations.of(context)!.accountSecurity,
               subtitle: AppLocalizations.of(context)!.phonePasswordAccountSettings,
@@ -1284,6 +1287,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     bool showCoinIcon = false,
     bool showCoin2Icon = false,
     int? coinBalance, // Coin balance to display
+    bool showLevel = false,
+    int? userLevel, // User level to display
   }) {
     return ListTile(
       onTap: onTap,
@@ -1411,6 +1416,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 20,
                 height: 20,
                 fit: BoxFit.contain,
+              ),
+            ),
+          // User Level Display (for Level menu)
+          if (showLevel && userLevel != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF1B7C), Color(0xFFE91E63)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'Lv.$userLevel',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
+                  ),
+                ),
               ),
             ),
           // Forward Arrow

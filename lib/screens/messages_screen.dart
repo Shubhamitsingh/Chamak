@@ -293,12 +293,19 @@ class _MessagesScreenState extends State<MessagesScreen> {
     
     // Fetch latest user data from Firestore to get current name (not stale cached name)
     return StreamBuilder<DocumentSnapshot>(
+      key: ValueKey('user_level_$otherUserId'), // Ensure proper real-time updates
       stream: _firestore.collection('users').doc(otherUserId).snapshots(),
       builder: (context, userSnapshot) {
         // Get fresh name from Firestore, fallback to cached name
         String otherUserName = 'Unknown User';
         String? otherUserImage;
         
+        // Initialize level values
+        int userLevel = 1;
+        int hostLevel = 1;
+        bool isHost = false;
+        
+        // Real-time update: StreamBuilder automatically rebuilds when Firestore data changes
         if (userSnapshot.hasData && userSnapshot.data!.exists) {
           final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
           otherUserName = userData?['displayName'] ?? 
@@ -307,11 +314,21 @@ class _MessagesScreenState extends State<MessagesScreen> {
                          'Unknown User';
           otherUserImage = userData?['photoURL'] ?? 
                           chat.participantImages[otherUserId];
+          // Get levels - updates in real-time when Firestore data changes
+          userLevel = (userData?['userLevel'] ?? userData?['level'] ?? 1) as int;
+          hostLevel = (userData?['hostLevel'] ?? userData?['level'] ?? 1) as int;
+          isHost = userData?['isHost'] ?? false;
         } else {
           // Fallback to cached data if Firestore fetch fails
           otherUserName = chat.participantNames[otherUserId] ?? 'Unknown User';
           otherUserImage = chat.participantImages[otherUserId];
         }
+        
+        // Show level for all users: hostLevel if host, userLevel if regular user
+        // This value updates automatically when Firestore stream emits new data
+        final displayLevel = isHost ? hostLevel : userLevel;
+        // Always show level badge (for all users) - real-time updates
+        final shouldShowLevel = true;
     
     // Clean design - NO containers, NO borders, NO backgrounds
     return Material(
@@ -400,13 +417,45 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    otherUserName,
-                    style: TextStyle(
-                      fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
-                      fontSize: 12,
-                      color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.black87,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          otherUserName,
+                          style: TextStyle(
+                            fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
+                            fontSize: 12,
+                            color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      if (shouldShowLevel) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF1B7C), Color(0xFFE91E63)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Lv.$displayLevel',
+                            style: const TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(

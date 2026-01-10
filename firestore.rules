@@ -305,13 +305,27 @@ service cloud.firestore {
     
     // Support chats collection
     match /supportChats/{chatId} {
+      // Allow read if:
+      // 1. User is admin (can read all for admin panel), OR
+      // 2. User is authenticated AND (document doesn't exist OR user owns it)
+      // Note: For non-existent documents (when checking before create), allow read
+      // The create rule ensures users can only create their own chat
       allow read: if request.auth != null 
-        && resource.data != null
-        && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null;
+        && (isAdmin() 
+            || resource == null  // Document doesn't exist - allow check before create
+            || resource.data == null  // Document exists but has no data
+            || resource.data.get('userId', '') == request.auth.uid);  // User owns the chat
+      
+      // Allow create if authenticated user is creating their own chat
+      allow create: if request.auth != null 
+        && request.resource.data != null
+        && request.auth.uid == request.resource.data.userId;
+      
+      // Allow update if user owns the chat or is admin
       allow update: if request.auth != null 
         && resource.data != null
         && (request.auth.uid == resource.data.userId || isAdmin());
+      
       allow delete: if false;
       
       // Messages subcollection - support chat messages

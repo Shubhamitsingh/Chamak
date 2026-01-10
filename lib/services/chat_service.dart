@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
 import '../models/user_model.dart';
+import '../models/gift_model.dart';
 import 'notification_service.dart';
 
 class ChatService {
@@ -259,6 +260,122 @@ class ChatService {
     } catch (e) {
       print('❌ Error checking chat existence: $e');
       return false;
+    }
+  }
+
+  // Send a gift message (deducts coins from sender)
+  Future<bool> sendGift({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required GiftModel gift,
+  }) async {
+    try {
+      // Check sender's coin balance
+      final senderDoc = await _firestore.collection('users').doc(senderId).get();
+      if (!senderDoc.exists) {
+        throw Exception('User not found');
+      }
+
+      final senderData = senderDoc.data()!;
+      final currentCoins = (senderData['uCoins'] as int? ?? senderData['coins'] as int? ?? 0);
+
+      if (currentCoins < gift.cost) {
+        throw Exception('Insufficient coins. You need ${gift.cost} coins to send this gift, but you only have $currentCoins coins.');
+      }
+
+      // Use batch for atomic operations
+      final batch = _firestore.batch();
+
+      // Deduct coins from sender
+      final senderRef = _firestore.collection('users').doc(senderId);
+      batch.update(senderRef, {
+        'uCoins': FieldValue.increment(-gift.cost),
+      });
+
+      // Create gift message
+      final messageRef = _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc();
+
+      final giftMessage = MessageModel(
+        messageId: messageRef.id,
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        message: 'Sent ${gift.name} ${gift.emoji}',
+        timestamp: DateTime.now(),
+        isRead: false,
+        type: MessageType.gift,
+        giftId: gift.id,
+        giftName: gift.name,
+        giftEmoji: gift.emoji,
+        giftCost: gift.cost,
+      );
+
+      batch.set(messageRef, giftMessage.toFirestore());
+
+      // Update chat metadata with gift message
+      final chatRef = _firestore.collection('chats').doc(chatId);
+      batch.update(chatRef, {
+        'lastMessage': '${gift.emoji} ${gift.name}',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'unreadCount.$receiverId': FieldValue.increment(1),
+      });
+
+      await batch.commit();
+      print('✅ Gift sent successfully: ${gift.name}');
+
+      // Send push notification to receiver
+      try {
+        final senderName = senderData['displayName'] ?? senderData['name'] ?? 'Someone';
+        await _notificationService.sendMessageNotification(
+          receiverUserId: receiverId,
+          senderName: senderName,
+          messageText: '${gift.emoji} ${gift.name}',
+          chatId: chatId,
+        );
+        print('✅ Gift notification sent to receiver');
+      } catch (notificationError) {
+        print('⚠️ Failed to send gift notification: $notificationError');
+      }
+
+      return true;
+    } catch (e) {
+      print('❌ Error sending gift: $e');
+      rethrow; // Re-throw to handle in UI
+    }
+  }
+
+  // Check if user has enough coins for a gift
+  Future<bool> hasEnoughCoins(String userId, int requiredCoins) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (!userDoc.exists) return false;
+
+      final userData = userDoc.data()!;
+      final currentCoins = (userData['uCoins'] as int? ?? userData['coins'] as int? ?? 0);
+      
+      return currentCoins >= requiredCoins;
+    } catch (e) {
+      print('❌ Error checking coin balance: $e');
+      return false;
+    }
+  }
+
+  // Get user's current coin balance
+  Future<int> getUserCoinBalance(String userId) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (!userDoc.exists) return 0;
+
+      final userData = userDoc.data()!;
+      return (userData['uCoins'] as int? ?? userData['coins'] as int? ?? 0);
+    } catch (e) {
+      print('❌ Error getting coin balance: $e');
+      return 0;
     }
   }
 }
