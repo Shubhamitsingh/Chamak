@@ -2,11 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:animate_do/animate_do.dart';
+import 'dart:async';
 import '../models/user_model.dart';
+import '../models/call_request_model.dart';
 import '../services/follow_service.dart';
 import '../services/chat_service.dart';
+import '../services/online_status_service.dart';
+import '../services/call_request_service.dart';
+import '../services/agora_token_service.dart';
+import '../services/database_service.dart';
 import '../widgets/gift_selection_sheet.dart';
+import '../widgets/call_request_dialog.dart';
 import 'chat_screen.dart';
+import 'private_call_screen.dart';
 
 class UserProfileViewScreen extends StatefulWidget {
   final UserModel user;
@@ -20,6 +30,10 @@ class UserProfileViewScreen extends StatefulWidget {
 class _UserProfileViewScreenState extends State<UserProfileViewScreen> with SingleTickerProviderStateMixin {
   final FollowService _followService = FollowService();
   final ChatService _chatService = ChatService();
+  final OnlineStatusService _onlineStatusService = OnlineStatusService();
+  final CallRequestService _callRequestService = CallRequestService();
+  final AgoraTokenService _tokenService = AgoraTokenService();
+  final DatabaseService _databaseService = DatabaseService();
   
   bool _isFollowing = false;
   bool _isLoading = true;
@@ -28,17 +42,27 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
   
   late TabController _tabController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // Call request state
+  String? _currentCallRequestId;
+  bool _isCallRequestPending = false; // Track if call request is pending
+  bool _isCallRejected = false; // Track if call was rejected
+  StreamSubscription<List<CallRequestModel>>? _incomingCallSubscription;
+  StreamSubscription<CallRequestModel?>? _callStatusSubscription;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadData();
+    _setupIncomingCallListener();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _incomingCallSubscription?.cancel();
+    _callStatusSubscription?.cancel();
     super.dispose();
   }
 
@@ -295,6 +319,319 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
     return cCoins.toString();
   }
 
+  // Setup incoming call listener for chat calls
+  void _setupIncomingCallListener() {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    _incomingCallSubscription = _callRequestService
+        .listenToIncomingChatCallRequests(currentUserId)
+        .listen((requests) {
+      if (requests.isNotEmpty && mounted) {
+        final request = requests.first;
+        _showIncomingCallDialog(request);
+      }
+    });
+  }
+
+  // Initiate video call from profile
+  Future<void> _initiateVideoCall() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to start a video call'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Check if calling yourself
+    if (currentUser.uid == widget.user.uid) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You cannot call yourself'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Request permissions
+    if (!mounted) return;
+    final cameraStatus = await Permission.camera.request();
+    final micStatus = await Permission.microphone.request();
+
+    if (cameraStatus.isDenied || micStatus.isDenied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Camera and microphone permissions are required for video calls'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please enable camera and microphone permissions in app settings'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Settings',
+              textColor: Colors.white,
+              onPressed: () => openAppSettings(),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Show loading
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
+      ),
+    );
+
+    try {
+      // Get current user data
+      final userData = await _databaseService.getUserData(currentUser.uid);
+      final callerName = userData?.displayName ?? userData?.name ?? currentUser.displayName ?? 'User';
+      final callerImage = userData?.photoURL ?? currentUser.photoURL;
+
+      // Create call request
+      final requestId = await _callRequestService.sendChatCallRequest(
+        callerId: currentUser.uid,
+        callerName: callerName,
+        callerImage: callerImage,
+        receiverId: widget.user.uid,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      setState(() {
+        _currentCallRequestId = requestId;
+        _isCallRequestPending = true; // Show calling popup
+        _isCallRejected = false; // Reset rejected state
+      });
+
+      // Listen for call request status (accepted/rejected)
+      _callStatusSubscription?.cancel(); // Cancel previous subscription if any
+      _callStatusSubscription = _callRequestService
+          .listenToCallRequestStatus(requestId)
+          .listen((callRequest) async {
+        if (callRequest == null || !mounted) return;
+
+        if (callRequest.status == 'accepted') {
+          // Call accepted - navigate to call screen
+          _callStatusSubscription?.cancel();
+          
+          if (!mounted) return;
+          
+          setState(() {
+            _isCallRequestPending = false;
+            _currentCallRequestId = null;
+          });
+          
+          final callChannelName = callRequest.callChannelName ?? 'private_call_$requestId';
+          final callToken = callRequest.callToken;
+          
+          if (callToken == null || callToken.isEmpty) {
+            // Generate token if not available
+            try {
+              final generatedToken = await _tokenService.getHostToken(
+                channelName: callChannelName,
+              );
+              
+              if (mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PrivateCallScreen(
+                      callChannelName: callChannelName,
+                      callToken: generatedToken,
+                      streamId: '', // Empty for chat calls
+                      requestId: requestId,
+                      otherUserId: widget.user.uid,
+                      otherUserName: widget.user.name,
+                      otherUserImage: widget.user.profileImage,
+                      isHost: false, // Caller is not host in chat calls
+                    ),
+                  ),
+                );
+              }
+            } catch (e) {
+              debugPrint('❌ Error generating token: $e');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to start call. Please try again.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          } else {
+            // Token already available
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PrivateCallScreen(
+                    callChannelName: callChannelName,
+                    callToken: callToken,
+                    streamId: '', // Empty for chat calls
+                    requestId: requestId,
+                    otherUserId: widget.user.uid,
+                    otherUserName: widget.user.name,
+                    otherUserImage: widget.user.profileImage,
+                    isHost: false, // Caller is not host in chat calls
+                  ),
+                ),
+              );
+            }
+          }
+        } else if (callRequest.status == 'rejected') {
+          // Call rejected - show rejected popup
+          _callStatusSubscription?.cancel();
+          if (mounted) {
+            setState(() {
+              _isCallRequestPending = false;
+              _isCallRejected = true;
+              _currentCallRequestId = null;
+            });
+            // Auto-hide rejected popup after 3 seconds
+            Future.delayed(const Duration(seconds: 3), () {
+              if (mounted) {
+                setState(() {
+                  _isCallRejected = false;
+                });
+              }
+            });
+          }
+        } else if (callRequest.status == 'cancelled' || callRequest.status == 'ended') {
+          // Call cancelled or ended
+          _callStatusSubscription?.cancel();
+          if (mounted) {
+            setState(() {
+              _isCallRequestPending = false;
+              _isCallRejected = false;
+              _currentCallRequestId = null;
+            });
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('❌ Error initiating video call: $e');
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+      
+      String errorMessage = 'Failed to start video call. Please try again.';
+      if (e.toString().contains('Insufficient')) {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+      } else if (e.toString().contains('timeout')) {
+        errorMessage = 'Request timed out. Please check your connection.';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  // Show incoming call dialog
+  void _showIncomingCallDialog(CallRequestModel request) {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => CallRequestDialog(
+        callRequest: request,
+        onAccept: () => _handleAcceptCall(request),
+        onReject: () => _handleRejectCall(request.requestId),
+      ),
+    );
+  }
+
+  // Handle accept call
+  Future<void> _handleAcceptCall(CallRequestModel request) async {
+    try {
+      // Generate call channel name and token
+      final callChannelName = 'private_call_${request.requestId}';
+      final callToken = await _tokenService.getHostToken(
+        channelName: callChannelName,
+      );
+
+      // Accept call request
+      await _callRequestService.acceptCallRequest(
+        requestId: request.requestId,
+        streamId: null, // No streamId for chat calls
+        callerId: request.callerId,
+        callChannelName: callChannelName,
+        callToken: callToken,
+      );
+
+      if (!mounted) return;
+      
+      // Navigate to call screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PrivateCallScreen(
+            callChannelName: callChannelName,
+            callToken: callToken,
+            streamId: '', // Empty for chat calls
+            requestId: request.requestId,
+            otherUserId: request.callerId,
+            otherUserName: request.callerName,
+            otherUserImage: request.callerImage,
+            isHost: true, // Receiver is host (doesn't pay coins)
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error accepting call: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to accept call: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Handle reject call
+  Future<void> _handleRejectCall(String requestId) async {
+    try {
+      await _callRequestService.rejectCallRequest(requestId);
+    } catch (e) {
+      debugPrint('❌ Error rejecting call: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -329,10 +666,13 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF1B7C)))
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          : Stack(
+              children: [
+                // Main Content
+                SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   const SizedBox(height: 4),
                   
                   // Profile Section - Horizontal Row
@@ -436,28 +776,53 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                               
                               const SizedBox(height: 6),
                               
-                              // Available Status
-                              Row(
-                                children: [
-                                  // Green Available Dot
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF4CAF50),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Text(
-                                    'Available',
-                                    style: TextStyle(
-                                    fontSize: 13,
-                                      color: Color(0xFF4CAF50),
-                                      fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                ],
+                              // Real-time Status Indicator (Always Visible)
+                              StreamBuilder<String>(
+                                stream: _onlineStatusService.getUserStatusStream(widget.user.uid),
+                                builder: (context, snapshot) {
+                                  final status = snapshot.data ?? 'offline';
+                                  
+                                  // Determine status color and text (only Online/Offline)
+                                  Color statusColor;
+                                  String statusText;
+                                  bool showDot;
+                                  
+                                  if (status == 'online') {
+                                    // User is online (within 5 minutes)
+                                    statusColor = const Color(0xFF4CAF50); // Green
+                                    statusText = 'Online';
+                                    showDot = true;
+                                  } else {
+                                    // User is offline
+                                    statusColor = Colors.grey[600]!; // Gray for offline
+                                    statusText = 'Offline';
+                                    showDot = false; // No dot for offline
+                                  }
+                                  
+                                  return Row(
+                                    children: [
+                                      // Status Dot (only show for Online)
+                                      if (showDot)
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: statusColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      if (showDot) const SizedBox(width: 4),
+                                      Text(
+                                        statusText,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: statusColor,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                               
                               // Bio
@@ -594,14 +959,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Video chat with ${widget.user.name}'),
-                                backgroundColor: const Color(0xFFFF1B7C),
-                              ),
-                            );
-                          },
+                          onTap: _initiateVideoCall,
                           borderRadius: BorderRadius.circular(22),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -834,7 +1192,234 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                   _buildPostsGrid(),
 
                   const SizedBox(height: 40),
-          ],
+                    ],
+                  ),
+                ),
+          
+                // Call request popup (top-left side, similar to live stream screen)
+                if (_isCallRequestPending)
+                  Positioned(
+                    left: 16,
+                    top: MediaQuery.of(context).padding.top + 80,
+                    child: _buildCallRequestPopup(),
+                  ),
+                
+                // Call rejected popup (top-left, just below calling popup)
+                if (_isCallRejected)
+                  Positioned(
+                    left: 16,
+                    top: MediaQuery.of(context).padding.top + 130,
+                    child: _buildCallRejectedPopup(),
+                  ),
+              ],
+            ),
+    );
+  }
+
+  // Build call request popup (shows "Calling" when request is pending)
+  Widget _buildCallRequestPopup() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final callerPhotoUrl = currentUser?.photoURL;
+    
+    return SlideInLeft(
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+      child: FadeInLeft(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF9C27B0), // Purple
+                Color(0xFFE91E63), // Pink
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 8,
+                spreadRadius: 1,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Caller profile icon
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: ClipOval(
+                  child: callerPhotoUrl != null && callerPhotoUrl.isNotEmpty
+                      ? Image.network(
+                          callerPhotoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              child: const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Text
+              const Text(
+                'Calling',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Receiver profile icon
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: ClipOval(
+                  child: widget.user.profileImage.isNotEmpty
+                      ? Image.network(
+                          widget.user.profileImage,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              child: const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          child: Text(
+                            widget.user.name.isNotEmpty 
+                                ? widget.user.name[0].toUpperCase() 
+                                : 'U',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              // Cancel icon
+              GestureDetector(
+                onTap: () async {
+                  if (_currentCallRequestId != null) {
+                    try {
+                      await _callRequestService.cancelCallRequest(_currentCallRequestId!);
+                      setState(() {
+                        _isCallRequestPending = false;
+                        _currentCallRequestId = null;
+                      });
+                    } catch (e) {
+                      debugPrint('❌ Error cancelling call request: $e');
+                    }
+                  }
+                },
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.call_end,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Build call rejected popup (shows "User declined" when call is rejected)
+  Widget _buildCallRejectedPopup() {
+    return SlideInLeft(
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+      child: FadeInLeft(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFFE53935), // Red
+                Color(0xFFD32F2F), // Darker red
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 8,
+                spreadRadius: 1,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.call_end,
+                color: Colors.white,
+                size: 16,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'User declined call',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

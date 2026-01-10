@@ -2,11 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CallRequestModel {
   final String requestId;
-  final String streamId;
+  final String? streamId; // Optional - null for chat calls, required for live stream calls
   final String callerId;
   final String callerName;
   final String? callerImage;
-  final String hostId;
+  final String? hostId; // Optional - for live stream calls
+  final String? receiverId; // Optional - for chat calls
+  final String callType; // 'live_stream' or 'chat'
   final String status; // 'pending', 'accepted', 'rejected', 'cancelled', 'ended'
   final DateTime createdAt;
   final DateTime? respondedAt;
@@ -15,11 +17,13 @@ class CallRequestModel {
 
   CallRequestModel({
     required this.requestId,
-    required this.streamId,
+    this.streamId, // Now optional
     required this.callerId,
     required this.callerName,
     this.callerImage,
-    required this.hostId,
+    this.hostId, // Now optional
+    this.receiverId, // New field for chat calls
+    this.callType = 'live_stream', // Default to live_stream for backward compatibility
     this.status = 'pending',
     required this.createdAt,
     this.respondedAt,
@@ -28,29 +32,37 @@ class CallRequestModel {
   });
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'requestId': requestId,
-      'streamId': streamId,
       'callerId': callerId,
       'callerName': callerName,
       'callerImage': callerImage,
-      'hostId': hostId,
+      'callType': callType,
       'status': status,
       'createdAt': createdAt.toIso8601String(),
       'respondedAt': respondedAt?.toIso8601String(),
       'callChannelName': callChannelName,
       'callToken': callToken,
     };
+    
+    // Only include streamId if not null
+    if (streamId != null) map['streamId'] = streamId!;
+    if (hostId != null) map['hostId'] = hostId!;
+    if (receiverId != null) map['receiverId'] = receiverId!;
+    
+    return map;
   }
 
   factory CallRequestModel.fromMap(Map<String, dynamic> map) {
     return CallRequestModel(
       requestId: map['requestId'] ?? '',
-      streamId: map['streamId'] ?? '',
+      streamId: map['streamId'], // Now optional
       callerId: map['callerId'] ?? '',
       callerName: map['callerName'] ?? '',
       callerImage: map['callerImage'],
-      hostId: map['hostId'] ?? '',
+      hostId: map['hostId'], // Now optional
+      receiverId: map['receiverId'], // New field
+      callType: map['callType'] ?? 'live_stream', // Default for backward compatibility
       status: map['status'] ?? 'pending',
       createdAt: map['createdAt'] != null
           ? DateTime.parse(map['createdAt'])
@@ -67,11 +79,13 @@ class CallRequestModel {
     final data = doc.data() as Map<String, dynamic>;
     return CallRequestModel(
       requestId: data['requestId'] ?? doc.id,
-      streamId: data['streamId'] ?? '',
+      streamId: data['streamId'], // Now optional
       callerId: data['callerId'] ?? '',
       callerName: data['callerName'] ?? '',
       callerImage: data['callerImage'],
-      hostId: data['hostId'] ?? '',
+      hostId: data['hostId'], // Now optional
+      receiverId: data['receiverId'], // New field
+      callType: data['callType'] ?? 'live_stream', // Default for backward compatibility
       status: data['status'] ?? 'pending',
       createdAt: data['createdAt'] != null
           ? DateTime.parse(data['createdAt'])
@@ -91,6 +105,8 @@ class CallRequestModel {
     String? callerName,
     String? callerImage,
     String? hostId,
+    String? receiverId,
+    String? callType,
     String? status,
     DateTime? createdAt,
     DateTime? respondedAt,
@@ -104,6 +120,8 @@ class CallRequestModel {
       callerName: callerName ?? this.callerName,
       callerImage: callerImage ?? this.callerImage,
       hostId: hostId ?? this.hostId,
+      receiverId: receiverId ?? this.receiverId,
+      callType: callType ?? this.callType,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       respondedAt: respondedAt ?? this.respondedAt,

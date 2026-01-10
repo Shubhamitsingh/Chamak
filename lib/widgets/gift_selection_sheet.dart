@@ -237,14 +237,14 @@ class _GiftSelectionSheetState extends State<GiftSelectionSheet> with TickerProv
       int userBalance = 0;
       
       if (walletDoc.exists) {
-        final walletData = walletDoc.data() as Map<String, dynamic>?;
+        final walletData = walletDoc.data();
         final balance = (walletData?['balance'] as int?) ?? 0;
         final coins = (walletData?['coins'] as int?) ?? 0;
         userBalance = balance > 0 ? balance : coins;
       } else {
         final userDoc = await _firestore.collection('users').doc(widget.senderId).get();
         if (userDoc.exists) {
-          final userData = userDoc.data() as Map<String, dynamic>?;
+          final userData = userDoc.data();
           final uCoins = (userData?['uCoins'] as int?) ?? 0;
           final coins = (userData?['coins'] as int?) ?? 0;
           // ALWAYS use uCoins as primary (it's always updated during deductions)

@@ -637,10 +637,11 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
       }
       
       // Update call request status and make host available (don't block on this)
+      // For chat calls, streamId will be empty, which is handled by the service
       try {
         await _callRequestService.endCall(
           requestId: widget.requestId,
-          streamId: widget.streamId,
+          streamId: widget.streamId.isEmpty ? null : widget.streamId, // Pass null for chat calls
         );
       } catch (e) {
         debugPrint('⚠️ Error updating call request status: $e');

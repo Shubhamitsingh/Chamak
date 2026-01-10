@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/feedback_service.dart';
 import '../services/database_service.dart';
 

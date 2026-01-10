@@ -19,6 +19,7 @@ import '../services/event_service.dart';
 import '../services/announcement_tracking_service.dart';
 import '../services/coin_popup_service.dart';
 import '../services/database_service.dart';
+import '../services/online_status_service.dart';
 import '../models/live_stream_model.dart';
 import '../models/announcement_model.dart';
 import '../widgets/coin_purchase_popup.dart';
@@ -95,7 +96,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _currentBottomIndex = 0;
   int _topTabIndex = 0; // 0 = Explore, 1 = Live, 2 = Following, 3 = New
   final TextEditingController _searchController = TextEditingController();
@@ -108,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen>
   final DatabaseService _databaseService = DatabaseService();
   final LocationPermissionService _locationPermissionService =
       LocationPermissionService();
+  final OnlineStatusService _onlineStatusService = OnlineStatusService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   late AnimationController _marqueeController;
 
@@ -120,6 +122,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    // Add lifecycle observer for app state tracking
+    WidgetsBinding.instance.addObserver(this);
+    
     // Ensure status bar and navigation overlays stay visible (including Live tab)
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
@@ -144,12 +149,39 @@ class _HomeScreenState extends State<HomeScreen>
 
     // 📍 Request location for new users (first time opening app)
     _requestLocationForNewUser();
+    
+    // 🔴 Initialize online status tracking
+    _onlineStatusService.initializeStatusTracking();
+    
     // 🪙 Coin Purchase Popup
     // Test Mode: Shows EVERY TIME (see coin_popup_service.dart line 8)
     // Production: Shows strategically (max 3/week, smart timing)
     Future.delayed(const Duration(seconds: 2), () {
       _checkAndShowCoinPopup();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App came to foreground - update status immediately
+        _onlineStatusService.updateLastSeen(userId);
+        _onlineStatusService.initializeStatusTracking();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        // App went to background - stop periodic updates (lastSeen will remain until timeout)
+        _onlineStatusService.stopStatusTracking();
+        break;
+      case AppLifecycleState.hidden:
+        break;
+    }
   }
 
   void _startPreviewDelayTimer() {
@@ -508,6 +540,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _onlineStatusService.stopStatusTracking();
     _previewDelayTimer?.cancel();
     _previewDelayNotifier.dispose();
     _searchController.dispose();

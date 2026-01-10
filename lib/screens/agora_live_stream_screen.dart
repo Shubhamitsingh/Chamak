@@ -100,7 +100,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   
   // Coin balance state (for viewers)
   int _userBalance = 0;
-  bool _isLoadingBalance = false;
+  // Removed unused _isLoadingBalance - was set but never read
   StreamSubscription<DocumentSnapshot>? _balanceSubscription; // Real-time balance listener
   
   // Promotional overlay state
@@ -111,7 +111,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   
   // Admin message popup state
   String? _currentAdminMessage;
-  bool _adminMessageShown = false;
+  // Removed unused _adminMessageShown - was set but never read
   Timer? _adminMessageTimer;
   StreamSubscription<QuerySnapshot>? _viewersSubscription; // Listen for new viewers
   
@@ -341,12 +341,8 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   
   // Show admin message popup
   void _showAdminMessagePopup(String message) {
-    // Reset flag to allow showing again
-    _adminMessageShown = false;
-    
     setState(() {
       _currentAdminMessage = message;
-      _adminMessageShown = true;
     });
     
     // Auto-close after 3 seconds
@@ -355,7 +351,6 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       if (mounted) {
         setState(() {
           _currentAdminMessage = null;
-          _adminMessageShown = false;
         });
       }
     });
@@ -2331,9 +2326,11 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       debugPrint('📞 Generated token for private call: $callChannelName');
       
       // Update call request with channel info (with timeout)
+      // For chat calls, streamId is null; for live stream calls, use request.streamId or widget.streamId
+      final streamIdForCall = request.streamId ?? (request.callType == 'live_stream' ? widget.streamId : null);
       await _callRequestService.acceptCallRequest(
         requestId: request.requestId,
-        streamId: request.streamId,
+        streamId: streamIdForCall, // null for chat calls, streamId for live stream calls
         callerId: request.callerId,
         callChannelName: callChannelName,
         callToken: callToken,
@@ -2347,12 +2344,12 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
             builder: (context) => PrivateCallScreen(
               callChannelName: callChannelName,
               callToken: callToken,
-              streamId: request.streamId,
+              streamId: request.streamId ?? '', // Empty string for chat calls
               requestId: request.requestId,
               otherUserId: request.callerId,
               otherUserName: request.callerName,
               otherUserImage: request.callerImage,
-              isHost: true,
+              isHost: true, // Host/receiver always pays no coins
             ),
           ),
         );
@@ -2427,20 +2424,15 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   Future<void> _loadUserBalance() async {
     if (widget.isHost) return;
     
-    setState(() => _isLoadingBalance = true);
     try {
       final balance = await _coinDeductionService.getUserBalance(_auth.currentUser!.uid);
       if (mounted) {
         setState(() {
           _userBalance = balance;
-          _isLoadingBalance = false;
         });
       }
     } catch (e) {
       debugPrint('❌ Error loading balance: $e');
-      if (mounted) {
-        setState(() => _isLoadingBalance = false);
-      }
     }
   }
   
@@ -2606,7 +2598,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                 builder: (context) => PrivateCallScreen(
                   callChannelName: callChannelName,
                   callToken: callToken,
-                  streamId: request.streamId,
+                  streamId: request.streamId ?? widget.streamId ?? '', // Handle nullable streamId
                   requestId: request.requestId,
                   otherUserId: stream.hostId,
                   otherUserName: stream.hostName,
@@ -2656,7 +2648,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                   builder: (context) => PrivateCallScreen(
                     callChannelName: callChannelName,
                     callToken: callToken,
-                    streamId: request.streamId,
+                    streamId: request.streamId ?? widget.streamId ?? '', // Handle nullable streamId
                     requestId: request.requestId,
                     otherUserId: stream.hostId,
                     otherUserName: stream.hostName,

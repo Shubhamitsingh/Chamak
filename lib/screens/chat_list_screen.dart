@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:async';
 import '../models/user_model.dart';
 import '../models/chat_model.dart';
+import '../models/call_request_model.dart';
 import '../services/chat_service.dart';
+import '../services/online_status_service.dart';
+import '../services/call_request_service.dart';
+import '../services/agora_token_service.dart';
+import '../widgets/call_request_dialog.dart';
 import 'chat_screen.dart';
 import 'user_search_screen.dart';
+import 'private_call_screen.dart';
 import '../services/search_service.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -19,12 +27,30 @@ class ChatListScreen extends StatefulWidget {
 class _ChatListScreenState extends State<ChatListScreen> {
   final ChatService _chatService = ChatService();
   final SearchService _searchService = SearchService();
+  final OnlineStatusService _onlineStatusService = OnlineStatusService();
+  final CallRequestService _callRequestService = CallRequestService();
+  final AgoraTokenService _tokenService = AgoraTokenService();
   String? _currentUserId;
+  
+  // Incoming call state
+  StreamSubscription<List<CallRequestModel>>? _incomingCallSubscription;
+  bool _isCallDialogShowing = false; // Track if call dialog is currently showing (prevent duplicates)
 
   @override
   void initState() {
     super.initState();
     _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    
+    // Setup incoming call listener
+    if (_currentUserId != null) {
+      _setupIncomingCallListener();
+    }
+  }
+  
+  @override
+  void dispose() {
+    _incomingCallSubscription?.cancel();
+    super.dispose();
   }
 
   String _formatTimestamp(DateTime timestamp) {
@@ -43,6 +69,153 @@ class _ChatListScreenState extends State<ChatListScreen> {
     } else {
       // Older - show date
       return DateFormat('dd/MM/yy').format(timestamp);
+    }
+  }
+
+  // Setup incoming call listener
+  void _setupIncomingCallListener() {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    _incomingCallSubscription = _callRequestService
+        .listenToIncomingChatCallRequests(currentUserId)
+        .listen((requests) {
+      if (requests.isNotEmpty && mounted && !_isCallDialogShowing) {
+        final request = requests.first;
+        _showIncomingCallDialog(request);
+      }
+    });
+  }
+
+  // Show incoming call dialog
+  void _showIncomingCallDialog(CallRequestModel request) {
+    if (!mounted || _isCallDialogShowing) return;
+    
+    setState(() {
+      _isCallDialogShowing = true;
+    });
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => CallRequestDialog(
+        callRequest: request,
+        onAccept: () => _handleAcceptCall(request),
+        onReject: () => _handleRejectCall(request.requestId),
+      ),
+    ).then((_) {
+      // Reset flag when dialog is dismissed
+      if (mounted) {
+        setState(() {
+          _isCallDialogShowing = false;
+        });
+      }
+    });
+  }
+
+  // Handle accept call
+  Future<void> _handleAcceptCall(CallRequestModel request) async {
+    try {
+      // Request permissions first
+      if (!mounted) return;
+      final cameraStatus = await Permission.camera.request();
+      final micStatus = await Permission.microphone.request();
+
+      if (cameraStatus.isDenied || micStatus.isDenied) {
+        if (mounted) {
+          Navigator.pop(context); // Close dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Camera and microphone permissions are required for video calls'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
+        if (mounted) {
+          Navigator.pop(context); // Close dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Please enable camera and microphone permissions in app settings'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'Settings',
+                textColor: Colors.white,
+                onPressed: () => openAppSettings(),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Generate call channel name and token
+      final callChannelName = 'private_call_${request.requestId}';
+      final callToken = await _tokenService.getHostToken(
+        channelName: callChannelName,
+      );
+
+      // Accept call request
+      await _callRequestService.acceptCallRequest(
+        requestId: request.requestId,
+        streamId: null, // No streamId for chat calls
+        callerId: request.callerId,
+        callChannelName: callChannelName,
+        callToken: callToken,
+      );
+
+      if (!mounted) return;
+      
+      // Close dialog before navigation
+      Navigator.pop(context);
+      
+      // Navigate to call screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PrivateCallScreen(
+            callChannelName: callChannelName,
+            callToken: callToken,
+            streamId: '', // Empty for chat calls
+            requestId: request.requestId,
+            otherUserId: request.callerId,
+            otherUserName: request.callerName,
+            otherUserImage: request.callerImage ?? '',
+            isHost: true, // Receiver is host (doesn't pay coins)
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error accepting call: $e');
+      if (mounted) {
+        Navigator.pop(context); // Close dialog on error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to accept call: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Handle reject call
+  Future<void> _handleRejectCall(String requestId) async {
+    try {
+      await _callRequestService.rejectCallRequest(requestId);
+      if (mounted) {
+        Navigator.pop(context); // Close dialog
+      }
+    } catch (e) {
+      debugPrint('❌ Error rejecting call: $e');
+      if (mounted) {
+        Navigator.pop(context); // Close dialog on error
+      }
     }
   }
 
@@ -295,18 +468,31 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           )
                         : null,
                   ),
-                  // Online indicator
+                  // Real-time online indicator (only shows green for online)
                   Positioned(
                     bottom: 2,
                     right: 2,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF04B104),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
+                    child: StreamBuilder<String>(
+                      stream: _onlineStatusService.getUserStatusStream(otherUserId),
+                      builder: (context, snapshot) {
+                        final status = snapshot.data ?? 'offline';
+                        
+                        // Only show indicator if online
+                        if (status == 'online') {
+                          return Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF04B104), // Green for online
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                          );
+                        }
+                        
+                        // Offline - no indicator
+                        return const SizedBox.shrink();
+                      },
                     ),
                   ),
                 ],

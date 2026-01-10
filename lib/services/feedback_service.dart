@@ -33,7 +33,7 @@ class FeedbackService {
         try {
           final userDoc = await _firestore.collection('users').doc(userIdToUse).get();
           if (userDoc.exists) {
-            final userData = userDoc.data() as Map<String, dynamic>?;
+            final userData = userDoc.data();
             finalUserName ??= userData?['displayName'] ?? userData?['name'];
             finalUserPhone ??= userData?['phoneNumber'] ?? userData?['phone'];
           }

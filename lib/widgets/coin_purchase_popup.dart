@@ -4,47 +4,133 @@ import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/coin_popup_service.dart';
 import '../screens/wallet_screen.dart';
+import 'dart:async';
 
-/// Beautiful coin purchase popup with bottom sheet design matching the exclusive offer style
+/// Enum for different popup styles
+enum PopupStyle {
+  starburst,      // #1 - Bottom sheet with starburst (existing)
+  premiumCard,    // #2 - Center modal premium card
+  flashDeal,      // #3 - Full screen flash deal
+  minimalist,     // #4 - Side panel minimalist
+}
+
+/// Coin purchase popup with 4 unique designs that rotate randomly
 class CoinPurchasePopup {
   final CoinPopupService _popupService = CoinPopupService();
   
   // Check if in test mode
   bool get isTestMode => CoinPopupService.TEST_MODE;
   
-  /// Show the coin purchase dialog as bottom sheet
-  Future<void> show(BuildContext context, {String? specialOffer}) async {
+  /// Get random popup style (weighted probabilities)
+  PopupStyle _getRandomPopupStyle() {
+    final random = math.Random();
+    final value = random.nextDouble();
+    
+    // Weighted probabilities:
+    // Starburst: 30%, Premium: 25%, Flash: 25%, Minimalist: 20%
+    if (value < 0.30) return PopupStyle.starburst;
+    if (value < 0.55) return PopupStyle.premiumCard;
+    if (value < 0.80) return PopupStyle.flashDeal;
+    return PopupStyle.minimalist;
+  }
+  
+  /// Show the coin purchase dialog with random style selection (all as bottom sheets)
+  Future<void> show(BuildContext context, {String? specialOffer, PopupStyle? forcedStyle}) async {
     // Record that popup was shown
     await _popupService.recordPopupShown();
     
+    // Get popup style (random or forced for testing)
+    final style = forcedStyle ?? _getRandomPopupStyle();
+    
+    Widget popupWidget;
+    
+    switch (style) {
+      case PopupStyle.starburst:
+        popupWidget = _StarburstPopup(
+          specialOffer: specialOffer,
+          popupService: _popupService,
+        );
+        break;
+        
+      case PopupStyle.premiumCard:
+        popupWidget = _PremiumCardPopup(
+          specialOffer: specialOffer,
+          popupService: _popupService,
+        );
+        break;
+        
+      case PopupStyle.flashDeal:
+        popupWidget = _FlashDealPopup(
+          specialOffer: specialOffer,
+          popupService: _popupService,
+        );
+        break;
+        
+      case PopupStyle.minimalist:
+        popupWidget = _MinimalistPopup(
+          specialOffer: specialOffer,
+          popupService: _popupService,
+        );
+        break;
+    }
+    
+    // All popups use bottom sheet format
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withOpacity(0.7),
-      builder: (context) => _CoinPurchaseBottomSheet(
-        specialOffer: specialOffer,
-        popupService: _popupService,
-      ),
+      isDismissible: true,
+      builder: (context) => popupWidget,
     );
+  }
+  
+  /// Navigate to wallet screen (shared function)
+  static void _navigateToWallet(BuildContext context) {
+    Navigator.pop(context);
+    
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final phoneNumber = currentUser?.phoneNumber ?? '';
+    
+    if (phoneNumber.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WalletScreen(
+            phoneNumber: phoneNumber,
+            isHost: false,
+            showBackButton: true,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to get user information. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 
-class _CoinPurchaseBottomSheet extends StatefulWidget {
+// ============================================================================
+// POPUP #1: STARBURST BOTTOM SHEET (Existing Design)
+// ============================================================================
+class _StarburstPopup extends StatefulWidget {
   final String? specialOffer;
   final CoinPopupService popupService;
   
-  const _CoinPurchaseBottomSheet({
+  const _StarburstPopup({
     this.specialOffer,
     required this.popupService,
   });
 
   @override
-  State<_CoinPurchaseBottomSheet> createState() => _CoinPurchaseBottomSheetState();
+  State<_StarburstPopup> createState() => _StarburstPopupState();
 }
 
-class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with TickerProviderStateMixin {
-  // Featured offer - can be customized
+class _StarburstPopupState extends State<_StarburstPopup> with TickerProviderStateMixin {
   final int discountPercent = 50;
   final int coins = 13000;
   final double originalPrice = 1499.00;
@@ -77,7 +163,7 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final badgeSize = 110.0; // Starburst badge size
+    final badgeSize = 110.0;
     
     return SlideInUp(
       duration: const Duration(milliseconds: 400),
@@ -85,17 +171,16 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
         clipBehavior: Clip.none,
         alignment: Alignment.topCenter,
         children: [
-          // Main popup container
           Container(
-            height: screenHeight * 0.50, // 50% of screen height
+            height: screenHeight * 0.50,
             margin: EdgeInsets.only(top: badgeSize * 0.5),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF2D2D3A),
-                  const Color(0xFF1A1A24),
+                  Color(0xFF2D2D3A),
+                  Color(0xFF1A1A24),
                   Colors.black,
                 ],
               ),
@@ -109,7 +194,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Handle bar
                   Container(
                     margin: const EdgeInsets.only(top: 8),
                     width: 32,
@@ -119,11 +203,7 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  
-                  // Space for the badge that overlaps
                   SizedBox(height: badgeSize * 0.55),
-                  
-                  // Title
                   const Text(
                     'Exclusive Offer!',
                     style: TextStyle(
@@ -133,10 +213,7 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
                       letterSpacing: 0.5,
                     ),
                   ),
-                  
                   const SizedBox(height: 8),
-                  
-                  // Subtitle
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Text(
@@ -149,34 +226,19 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
                       ),
                     ),
                   ),
-                  
                   const SizedBox(height: 24),
-                  
-                  // Coin Display
                   _buildCoinDisplay(),
-                  
                   const SizedBox(height: 18),
-                  
-                  // Price Display
                   _buildPriceDisplay(),
-                  
                   const Spacer(),
-                  
-                  // Purchase Button
                   _buildPurchaseButton(),
-                  
                   const SizedBox(height: 8),
-                  
-                  // Later Button
                   _buildLaterButton(),
-                  
                   const SizedBox(height: 16),
                 ],
               ),
             ),
           ),
-          
-          // Starburst Sale Badge - 50% outside popup
           Positioned(
             top: 0,
             child: _buildStarburstBadge(),
@@ -187,7 +249,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
   }
 
   Widget _buildStarburstBadge() {
-    // Consistent pink color for badge
     const badgeColor = Color(0xFFE91E63);
     
     return AnimatedBuilder(
@@ -199,7 +260,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Outer glow
               Container(
                 width: 110,
                 height: 110,
@@ -214,7 +274,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
                   ],
                 ),
               ),
-              // Starburst shape only
               CustomPaint(
                 size: const Size(110, 110),
                 painter: StarburstPainter(
@@ -222,7 +281,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
                   color: badgeColor,
                 ),
               ),
-              // Text directly on starburst (no inner circle)
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -262,7 +320,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Gold coin image (same as wallet grid)
               Image.asset(
                 'assets/images/coin3.png',
                 width: 38,
@@ -270,7 +327,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
                 fit: BoxFit.contain,
               ),
               const SizedBox(width: 8),
-              // Coin amount
               Text(
                 '$coins',
                 style: const TextStyle(
@@ -291,7 +347,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Original price (crossed out)
         Text(
           '₹${originalPrice.toStringAsFixed(2)}',
           style: TextStyle(
@@ -304,7 +359,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
           ),
         ),
         const SizedBox(width: 8),
-        // "discounted to" text
         Text(
           'discounted to',
           style: TextStyle(
@@ -313,7 +367,6 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
           ),
         ),
         const SizedBox(width: 8),
-        // Discounted price
         Text(
           '₹${discountedPrice.toStringAsFixed(2)}',
           style: const TextStyle(
@@ -353,36 +406,7 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
           ],
         ),
         child: ElevatedButton(
-          onPressed: () {
-            // Close the popup first
-            Navigator.pop(context);
-            
-            // Get user phone number from Firebase Auth
-            final currentUser = FirebaseAuth.instance.currentUser;
-            final phoneNumber = currentUser?.phoneNumber ?? '';
-            
-            // Navigate to wallet screen
-            if (phoneNumber.isNotEmpty) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => WalletScreen(
-                    phoneNumber: phoneNumber,
-                    isHost: false,
-                    showBackButton: true,
-                  ),
-                ),
-              );
-            } else {
-              // If no phone number, show error
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Unable to get user information. Please try again.'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
+          onPressed: () => CoinPurchasePopup._navigateToWallet(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
@@ -424,7 +448,1019 @@ class _CoinPurchaseBottomSheetState extends State<_CoinPurchaseBottomSheet> with
   }
 }
 
-// Custom painter for the starburst shape with rounded corners
+// ============================================================================
+// POPUP #2: PREMIUM CARD (Same Layout as #1, Different Colors & Values)
+// ============================================================================
+class _PremiumCardPopup extends StatefulWidget {
+  final String? specialOffer;
+  final CoinPopupService popupService;
+  
+  const _PremiumCardPopup({
+    this.specialOffer,
+    required this.popupService,
+  });
+
+  @override
+  State<_PremiumCardPopup> createState() => _PremiumCardPopupState();
+}
+
+class _PremiumCardPopupState extends State<_PremiumCardPopup> with TickerProviderStateMixin {
+  // Different values for Popup #2
+  final int discountPercent = 20;
+  final int coins = 28000;
+  final double originalPrice = 2499.00;
+  final double discountedPrice = 1999.00;
+  
+  // Badge color - Purple/Pink gradient
+  final Color badgeColor = const Color(0xFF9C27B0);
+
+  late AnimationController _pulseController;
+  late AnimationController _starburstController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _starburstController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _starburstController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final badgeSize = 110.0;
+    
+    return SlideInUp(
+      duration: const Duration(milliseconds: 400),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          Container(
+            height: screenHeight * 0.50,
+            margin: EdgeInsets.only(top: badgeSize * 0.5),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF3D2D4A),  // Dark purple-tinted (matches purple badge)
+                  Color(0xFF2A1A34),  // Darker purple-tinted
+                  Color(0xFF1A0A24),  // Very dark purple-black
+                ],
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 32,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(height: badgeSize * 0.55),
+                  const Text(
+                    'Exclusive Offer!',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'Make a new purchase and take advantage of this insane offer!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.8),
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildCoinDisplay(),
+                  const SizedBox(height: 18),
+                  _buildPriceDisplay(),
+                  const Spacer(),
+                  _buildPurchaseButton(),
+                  const SizedBox(height: 8),
+                  _buildLaterButton(),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            child: _buildStarburstBadge(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarburstBadge() {
+    return AnimatedBuilder(
+      animation: _starburstController,
+      builder: (context, child) {
+        return SizedBox(
+          width: 110,
+          height: 110,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: badgeColor.withOpacity(0.5),
+                      blurRadius: 25,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              CustomPaint(
+                size: const Size(110, 110),
+                painter: StarburstPainter(
+                  rotation: _starburstController.value * 2 * math.pi,
+                  color: badgeColor,
+                ),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '%$discountPercent',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1,
+                    ),
+                  ),
+                  const Text(
+                    'Sale',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCoinDisplay() {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final scale = 1.0 + (_pulseController.value * 0.05);
+        return Transform.scale(
+          scale: scale,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/coin3.png',
+                width: 38,
+                height: 38,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$coins',
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceDisplay() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '₹${originalPrice.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.5),
+            decoration: TextDecoration.lineThrough,
+            decorationColor: Colors.white.withOpacity(0.5),
+            decorationThickness: 2,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'discounted to',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '₹${discountedPrice.toStringAsFixed(2)}',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPurchaseButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        width: double.infinity,
+        height: 50,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              badgeColor,
+              badgeColor.withOpacity(0.8),
+              badgeColor.withOpacity(0.6),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: badgeColor.withOpacity(0.6),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: () => CoinPurchasePopup._navigateToWallet(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+          ),
+          child: const Text(
+            'Purchase Coins',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLaterButton() {
+    return TextButton(
+      onPressed: () => Navigator.pop(context),
+      style: TextButton.styleFrom(
+        minimumSize: Size.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        'Later',
+        style: TextStyle(
+          fontSize: 13,
+          color: Colors.white.withOpacity(0.7),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// POPUP #3: FLASH DEAL (Same Layout as #1, Different Colors & Values)
+// ============================================================================
+class _FlashDealPopup extends StatefulWidget {
+  final String? specialOffer;
+  final CoinPopupService popupService;
+  
+  const _FlashDealPopup({
+    this.specialOffer,
+    required this.popupService,
+  });
+
+  @override
+  State<_FlashDealPopup> createState() => _FlashDealPopupState();
+}
+
+class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderStateMixin {
+  // Different values for Popup #3
+  final int discountPercent = 33;
+  final int coins = 8000;
+  final double originalPrice = 899.00;
+  final double discountedPrice = 599.00;
+  
+  // Badge color - Cyan/Blue
+  final Color badgeColor = const Color(0xFF00E5FF);
+
+  late AnimationController _pulseController;
+  late AnimationController _starburstController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _starburstController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _starburstController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final badgeSize = 110.0;
+    
+    return SlideInUp(
+      duration: const Duration(milliseconds: 400),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          Container(
+            height: screenHeight * 0.50,
+            margin: EdgeInsets.only(top: badgeSize * 0.5),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF2D3A4A),  // Dark cyan-blue-tinted (matches cyan badge)
+                  Color(0xFF1A242A),  // Darker cyan-blue-tinted
+                  Color(0xFF0A141A),  // Very dark cyan-black
+                ],
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 32,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(height: badgeSize * 0.55),
+                  const Text(
+                    'Exclusive Offer!',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'Make a new purchase and take advantage of this insane offer!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.8),
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildCoinDisplay(),
+                  const SizedBox(height: 18),
+                  _buildPriceDisplay(),
+                  const Spacer(),
+                  _buildPurchaseButton(),
+                  const SizedBox(height: 8),
+                  _buildLaterButton(),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            child: _buildStarburstBadge(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarburstBadge() {
+    return AnimatedBuilder(
+      animation: _starburstController,
+      builder: (context, child) {
+        return SizedBox(
+          width: 110,
+          height: 110,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: badgeColor.withOpacity(0.5),
+                      blurRadius: 25,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              CustomPaint(
+                size: const Size(110, 110),
+                painter: StarburstPainter(
+                  rotation: _starburstController.value * 2 * math.pi,
+                  color: badgeColor,
+                ),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '%$discountPercent',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1,
+                    ),
+                  ),
+                  const Text(
+                    'Sale',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCoinDisplay() {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final scale = 1.0 + (_pulseController.value * 0.05);
+        return Transform.scale(
+          scale: scale,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/coin3.png',
+                width: 38,
+                height: 38,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$coins',
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceDisplay() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '₹${originalPrice.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.5),
+            decoration: TextDecoration.lineThrough,
+            decorationColor: Colors.white.withOpacity(0.5),
+            decorationThickness: 2,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'discounted to',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '₹${discountedPrice.toStringAsFixed(2)}',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPurchaseButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        width: double.infinity,
+        height: 50,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              badgeColor,
+              badgeColor.withOpacity(0.8),
+              badgeColor.withOpacity(0.6),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: badgeColor.withOpacity(0.6),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: () => CoinPurchasePopup._navigateToWallet(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+          ),
+          child: const Text(
+            'Purchase Coins',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLaterButton() {
+    return TextButton(
+      onPressed: () => Navigator.pop(context),
+      style: TextButton.styleFrom(
+        minimumSize: Size.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        'Later',
+        style: TextStyle(
+          fontSize: 13,
+          color: Colors.white.withOpacity(0.7),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// POPUP #4: MINIMALIST PREMIUM (Same Layout as #1, Different Colors & Values)
+// ============================================================================
+class _MinimalistPopup extends StatefulWidget {
+  final String? specialOffer;
+  final CoinPopupService popupService;
+  
+  const _MinimalistPopup({
+    this.specialOffer,
+    required this.popupService,
+  });
+
+  @override
+  State<_MinimalistPopup> createState() => _MinimalistPopupState();
+}
+
+class _MinimalistPopupState extends State<_MinimalistPopup> with TickerProviderStateMixin {
+  // Different values for Popup #4
+  final int discountPercent = 20;
+  final int coins = 50000;
+  final double originalPrice = 3748.75; // Adjusted to maintain 20% discount with ₹2,999
+  final double discountedPrice = 2999.00;
+  
+  // Badge color - Orange/Gold
+  final Color badgeColor = const Color(0xFFFF9800);
+
+  late AnimationController _pulseController;
+  late AnimationController _starburstController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _starburstController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _starburstController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final badgeSize = 110.0;
+    
+    return SlideInUp(
+      duration: const Duration(milliseconds: 400),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          Container(
+            height: screenHeight * 0.50,
+            margin: EdgeInsets.only(top: badgeSize * 0.5),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF4A3D2D),  // Dark orange-brown-tinted (matches orange badge)
+                  Color(0xFF342A1A),  // Darker orange-brown-tinted
+                  Color(0xFF241A0A),  // Very dark orange-black
+                ],
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 32,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(height: badgeSize * 0.55),
+                  const Text(
+                    'Exclusive Offer!',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'Make a new purchase and take advantage of this insane offer!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.8),
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildCoinDisplay(),
+                  const SizedBox(height: 18),
+                  _buildPriceDisplay(),
+                  const Spacer(),
+                  _buildPurchaseButton(),
+                  const SizedBox(height: 8),
+                  _buildLaterButton(),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            child: _buildStarburstBadge(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarburstBadge() {
+    return AnimatedBuilder(
+      animation: _starburstController,
+      builder: (context, child) {
+        return SizedBox(
+          width: 110,
+          height: 110,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: badgeColor.withOpacity(0.5),
+                      blurRadius: 25,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              CustomPaint(
+                size: const Size(110, 110),
+                painter: StarburstPainter(
+                  rotation: _starburstController.value * 2 * math.pi,
+                  color: badgeColor,
+                ),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '%$discountPercent',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1,
+                    ),
+                  ),
+                  const Text(
+                    'Sale',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCoinDisplay() {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final scale = 1.0 + (_pulseController.value * 0.05);
+        return Transform.scale(
+          scale: scale,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/coin3.png',
+                width: 38,
+                height: 38,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$coins',
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceDisplay() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '₹${originalPrice.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.5),
+            decoration: TextDecoration.lineThrough,
+            decorationColor: Colors.white.withOpacity(0.5),
+            decorationThickness: 2,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'discounted to',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '₹${discountedPrice.toStringAsFixed(2)}',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPurchaseButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        width: double.infinity,
+        height: 50,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              badgeColor,
+              badgeColor.withOpacity(0.8),
+              badgeColor.withOpacity(0.6),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: badgeColor.withOpacity(0.6),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: () => CoinPurchasePopup._navigateToWallet(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+          ),
+          child: const Text(
+            'Purchase Coins',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLaterButton() {
+    return TextButton(
+      onPressed: () => Navigator.pop(context),
+      style: TextButton.styleFrom(
+        minimumSize: Size.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        'Later',
+        style: TextStyle(
+          fontSize: 13,
+          color: Colors.white.withOpacity(0.7),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// CUSTOM PAINTERS
+// ============================================================================
+
+// Starburst Painter (existing)
 class StarburstPainter extends CustomPainter {
   final double rotation;
   final Color color;
@@ -439,7 +1475,7 @@ class StarburstPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final outerRadius = size.width / 2;
     final innerRadius = outerRadius * 0.80;
-    final points = 11; // 11 corners
+    final points = 11;
 
     final path = Path();
     
@@ -448,7 +1484,6 @@ class StarburstPainter extends CustomPainter {
     canvas.rotate(rotation);
     canvas.translate(-center.dx, -center.dy);
 
-    // Calculate all points first
     List<Offset> allPoints = [];
     for (int i = 0; i < points * 2; i++) {
       final radius = i.isEven ? outerRadius : innerRadius;
@@ -458,20 +1493,15 @@ class StarburstPainter extends CustomPainter {
       allPoints.add(Offset(x, y));
     }
 
-    // Draw rounded starburst using quadratic bezier curves
-    final roundness = 0.3; // Controls how rounded the corners are
+    final roundness = 0.3;
     
-    path.moveTo(
-      allPoints[0].dx,
-      allPoints[0].dy,
-    );
+    path.moveTo(allPoints[0].dx, allPoints[0].dy);
 
     for (int i = 0; i < allPoints.length; i++) {
       final current = allPoints[i];
       final next = allPoints[(i + 1) % allPoints.length];
       final afterNext = allPoints[(i + 2) % allPoints.length];
       
-      // Calculate control point for smooth curve
       final midX = current.dx + (next.dx - current.dx) * (1 - roundness);
       final midY = current.dy + (next.dy - current.dy) * (1 - roundness);
       
@@ -484,13 +1514,11 @@ class StarburstPainter extends CustomPainter {
     
     path.close();
 
-    // Draw shadow
     final shadowPaint = Paint()
       ..color = color.withOpacity(0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     canvas.drawPath(path, shadowPaint);
 
-    // Draw gradient fill
     final gradient = RadialGradient(
       colors: [
         color,
@@ -511,3 +1539,4 @@ class StarburstPainter extends CustomPainter {
     return oldDelegate.rotation != rotation;
   }
 }
+

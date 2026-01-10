@@ -363,25 +363,29 @@ service cloud.firestore {
     
     // Call requests collection
     match /callRequests/{requestId} {
-      // Callers can create call requests (viewers calling hosts)
+      // Callers can create call requests (viewers calling hosts OR users calling users)
       allow create: if request.auth != null 
         && request.resource.data != null
         && request.auth.uid == request.resource.data.callerId;
       
-      // Hosts can read their incoming call requests
-      // Callers can read their own call requests
+      // Hosts can read their incoming call requests (live stream calls - by hostId)
+      // Receivers can read their incoming call requests (chat calls - by receiverId)
+      // Callers can read their own call requests (by callerId)
       allow read: if request.auth != null 
         && (resource.data != null && (
-          resource.data.hostId == request.auth.uid || 
-          resource.data.callerId == request.auth.uid
+          resource.data.hostId == request.auth.uid ||  // Live stream calls (host)
+          resource.data.receiverId == request.auth.uid ||  // Chat calls (receiver)
+          resource.data.callerId == request.auth.uid  // All calls (caller)
         ));
       
-      // Hosts can update call requests (accept/reject)
+      // Hosts can update call requests (accept/reject live stream calls)
+      // Receivers can update call requests (accept/reject chat calls)
       // Callers can update their own call requests (cancel)
       allow update: if request.auth != null 
         && resource.data != null
-        && (resource.data.hostId == request.auth.uid || 
-            resource.data.callerId == request.auth.uid);
+        && (resource.data.hostId == request.auth.uid ||  // Live stream calls (host)
+            resource.data.receiverId == request.auth.uid ||  // Chat calls (receiver)
+            resource.data.callerId == request.auth.uid);  // All calls (caller)
       
       // Only server/Cloud Functions can delete
       allow delete: if false;

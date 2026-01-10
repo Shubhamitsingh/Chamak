@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/database_service.dart';
+import '../services/online_status_service.dart';
 import '../models/user_model.dart';
 
 class ViewerListSheet extends StatelessWidget {
@@ -15,6 +16,7 @@ class ViewerListSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final DatabaseService databaseService = DatabaseService();
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final OnlineStatusService onlineStatusService = OnlineStatusService();
 
     return Container(
       decoration: const BoxDecoration(
@@ -178,6 +180,8 @@ class ViewerListSheet extends StatelessWidget {
                         }
                         final profilePicture = userModel?.profileImage;
                         final gender = userModel?.gender;
+                        // Use userModel userId if available, otherwise fallback to viewerId
+                        final userIdForStatus = userModel?.userId ?? viewerId;
 
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -279,14 +283,27 @@ class ViewerListSheet extends StatelessWidget {
                                 ),
                               ),
                               
-                              // Online indicator
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
+                              // Real-time online indicator (only shows green for online)
+                              StreamBuilder<String>(
+                                stream: onlineStatusService.getUserStatusStream(userIdForStatus),
+                                builder: (context, statusSnapshot) {
+                                  final status = statusSnapshot.data ?? 'offline';
+                                  
+                                  // Only show indicator if online
+                                  if (status == 'online') {
+                                    return Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: Colors.green, // Green for online only
+                                        shape: BoxShape.circle,
+                                      ),
+                                    );
+                                  }
+                                  
+                                  // Offline - no indicator
+                                  return const SizedBox.shrink();
+                                },
                               ),
                             ],
                           ),
