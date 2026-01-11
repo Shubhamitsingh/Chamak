@@ -13,6 +13,7 @@ import '../services/database_service.dart';
 import '../services/gift_service.dart';
 import '../services/coin_service.dart';
 import '../services/payprime_payment_service.dart';
+import '../services/withdrawal_service.dart';
 
 class WalletScreen extends StatefulWidget {
   final String phoneNumber;
@@ -35,6 +36,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   final GiftService _giftService = GiftService();
   final CoinService _coinService = CoinService();
   final PayPrimePaymentService _paymentService = PayPrimePaymentService();
+  final WithdrawalService _withdrawalService = WithdrawalService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Real coin data - fetched from Firestore
@@ -1373,131 +1375,283 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   void _showWithdrawalDialog() {
     if (!mounted) return;
     final TextEditingController amountController = TextEditingController();
+    final TextEditingController upiIdController = TextEditingController();
+    String selectedMethod = 'UPI'; // Default to UPI
     
     try {
       showDialog(
         context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(AppLocalizations.of(context)!.withdrawEarningsTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF04B104).withValues(alpha:0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(AppLocalizations.of(context)!.withdrawEarningsTitle),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.currency_rupee,
-                        color: Color(0xFF04B104),
-                        size: 16,
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF04B104).withValues(alpha:0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.currency_rupee,
+                              color: Color(0xFF04B104),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              AppLocalizations.of(context)!.inr,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF04B104),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 2),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Available: ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
                       Text(
-                        AppLocalizations.of(context)!.inr,
+                        '₹${hostEarnings.toStringAsFixed(2)}',
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF04B104),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Available: ',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.withdrawalAmountINR,
+                      prefixText: '₹ ',
+                      prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFF04B104)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF04B104), width: 2),
+                      ),
+                    ),
                   ),
-                ),
-                Text(
-                  '₹${hostEarnings.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF04B104),
+                  const SizedBox(height: 15),
+                  // Payment Method Selection
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Payment Method:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.withdrawalAmountINR,
-                prefixText: '₹ ',
-                prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFF04B104)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF04B104), width: 2),
-                ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: const Text('UPI'),
+                          value: 'UPI',
+                          groupValue: selectedMethod,
+                          onChanged: (value) {
+                            setDialogState(() {
+                              selectedMethod = value!;
+                            });
+                          },
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // UPI ID Input
+                  TextField(
+                    controller: upiIdController,
+                    keyboardType: TextInputType.text,
+                    decoration: InputDecoration(
+                      labelText: 'UPI ID (e.g., yourname@paytm)',
+                      prefixIcon: const Icon(Icons.account_circle, color: Color(0xFF04B104)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF04B104), width: 2),
+                      ),
+                      hintText: 'Enter your UPI ID',
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    AppLocalizations.of(context)!.minimumWithdrawal50,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 15),
-            Text(
-              AppLocalizations.of(context)!.minimumWithdrawal50,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              amountController.dispose();
-              try {
-                Navigator.pop(context);
-              } catch (e) {
-                debugPrint('Error closing withdrawal dialog: $e');
-              }
-            },
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final amount = double.tryParse(amountController.text);
-              if (amount != null && amount >= 50 && amount <= hostEarnings) {
-                amountController.dispose();
-                try {
+            actions: [
+              TextButton(
+                onPressed: () {
+                  amountController.dispose();
+                  upiIdController.dispose();
+                  try {
+                    Navigator.pop(context);
+                  } catch (e) {
+                    debugPrint('Error closing withdrawal dialog: $e');
+                  }
+                },
+                child: Text(AppLocalizations.of(context)!.cancel),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final amount = double.tryParse(amountController.text);
+                  final upiId = upiIdController.text.trim();
+                  
+                  // Validation
+                  if (amount == null || amount < 50 || amount > hostEarnings) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(AppLocalizations.of(context)!.invalidAmount)),
+                    );
+                    return;
+                  }
+                  
+                  if (upiId.isEmpty) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter your UPI ID')),
+                    );
+                    return;
+                  }
+                  
+                  // Validate UPI ID format (basic validation)
+                  if (!upiId.contains('@')) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a valid UPI ID (e.g., yourname@paytm)')),
+                    );
+                    return;
+                  }
+                  
+                  // Close dialog and show loading
+                  amountController.dispose();
+                  upiIdController.dispose();
                   Navigator.pop(context);
-                  // TODO: Implement withdrawal API
-                  _showSuccessDialog(AppLocalizations.of(context)!.withdrawalRequestSubmitted);
-                } catch (e) {
-                  debugPrint('Error in withdrawal dialog: $e');
-                }
-              } else {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(AppLocalizations.of(context)!.invalidAmount)),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF04B104),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                  
+                  // Submit withdrawal request
+                  await _submitWithdrawalRequest(amount, selectedMethod, upiId);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF04B104),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(AppLocalizations.of(context)!.withdraw),
               ),
-            ),
-            child: Text(AppLocalizations.of(context)!.withdraw),
+            ],
           ),
-        ],
-      ),
+        ),
       );
     } catch (e) {
       debugPrint('Error showing withdrawal dialog: $e');
+    }
+  }
+  
+  // Submit withdrawal request to backend
+  Future<void> _submitWithdrawalRequest(double amount, String method, String upiId) async {
+    if (!mounted) return;
+    
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+    
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login again'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Get user details for withdrawal request
+      final userDoc = await _databaseService.getUser(currentUser.uid);
+      final userName = userDoc?['name'] as String?;
+      final displayId = userDoc?['displayId'] as String?;
+      
+      // Prepare payment details
+      final paymentDetails = {
+        'upiId': upiId,
+      };
+      
+      // Submit withdrawal request
+      final requestId = await _withdrawalService.submitWithdrawalRequest(
+        userId: currentUser.uid,
+        amount: amount,
+        withdrawalMethod: method,
+        paymentDetails: paymentDetails,
+        userName: userName,
+        displayId: displayId,
+      );
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+      
+      if (requestId != null) {
+        // Success
+        _showSuccessDialog(AppLocalizations.of(context)!.withdrawalRequestSubmitted);
+        debugPrint('✅ Withdrawal request submitted: $requestId');
+      } else {
+        // Failed
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to submit withdrawal request. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error submitting withdrawal request: $e');
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

@@ -580,7 +580,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       gradient: _containsDigitsWarning 
                           ? null
                           : const LinearGradient(
-                              colors: [Color(0xFFFF1B7C), Color(0xFF9C27B0)],
+                              colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),
@@ -590,7 +590,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ? null
                           : const [
                               BoxShadow(
-                                color: Color(0x809C27B0),
+                                color: Color(0x80FF1B7C),
                                 blurRadius: 8,
                                 offset: Offset(0, 2),
                               ),

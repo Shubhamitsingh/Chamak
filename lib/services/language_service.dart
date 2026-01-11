@@ -7,7 +7,6 @@ class LanguageService {
   // Supported languages
   static const Map<String, Map<String, String>> supportedLanguages = {
     'en': {'name': 'English', 'nativeName': 'English'},
-    'hng': {'name': 'Hinglish', 'nativeName': 'Hinglish'},
     'hi': {'name': 'Hindi', 'nativeName': 'हिंदी'},
     'ta': {'name': 'Tamil', 'nativeName': 'தமிழ்'},
     'te': {'name': 'Telugu', 'nativeName': 'తెలుగు'},
@@ -40,8 +39,6 @@ class LanguageService {
   
   /// Get Locale from language code
   Locale getLocaleFromLanguageCode(String languageCode) {
-    // Map Hinglish to English locale for now (UI stays English)
-    if (languageCode == 'hng') return const Locale('en');
     return Locale(languageCode);
   }
   

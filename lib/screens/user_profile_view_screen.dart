@@ -1877,9 +1877,9 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
   // Share Profile
   Future<void> _shareProfile() async {
     try {
-      // Create shareable content
-      final profileLink = 'https://chamak.app/profile/${widget.user.uid}'; // Replace with your actual app link
-      final shareText = 'Check out ${widget.user.name}\'s profile on Chamakz!\n$profileLink';
+      // Create shareable content with Play Store URL (including user ID)
+      final playStoreUrl = 'https://play.google.com/store/apps/details?id=com.chamakz.app&pcampaignid=web_share&userId=${widget.user.uid}';
+      final shareText = 'Check out ${widget.user.name}\'s profile on Chamakz!\nDownload the app: $playStoreUrl';
       
       // Use native share dialog (includes WhatsApp, Messages, Email, etc.)
       final result = await Share.share(

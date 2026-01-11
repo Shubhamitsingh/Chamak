@@ -84,7 +84,7 @@ class AboutScreen extends StatelessWidget {
             
             // App Version
             Text(
-              '${AppLocalizations.of(context)!.appVersion} 1.0.0',
+              '${AppLocalizations.of(context)!.appVersion} 1.0.1',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,

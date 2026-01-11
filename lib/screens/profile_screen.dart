@@ -58,9 +58,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   
   // Sample images for the slider
   final List<String> _sliderImages = [
-    'assets/images/bannerpromo.jpg',
     'assets/images/bannerpromo1.jpg',
     'assets/images/promobanner2.jpg',
+    'assets/images/promobanner1.jpg',
   ];
 
   @override

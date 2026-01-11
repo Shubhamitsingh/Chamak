@@ -12,8 +12,6 @@ class LanguageSelectionScreen extends StatelessWidget {
     switch (languageCode) {
       case 'en': // English
         return const Color(0xFF3B82F6); // Blue
-      case 'hng': // Hinglish
-        return const Color(0xFF22C55E); // Green
       case 'hi': // Hindi
         return const Color(0xFFFF6B35); // Orange
       case 'ta': // Tamil

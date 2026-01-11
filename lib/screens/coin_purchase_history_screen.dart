@@ -173,13 +173,22 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
               .limit(100)
               .snapshots(),
           builder: (context, callSnapshot) {
-            // Loading state
-            if (paymentSnapshot.connectionState == ConnectionState.waiting ||
-                callSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
-              );
-            }
+            return StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('gifts')
+                  .where('senderId', isEqualTo: userId)
+                  .orderBy('timestamp', descending: true)
+                  .limit(100)
+                  .snapshots(),
+              builder: (context, giftSnapshot) {
+                // Loading state
+                if (paymentSnapshot.connectionState == ConnectionState.waiting ||
+                    callSnapshot.connectionState == ConnectionState.waiting ||
+                    giftSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
+                  );
+                }
 
             // Combine transactions
             List<Map<String, dynamic>> allTransactions = [];
@@ -242,6 +251,45 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
               }
             }
 
+            // Add gift spending transactions
+            if (giftSnapshot.hasData && giftSnapshot.data != null) {
+              for (var doc in giftSnapshot.data!.docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                Timestamp? giftTimestamp;
+                
+                // Handle timestamp - can be Timestamp, String, or DateTime
+                if (data['timestamp'] != null) {
+                  if (data['timestamp'] is Timestamp) {
+                    giftTimestamp = data['timestamp'] as Timestamp;
+                  } else if (data['timestamp'] is String) {
+                    try {
+                      final dateTime = DateTime.parse(data['timestamp'] as String);
+                      giftTimestamp = Timestamp.fromDate(dateTime);
+                    } catch (e) {
+                      debugPrint('Error parsing gift timestamp string: $e');
+                      giftTimestamp = Timestamp.now();
+                    }
+                  } else if (data['timestamp'] is DateTime) {
+                    giftTimestamp = Timestamp.fromDate(data['timestamp'] as DateTime);
+                  } else {
+                    giftTimestamp = Timestamp.now();
+                  }
+                } else {
+                  giftTimestamp = Timestamp.now();
+                }
+                
+                allTransactions.add({
+                  'type': 'gift',
+                  'id': doc.id,
+                  'coins': data['uCoinsSpent'] as int? ?? 0,
+                  'timestamp': giftTimestamp,
+                  'giftType': data['giftType'] as String? ?? '',
+                  'receiverName': data['receiverName'] as String? ?? '',
+                  'receiverId': data['receiverId'] as String? ?? '',
+                });
+              }
+            }
+
             // Sort by timestamp (newest first)
             allTransactions.sort((a, b) {
               Timestamp? aTime = a['timestamp'] as Timestamp?;
@@ -286,15 +334,20 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
             }
 
             // Display filtered transactions
-            return ListView.builder(
-              padding: const EdgeInsets.all(12),
+            return ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: filteredTransactions.length,
+              separatorBuilder: (context, index) => Divider(
+                height: 1,
+                thickness: 1,
+                color: Colors.grey[200],
+              ),
               itemBuilder: (context, index) {
                 final transaction = filteredTransactions[index];
                 final type = transaction['type'] as String;
                 
                 if (type == 'purchase') {
-                  return _buildPurchaseTransactionCard(
+                  return _buildPurchaseTransactionItem(
                     coins: transaction['coins'] as int,
                     amount: transaction['amount'] as int,
                     utrNumber: transaction['utrNumber'] as String,
@@ -302,15 +355,26 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                     createdAt: (transaction['createdAt'] as Timestamp?)?.toDate(),
                     completedAt: (transaction['completedAt'] as Timestamp?)?.toDate(),
                   );
-                } else {
-                  // Deduction transaction
+                } else if (type == 'gift') {
+                  // Gift spending transaction
                   final timestamp = transaction['timestamp'] as Timestamp?;
-                  return _buildDeductionTransactionCard(
+                  return _buildGiftTransactionItem(
+                    coins: transaction['coins'] as int,
+                    timestamp: timestamp?.toDate(),
+                    giftType: transaction['giftType'] as String? ?? '',
+                    receiverName: transaction['receiverName'] as String? ?? '',
+                  );
+                } else {
+                  // Deduction transaction (call)
+                  final timestamp = transaction['timestamp'] as Timestamp?;
+                  return _buildDeductionTransactionItem(
                     coins: transaction['coins'] as int,
                     timestamp: timestamp?.toDate(),
                     duration: transaction['duration'] as int,
                   );
                 }
+              },
+            );
               },
             );
           },
@@ -363,7 +427,7 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     );
   }
 
-  Widget _buildPurchaseTransactionCard({
+  Widget _buildPurchaseTransactionItem({
     required int coins,
     required int amount,
     required String utrNumber,
@@ -373,407 +437,410 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
   }) {
     final isCompleted = status.toLowerCase() == 'completed';
     final statusColor = isCompleted ? const Color(0xFF04B104) : const Color(0xFFFF9800);
-    final statusText = isCompleted ? 'Completed' : 'Pending';
-    final statusIcon = isCompleted ? Icons.check_circle_rounded : Icons.access_time_rounded;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: statusColor.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              statusColor.withOpacity(0.05),
-              statusColor.withOpacity(0.02),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status indicator (left colored bar)
+          Container(
+            width: 3,
+            height: 50,
+            decoration: BoxDecoration(
+              color: statusColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Row: Status + Amount
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Status Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: statusColor.withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
+          const SizedBox(width: 12),
+          // Main content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top row: Amount and Status
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Amount
+                    Row(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Icon(statusIcon, color: Colors.white, size: 14),
-                        const SizedBox(width: 5),
+                        Image.asset(
+                          'assets/images/coin3.png',
+                          width: 16,
+                          height: 16,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.monetization_on,
+                              size: 16,
+                              color: Color(0xFFFFB800),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          statusText,
+                          NumberFormat.decimalPattern().format(coins),
                           style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Amount Column
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Image.asset(
-                            'assets/images/coin3.png',
-                            width: 18,
-                            height: 18,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.monetization_on,
-                                size: 18,
-                                color: Color(0xFFFFB800),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            NumberFormat.decimalPattern().format(coins),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '₹${NumberFormat.decimalPattern().format(amount)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Divider
-              Container(
-                height: 1,
-                color: Colors.grey[200],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Details Section
-              Row(
-                children: [
-                  // UTR Icon
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.receipt_long_rounded,
-                      color: Colors.blue,
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // UTR Number
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'UTR Number',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          utrNumber,
-                          style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Colors.black87,
-                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 10),
-              
-              // Date Section
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today_rounded,
-                    size: 14,
-                    color: Colors.grey[600],
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _formatDate(createdAt ?? DateTime.now()),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  if (completedAt != null) ...[
-                    const SizedBox(width: 16),
-                    Icon(
-                      Icons.check_circle_outline,
-                      size: 14,
-                      color: Colors.green[600],
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Completed: ${_formatDate(completedAt)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green[600],
-                        fontWeight: FontWeight.w500,
+                    // Status
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isCompleted ? 'Completed' : 'Pending',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: statusColor,
+                        ),
                       ),
                     ),
                   ],
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 6),
+                // Amount in rupees
+                Text(
+                  '₹${NumberFormat.decimalPattern().format(amount)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Date and UTR
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 12,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDate(createdAt ?? DateTime.now()),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    if (utrNumber.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.receipt,
+                        size: 12,
+                        color: Colors.grey[500],
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          utrNumber,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildDeductionTransactionCard({
+  Widget _buildDeductionTransactionItem({
     required int coins,
     DateTime? timestamp,
     required int duration,
   }) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: const Color(0xFFFF9800).withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFFFF9800).withOpacity(0.05),
-              const Color(0xFFFF9800).withOpacity(0.02),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status indicator (left colored bar)
+          Container(
+            width: 3,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF9800),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Row: Type + Amount
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Type Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF9800),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF9800).withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
+          const SizedBox(width: 12),
+          // Main content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top row: Amount and Type
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Amount
+                    Row(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Icon(Icons.remove_circle_rounded, color: Colors.white, size: 14),
-                        SizedBox(width: 5),
-                        Text(
-                          'CALL DEDUCTION',
+                        const Text(
+                          '-',
                           style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFFF9800),
+                          ),
+                        ),
+                        Image.asset(
+                          'assets/images/coin3.png',
+                          width: 16,
+                          height: 16,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.monetization_on,
+                              size: 16,
+                              color: Color(0xFFFFB800),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          NumberFormat.decimalPattern().format(coins),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  // Amount Column
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      const Text(
-                        '-',
+                    // Type
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF9800).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Call',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
                           color: Color(0xFFFF9800),
                         ),
                       ),
-                      Image.asset(
-                        'assets/images/coin3.png',
-                        width: 18,
-                        height: 18,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.monetization_on,
-                            size: 18,
-                            color: Color(0xFFFFB800),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        NumberFormat.decimalPattern().format(coins),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Divider
-              Container(
-                height: 1,
-                color: Colors.grey[200],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Details Section
-              Row(
-                children: [
-                  // Duration Icon
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
-                      Icons.phone_in_talk_rounded,
-                      color: Colors.orange,
-                      size: 16,
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Duration and Date
+                Row(
+                  children: [
+                    Icon(
+                      Icons.phone_in_talk,
+                      size: 12,
+                      color: Colors.grey[500],
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Duration
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDuration(duration),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.access_time,
+                      size: 12,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDate(timestamp ?? DateTime.now()),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGiftTransactionItem({
+    required int coins,
+    DateTime? timestamp,
+    required String giftType,
+    required String receiverName,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status indicator (left colored bar)
+          Container(
+            width: 3,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF69B4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Main content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top row: Amount and Type
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Amount
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Text(
-                          'Call Duration',
+                        const Text(
+                          '-',
                           style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFFF69B4),
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        Image.asset(
+                          'assets/images/coin3.png',
+                          width: 16,
+                          height: 16,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.monetization_on,
+                              size: 16,
+                              color: Color(0xFFFFB800),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          _formatDuration(duration),
+                          NumberFormat.decimalPattern().format(coins),
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Colors.black87,
-                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 10),
-              
-              // Date Section
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today_rounded,
-                    size: 14,
-                    color: Colors.grey[600],
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _formatDate(timestamp ?? DateTime.now()),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                    // Type
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF69B4).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Gift',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFFFF69B4),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Gift type and Date
+                Row(
+                  children: [
+                    Icon(
+                      Icons.card_giftcard,
+                      size: 12,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        giftType.isNotEmpty ? giftType : 'Gift',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (receiverName.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.person,
+                        size: 12,
+                        color: Colors.grey[500],
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          receiverName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.access_time,
+                      size: 12,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDate(timestamp ?? DateTime.now()),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
