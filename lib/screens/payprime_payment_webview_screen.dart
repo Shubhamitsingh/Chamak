@@ -389,7 +389,14 @@ class _PayPrimePaymentWebViewScreenState extends State<PayPrimePaymentWebViewScr
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Complete Payment'),
+        title: const Text(
+          'Complete Payment',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: const Color(0xFFFF1B7C),
         foregroundColor: Colors.white,
         leading: IconButton(

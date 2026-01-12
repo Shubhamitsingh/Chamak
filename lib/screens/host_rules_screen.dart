@@ -25,7 +25,7 @@ class HostRulesScreen extends StatelessWidget {
           'Host Rules & Guidelines',
           style: TextStyle(
             color: Colors.black87,
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),

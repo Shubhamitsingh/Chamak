@@ -34,7 +34,7 @@ class CallSummaryScreen extends StatelessWidget {
           'Call Ended',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),

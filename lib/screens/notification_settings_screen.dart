@@ -32,7 +32,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           AppLocalizations.of(context)!.notificationSettings,
           style: const TextStyle(
             color: Colors.black87,
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),

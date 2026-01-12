@@ -247,7 +247,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           'Messages',
           style: TextStyle(
             color: Colors.black87,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),

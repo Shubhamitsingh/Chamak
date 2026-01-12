@@ -184,7 +184,17 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
   }
 
   Future<void> _launchPayment() async {
-    if (_selectedMethod == null || !widget.upiUrls.containsKey(_selectedMethod!)) {
+    if (_selectedMethod == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a payment method'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (!widget.upiUrls.containsKey(_selectedMethod!)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a payment method'),
@@ -293,7 +303,7 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Could not open payment app. Please make sure you have a UPI app installed (GPay or any other UPI app).'),
+          content: const Text('Could not open payment app. Please make sure you have a UPI app installed (GPay, PhonePe, Paytm or any other UPI app).'),
           backgroundColor: Colors.orange,
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
@@ -321,7 +331,7 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
-            'UPI OPTION',
+            'Payment Method',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,

@@ -112,6 +112,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           key: ValueKey('messages_title_${currentLocale.languageCode}'),
           style: const TextStyle(
             color: Color(0xFF9C27B0),
+            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),

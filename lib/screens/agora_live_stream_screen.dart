@@ -33,6 +33,7 @@ import 'chat_screen.dart';
 import '../widgets/low_coin_popup.dart';
 import '../widgets/end_stream_confirmation_sheet.dart';
 import 'live_stream_summary_screen.dart';
+import 'package:country_picker/country_picker.dart';
 
 // Agora App ID
 const String appId = '43bb5e13c835444595c8cf087a0ccaa4';
@@ -5089,16 +5090,50 @@ class _ProfileBottomSheetState extends State<_ProfileBottomSheet> with SingleTic
                 
                 const SizedBox(height: 8),
                 
-                // Country
+                // Country with Flag
                 if (widget.user.country != null && widget.user.country!.isNotEmpty)
-                  Text(
-                    widget.user.country!,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.75),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
+                  Builder(
+                    builder: (context) {
+                      // Get country flag emoji
+                      String? countryFlag;
+                      String? countryName;
+                      try {
+                        final countryStr = widget.user.country!.trim().toUpperCase();
+                        // Try to parse as country code (e.g., "IN", "US")
+                        final countryObj = Country.parse(countryStr);
+                        countryFlag = countryObj.flagEmoji;
+                        countryName = countryObj.name;
+                      } catch (e) {
+                        // If parsing fails, use country as name
+                        countryName = widget.user.country;
+                        countryFlag = null;
+                      }
+                      
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (countryFlag != null) ...[
+                            Text(
+                              countryFlag,
+                              style: const TextStyle(
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            countryName ?? widget.user.country!,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.75),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 
                 const SizedBox(height: 12),

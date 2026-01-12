@@ -1323,11 +1323,11 @@ class _HomeScreenState extends State<HomeScreen>
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 0.85,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 3,
+                    childAspectRatio: 0.70,
                   ),
-                  physics: const ClampingScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   shrinkWrap: true,
                   itemCount: liveStreams.length > 200 ? 200 : liveStreams.length,
                   itemBuilder: (context, index) {
@@ -1488,11 +1488,11 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.85,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 3,
+                childAspectRatio: 0.70,
               ),
-              physics: const ClampingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
               itemCount: sortedHosts.length > 200 ? 200 : sortedHosts.length,
               itemBuilder: (context, index) {
@@ -1631,13 +1631,13 @@ class _HomeScreenState extends State<HomeScreen>
           Colors.white, // White
         ],
       ),
-      borderRadius: const BorderRadius.all(Radius.circular(15)),
+      borderRadius: const BorderRadius.all(Radius.circular(10)),
     );
 
     return Container(
       decoration: defaultDecoration,
       child: ClipRRect(
-        borderRadius: const BorderRadius.all(Radius.circular(15)),
+        borderRadius: const BorderRadius.all(Radius.circular(10)),
         child: hostId != null
             ? StreamBuilder<DocumentSnapshot>(
                 stream: FirebaseFirestore.instance
@@ -1780,18 +1780,60 @@ class _HomeScreenState extends State<HomeScreen>
                             // Spacer to push username to bottom
                             const Spacer(),
 
-                            // Host Name (Just above bottom elements with minimal spacing)
+                            // Host Name with Level Badge (Just above bottom elements with minimal spacing)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 2),
-                              child: Text(
-                                hostName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                children: [
+                                  // Level Badge
+                                  if (userSnapshot.hasData && userSnapshot.data!.exists)
+                                    Builder(
+                                      builder: (context) {
+                                        final userData = userSnapshot.data!.data()
+                                            as Map<String, dynamic>?;
+                                        final hostLevel = userData?['hostLevel'] ?? userData?['level'] ?? 1;
+                                        
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 1.5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFF1B7C).withValues(alpha: 0.9),
+                                            borderRadius: BorderRadius.circular(7),
+                                            border: Border.all(
+                                              color: Colors.white.withValues(alpha: 0.3),
+                                              width: 0.5,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Lv.$hostLevel',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.bold,
+                                              height: 1.1,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  if (userSnapshot.hasData && userSnapshot.data!.exists)
+                                    const SizedBox(width: 5),
+                                  // Host Name
+                                  Expanded(
+                                    child: Text(
+                                      hostName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
 
@@ -1876,7 +1918,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                   )
                                                 : const SizedBox.shrink(),
                                           ),
-                                          // Call Icon in Pink Circle (right)
+                                          // Video Icon in Pink Circle (right)
                                           Expanded(
                                             flex: 1,
                                             child: Align(
@@ -1889,11 +1931,20 @@ class _HomeScreenState extends State<HomeScreen>
                                                       0xFFFF1B7C), // Pink color
                                                   shape: BoxShape.circle,
                                                 ),
-                                                child: const Center(
-                                                  child: Icon(
-                                                    Icons.call,
-                                                    color: Colors.white,
-                                                    size: 16,
+                                                child: Center(
+                                                  child: Image.asset(
+                                                    'assets/images/video.png',
+                                                    width: 16,
+                                                    height: 16,
+                                                    fit: BoxFit.contain,
+                                                    errorBuilder:
+                                                        (context, error, stackTrace) {
+                                                      return const Icon(
+                                                        Icons.videocam_rounded,
+                                                        color: Colors.white,
+                                                        size: 16,
+                                                      );
+                                                    },
                                                   ),
                                                 ),
                                               ),
@@ -1926,7 +1977,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         flex: 1,
                                         child: SizedBox.shrink(),
                                       ),
-                                      // Call Icon in Pink Circle (right)
+                                      // Video Icon in Pink Circle (right)
                                       Expanded(
                                         flex: 1,
                                         child: Align(
@@ -1939,11 +1990,20 @@ class _HomeScreenState extends State<HomeScreen>
                                                   0xFFFF1B7C), // Pink color
                                               shape: BoxShape.circle,
                                             ),
-                                            child: const Center(
-                                              child: Icon(
-                                                Icons.call,
-                                                color: Colors.white,
-                                                size: 16,
+                                            child: Center(
+                                              child: Image.asset(
+                                                'assets/images/video.png',
+                                                width: 16,
+                                                height: 16,
+                                                fit: BoxFit.contain,
+                                                errorBuilder:
+                                                    (context, error, stackTrace) {
+                                                  return const Icon(
+                                                    Icons.videocam_rounded,
+                                                    color: Colors.white,
+                                                    size: 16,
+                                                  );
+                                                },
                                               ),
                                             ),
                                           ),
@@ -2156,11 +2216,11 @@ class _HomeScreenState extends State<HomeScreen>
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 0.85,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 3,
+                    childAspectRatio: 0.70,
                   ),
-                  physics: const ClampingScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   shrinkWrap: true,
                   itemCount: liveStreams.length > 100 ? 100 : liveStreams.length,
                   itemBuilder: (context, index) {
@@ -2254,11 +2314,11 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.85,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 3,
+                childAspectRatio: 0.70,
               ),
-              physics: const ClampingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
               itemCount: hosts.length > 50 ? 50 : hosts.length,
               itemBuilder: (context, index) {
@@ -2415,11 +2475,11 @@ class _HomeScreenState extends State<HomeScreen>
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 0.85,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 3,
+                    childAspectRatio: 0.70,
                   ),
-                  physics: const ClampingScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   shrinkWrap: true,
                   itemCount: liveStreams.length > 100 ? 100 : liveStreams.length,
                   itemBuilder: (context, index) {
@@ -2513,11 +2573,11 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.85,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 3,
+                childAspectRatio: 0.70,
               ),
-              physics: const ClampingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
               itemCount: hosts.length > 50 ? 50 : hosts.length,
               itemBuilder: (context, index) {

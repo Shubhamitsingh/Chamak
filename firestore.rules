@@ -393,6 +393,25 @@ service cloud.firestore {
       }
     }
     
+    // Support tickets collection
+    match /supportTickets/{ticketId} {
+      // Users can read their own tickets, admins can read all
+      allow read: if request.auth != null 
+        && (isAdmin() 
+            || (resource.data != null && request.auth.uid == resource.data.userId));
+      
+      // Authenticated users can create tickets (must include their userId)
+      allow create: if request.auth != null 
+        && request.resource.data != null
+        && request.auth.uid == request.resource.data.userId;
+      
+      // Only admins can update tickets (for status, adminResponse, assignedTo)
+      allow update: if isAdmin();
+      
+      // Only admins can delete tickets
+      allow delete: if isAdmin();
+    }
+    
     // Withdrawal requests collection
     match /withdrawal_requests/{requestId} {
       // Users can read their own, admins can read all

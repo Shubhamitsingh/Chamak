@@ -517,9 +517,9 @@ class _PremiumCardPopupState extends State<_PremiumCardPopup> with TickerProvide
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF3D2D4A),  // Dark purple-tinted (matches purple badge)
-                  Color(0xFF2A1A34),  // Darker purple-tinted
-                  Color(0xFF1A0A24),  // Very dark purple-black
+                  Color(0xFF2D2D3A),
+                  Color(0xFF1A1A24),
+                  Colors.black,
                 ],
               ),
               borderRadius: const BorderRadius.only(
@@ -723,18 +723,18 @@ class _PremiumCardPopupState extends State<_PremiumCardPopup> with TickerProvide
         height: 50,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(25),
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              badgeColor,
-              badgeColor.withOpacity(0.8),
-              badgeColor.withOpacity(0.6),
+              Color(0xFFFFD54F),
+              Color(0xFFFFC107),
+              Color(0xFFFFB300),
             ],
           ),
           boxShadow: [
             BoxShadow(
-              color: badgeColor.withOpacity(0.6),
+              color: const Color(0xFFFFC107).withOpacity(0.6),
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 4),
@@ -746,7 +746,7 @@ class _PremiumCardPopupState extends State<_PremiumCardPopup> with TickerProvide
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
-            foregroundColor: Colors.white,
+            foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(25),
             ),
@@ -807,7 +807,7 @@ class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderSta
   final double originalPrice = 899.00;
   final double discountedPrice = 599.00;
   
-  // Badge color - Cyan/Blue
+  // Badge color - Cyan/Blue (keep this color)
   final Color badgeColor = const Color(0xFF00E5FF);
 
   late AnimationController _pulseController;
@@ -853,9 +853,9 @@ class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderSta
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF2D3A4A),  // Dark cyan-blue-tinted (matches cyan badge)
-                  Color(0xFF1A242A),  // Darker cyan-blue-tinted
-                  Color(0xFF0A141A),  // Very dark cyan-black
+                  Color(0xFF2D2D3A),
+                  Color(0xFF1A1A24),
+                  Colors.black,
                 ],
               ),
               borderRadius: const BorderRadius.only(
@@ -1059,18 +1059,18 @@ class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderSta
         height: 50,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(25),
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              badgeColor,
-              badgeColor.withOpacity(0.8),
-              badgeColor.withOpacity(0.6),
+              Color(0xFFFFD54F),
+              Color(0xFFFFC107),
+              Color(0xFFFFB300),
             ],
           ),
           boxShadow: [
             BoxShadow(
-              color: badgeColor.withOpacity(0.6),
+              color: const Color(0xFFFFC107).withOpacity(0.6),
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 4),
@@ -1082,7 +1082,7 @@ class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderSta
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
-            foregroundColor: Colors.white,
+            foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(25),
             ),
@@ -1189,9 +1189,9 @@ class _MinimalistPopupState extends State<_MinimalistPopup> with TickerProviderS
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF4A3D2D),  // Dark orange-brown-tinted (matches orange badge)
-                  Color(0xFF342A1A),  // Darker orange-brown-tinted
-                  Color(0xFF241A0A),  // Very dark orange-black
+                  Color(0xFF2D2D3A),
+                  Color(0xFF1A1A24),
+                  Colors.black,
                 ],
               ),
               borderRadius: const BorderRadius.only(
@@ -1395,18 +1395,18 @@ class _MinimalistPopupState extends State<_MinimalistPopup> with TickerProviderS
         height: 50,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(25),
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              badgeColor,
-              badgeColor.withOpacity(0.8),
-              badgeColor.withOpacity(0.6),
+              Color(0xFFFFD54F),
+              Color(0xFFFFC107),
+              Color(0xFFFFB300),
             ],
           ),
           boxShadow: [
             BoxShadow(
-              color: badgeColor.withOpacity(0.6),
+              color: const Color(0xFFFFC107).withOpacity(0.6),
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 4),
@@ -1418,7 +1418,7 @@ class _MinimalistPopupState extends State<_MinimalistPopup> with TickerProviderS
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
-            foregroundColor: Colors.white,
+            foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(25),
             ),
