@@ -865,12 +865,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (!mounted) return;
                         _stopAutoScroll(); // Stop slider when navigating
                         try {
+                          // Get host status from user document data
+                          bool isHost = false;
+                          if (userCoinSnapshot.hasData && userCoinSnapshot.data!.exists) {
+                            final userData = userCoinSnapshot.data!.data() as Map<String, dynamic>?;
+                            isHost = userData?['isHost'] ?? false;
+                          }
+                          
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => WalletScreen(
                                 phoneNumber: widget.phoneNumber,
-                                isHost: false, // TODO: Implement host status
+                                isHost: isHost,
                               ),
                             ),
                           ).then((_) {

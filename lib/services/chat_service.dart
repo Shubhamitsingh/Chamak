@@ -44,6 +44,16 @@ class ChatService {
           },
         });
 
+        // Wait a moment to ensure document is fully committed
+        // This helps prevent permission errors when immediately listening to the chat
+        await Future.delayed(const Duration(milliseconds: 200));
+        
+        // Verify the document was created successfully
+        final verifyDoc = await chatRef.get();
+        if (!verifyDoc.exists) {
+          throw Exception('Failed to create chat document');
+        }
+
         print('✅ Created new chat: $chatId');
       }
 

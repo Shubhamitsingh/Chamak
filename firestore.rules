@@ -39,14 +39,21 @@ service cloud.firestore {
       allow read: if request.auth != null;
       
       // Users can create their own profile
+      // BUT cannot set coin fields OR isActive field (admin-only)
+      // Users can only set isActive to false or leave it undefined
       allow create: if request.auth != null && request.auth.uid == userId
-        && !request.resource.data.keys().hasAny(['uCoins', 'coins', 'cCoins']);
+        && !request.resource.data.keys().hasAny(['uCoins', 'coins', 'cCoins'])
+        && (!('isActive' in request.resource.data) 
+             || request.resource.data.isActive == false);
       
       // Users can update their own profile
+      // BUT cannot update isActive field (admin-only)
       // Allow uCoins updates for call deductions (decrements only - FieldValue.increment with negative value)
       // Users can update followersCount on any user's profile (for follow/unfollow)
-      // Admins can update any user's profile including coin fields
+      // Admins can update any user's profile including coin fields and isActive
       allow update: if (request.auth != null && request.auth.uid == userId
+        // Prevent users from updating their own isActive field (admin-only)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isActive'])
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'cCoins'])
             || (request.resource.data.diff(resource.data).affectedKeys().hasAny(['uCoins']) 
                 && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'cCoins'])
@@ -55,7 +62,7 @@ service cloud.firestore {
                 && request.resource.data.uCoins < resource.data.uCoins))) // Allow uCoins decrement for calls
         || (request.auth != null 
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount']))
-        || isAdmin();
+        || isAdmin(); // Admins can update everything including isActive
       
       // Users cannot delete their own profile (only admins can)
       allow delete: if isAdmin();
@@ -64,8 +71,9 @@ service cloud.firestore {
       // TRANSACTIONS SUBCOLLECTION
       // ============================================
       match /transactions/{transactionId} {
-        // Users can read their own transactions
-        allow read: if request.auth != null && request.auth.uid == userId;
+        // Users can read their own transactions, admins can read all
+        allow read: if request.auth != null 
+          && (isAdmin() || request.auth.uid == userId);
         
         // Users CANNOT create/update/delete transactions
         // Only Cloud Functions and server can create transactions
@@ -78,8 +86,9 @@ service cloud.firestore {
       // COIN TRANSACTIONS SUBCOLLECTION
       // ============================================
       match /coinTransactions/{transactionId} {
-        // Users can read their own coin transactions
-        allow read: if request.auth != null && request.auth.uid == userId;
+        // Users can read their own coin transactions, admins can read all
+        allow read: if request.auth != null 
+          && (isAdmin() || request.auth.uid == userId);
         
         // Users CANNOT create/update/delete coin transactions
         // Only Cloud Functions can create coin transactions (for payment purchases)
@@ -118,6 +127,30 @@ service cloud.firestore {
       }
       
       // ============================================
+      // SEEN ANNOUNCEMENTS SUBCOLLECTION
+      // ============================================
+      match /seenAnnouncements/{announcementId} {
+        // Users can read/write their own seen announcements
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // ============================================
+      // DISMISSED ANNOUNCEMENTS SUBCOLLECTION
+      // ============================================
+      match /dismissedAnnouncements/{announcementId} {
+        // Users can read/write their own dismissed announcements
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // ============================================
+      // SEEN EVENTS SUBCOLLECTION
+      // ============================================
+      match /seenEvents/{eventId} {
+        // Users can read/write their own seen events
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // ============================================
       // OTHER USER SUBCOLLECTIONS
       // ============================================
       match /{subcollection=**} {
@@ -133,10 +166,10 @@ service cloud.firestore {
     // ORDERS COLLECTION
     // ============================================
     match /orders/{orderId} {
-      // Users can read their own orders
+      // Users can read their own orders, admins can read all
       allow read: if request.auth != null 
-        && resource.data != null 
-        && request.auth.uid == resource.data.userId;
+        && (isAdmin() 
+            || (resource.data != null && request.auth.uid == resource.data.userId));
       
       // Users can create orders for themselves
       allow create: if request.auth != null;
@@ -144,41 +177,43 @@ service cloud.firestore {
       // CRITICAL FIX: Allow users to update their own order status for payment verification
       // Users can only update: status, verifiedAt, paymentId (for payment verification)
       // Users cannot update: userId, coins, amount, packageId, or other fields
+      // Admins can update any order
       allow update: if request.auth != null 
         && resource.data != null
-        && request.auth.uid == resource.data.userId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'verifiedAt', 'paymentId'])
-        && (!('status' in request.resource.data.diff(resource.data).affectedKeys()) 
-            || request.resource.data.status == 'completed' 
-            || request.resource.data.status == 'failed' 
-            || request.resource.data.status == 'pending');
+        && (isAdmin() 
+            || (request.auth.uid == resource.data.userId
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'verifiedAt', 'paymentId'])
+                && (!('status' in request.resource.data.diff(resource.data).affectedKeys()) 
+                    || request.resource.data.status == 'completed' 
+                    || request.resource.data.status == 'failed' 
+                    || request.resource.data.status == 'pending')));
       
-      // Users cannot delete orders
-      allow delete: if false;
+      // Admins can delete orders
+      allow delete: if isAdmin();
     }
     
     // ============================================
     // PAYMENTS COLLECTION
     // ============================================
     match /payments/{paymentId} {
-      // Users can read their own payments
+      // Users can read their own payments, admins can read all
       allow read: if request.auth != null 
-        && resource.data != null
-        && request.auth.uid == resource.data.userId;
+        && (isAdmin() 
+            || (resource.data != null && request.auth.uid == resource.data.userId));
       
-      // Users CANNOT create/update payments (only Cloud Functions can create/update)
-      // Cloud Functions run with admin privileges and bypass these rules
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      // Admins can create/update payments (for manual entries), Cloud Functions can also create/update
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     // ============================================
     // WALLETS COLLECTION
     // ============================================
     match /wallets/{userId} {
-      // Users can read their own wallet
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Users can read their own wallet, admins can read all
+      allow read: if request.auth != null 
+        && (isAdmin() || request.auth.uid == userId);
       
       // Users can update their own wallet for sync with users collection (during coin deductions)
       // This ensures wallet balance stays in sync with users.uCoins
@@ -231,8 +266,9 @@ service cloud.firestore {
     
     // Earnings collection (for hosts)
     match /earnings/{userId} {
-      // Users can read their own earnings
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Users can read their own earnings, admins can read all
+      allow read: if request.auth != null 
+        && (isAdmin() || request.auth.uid == userId);
       // Allow authenticated users to update earnings when crediting hosts during calls
       // This is needed when callers deduct coins and credit hosts
       allow create, update: if request.auth != null;
@@ -255,9 +291,14 @@ service cloud.firestore {
     
     // Chats collection
     match /chats/{chatId} {
-      // Users can read chats where they are a participant
+      // Users can read chats where they are a participant, admins can read all
       // Also allow read for authenticated users (to check if chat exists before creating)
-      allow read: if request.auth != null;
+      // Simplified: Allow read if user is authenticated and (admin OR document doesn't exist OR user is participant)
+      allow read: if request.auth != null 
+        && (isAdmin() 
+            || resource == null  // Document doesn't exist - allow check before create
+            || resource.data == null  // Document exists but no data yet
+            || request.auth.uid in resource.data.get('participants', []));
       
       // Users can create chats (they must be in the participants array)
       // Allow create if user is authenticated and included in participants
@@ -267,39 +308,41 @@ service cloud.firestore {
         && request.resource.data.get('participants', []).size() == 2
         && request.auth.uid in request.resource.data.get('participants', []);
       
-      // Users can update chats where they are a participant
+      // Users can update chats where they are a participant, admins can update all
       // Allow updating lastMessage, lastMessageTime, unreadCount (including nested fields)
       allow update: if request.auth != null 
         && resource.data != null
-        && request.auth.uid in resource.data.get('participants', []);
+        && (isAdmin() || request.auth.uid in resource.data.get('participants', []));
       
-      // Users cannot delete chats (archive instead)
-      allow delete: if false;
+      // Admins can delete chats
+      allow delete: if isAdmin();
       
       // Messages subcollection - participants can read/write their messages
       match /messages/{messageId} {
-        // Helper function to check if user is a chat participant
+        // Helper function to check if user is a chat participant or admin
         function isChatParticipant() {
           let chatDoc = get(/databases/$(database)/documents/chats/$(chatId));
           return chatDoc != null 
             && chatDoc.data != null
-            && request.auth.uid in chatDoc.data.get('participants', []);
+            && (isAdmin() || request.auth.uid in chatDoc.data.get('participants', []));
         }
         
-        // Participants can read messages in their chats
-        allow read: if request.auth != null && isChatParticipant();
+        // Participants can read messages in their chats, admins can read all
+        // Allow read if user is authenticated and is a participant in the chat
+        allow read: if request.auth != null 
+          && (isAdmin() || isChatParticipant());
         
-        // Participants can create messages if they're the sender
+        // Participants can create messages if they're the sender, admins can create
         allow create: if request.auth != null 
-          && isChatParticipant()
           && request.resource.data != null
-          && request.auth.uid == request.resource.data.senderId;
+          && (isAdmin() 
+              || (isChatParticipant() && request.auth.uid == request.resource.data.senderId));
         
-        // Participants can update message read status
-        allow update: if request.auth != null && isChatParticipant();
+        // Participants can update message read status, admins can update all
+        allow update: if request.auth != null && (isAdmin() || isChatParticipant());
         
-        // Don't allow message deletion
-        allow delete: if false;
+        // Admins can delete messages
+        allow delete: if isAdmin();
       }
     }
     
@@ -352,9 +395,10 @@ service cloud.firestore {
     
     // Withdrawal requests collection
     match /withdrawal_requests/{requestId} {
+      // Users can read their own, admins can read all
       allow read: if request.auth != null 
-        && resource.data != null
-        && request.auth.uid == resource.data.userId;
+        && (isAdmin() 
+            || (resource.data != null && request.auth.uid == resource.data.userId));
       allow create: if request.auth != null 
         && request.resource.data != null
         && request.auth.uid == request.resource.data.userId;
@@ -364,15 +408,15 @@ service cloud.firestore {
     
     // Call transactions collection
     match /callTransactions/{transactionId} {
-      // Users can read their own call transactions
+      // Users can read their own call transactions, admins can read all
       allow read: if request.auth != null;
       // Users can create call transactions when they make calls (for coin deduction tracking)
       allow create: if request.auth != null 
         && request.resource.data != null
         && request.auth.uid == request.resource.data.callerId;
-      // Only server/Cloud Functions can update/delete
-      allow update: if false;
-      allow delete: if false;
+      // Admins can update/delete
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     // Call requests collection

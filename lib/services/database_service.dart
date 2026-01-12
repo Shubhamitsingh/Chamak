@@ -54,7 +54,8 @@ class DatabaseService {
         Map<String, dynamic> updateData = {
           if (numericIdToUpdate != null) 'numericUserId': numericIdToUpdate,
           'lastLogin': FieldValue.serverTimestamp(),
-          'isActive': true,
+          // Note: isActive field is NOT updated here - it's managed by admin only
+          // This prevents overwriting admin-set approval status
         };
         
         // Note: Coin fields (uCoins, coins, cCoins) cannot be set by users
@@ -90,7 +91,7 @@ class DatabaseService {
           'photoURL': generated,
           'createdAt': FieldValue.serverTimestamp(),
           'lastLogin': FieldValue.serverTimestamp(),
-          'isActive': true,
+          'isActive': false, // New users need admin approval before going live
           'followersCount': 0,
           'followingCount': 0,
           'level': 1,

@@ -203,23 +203,39 @@ class _ChatScreenState extends State<ChatScreen> {
           },
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 18,
-                // Soft pink-purple so header avatar matches chat theme
-                backgroundColor: const Color(0xFFCE93D8),
-                backgroundImage: widget.otherUser.profileImage.isNotEmpty
-                    ? NetworkImage(widget.otherUser.profileImage)
-                    : null,
-                child: widget.otherUser.profileImage.isEmpty
-                    ? Text(
-                        widget.otherUser.name[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
+              // Real-time profile image updates from Firestore
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(widget.otherUser.uid)
+                    .snapshots(),
+                builder: (context, userSnapshot) {
+                  // Get real-time profile image from Firestore
+                  String profileImage = widget.otherUser.profileImage; // Fallback to passed value
+                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                    final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                    profileImage = userData?['photoURL'] ?? userData?['profileImage'] ?? widget.otherUser.profileImage;
+                  }
+                  
+                  return CircleAvatar(
+                    radius: 18,
+                    // Soft pink-purple so header avatar matches chat theme
+                    backgroundColor: const Color(0xFFCE93D8),
+                    backgroundImage: profileImage.isNotEmpty
+                        ? NetworkImage(profileImage)
+                        : null,
+                    child: profileImage.isEmpty
+                        ? Text(
+                            widget.otherUser.name[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                  );
+                },
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -716,44 +732,59 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Receiver profile icon
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                ),
-                child: ClipOval(
-                  child: widget.otherUser.profileImage.isNotEmpty
-                      ? Image.network(
-                          widget.otherUser.profileImage,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
+              // Receiver profile icon - Real-time updates
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(widget.otherUser.uid)
+                    .snapshots(),
+                builder: (context, userSnapshot) {
+                  // Get real-time profile image from Firestore
+                  String profileImage = widget.otherUser.profileImage; // Fallback
+                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                    final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                    profileImage = userData?['photoURL'] ?? userData?['profileImage'] ?? widget.otherUser.profileImage;
+                  }
+                  
+                  return Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: ClipOval(
+                      child: profileImage.isNotEmpty
+                          ? Image.network(
+                              profileImage,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                );
+                              },
+                            )
+                          : Container(
                               color: Colors.white.withValues(alpha: 0.3),
-                              child: const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 14,
+                              child: Text(
+                                widget.otherUser.name.isNotEmpty 
+                                    ? widget.otherUser.name[0].toUpperCase() 
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            );
-                          },
-                        )
-                      : Container(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          child: Text(
-                            widget.otherUser.name.isNotEmpty 
-                                ? widget.otherUser.name[0].toUpperCase() 
-                                : 'U',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
                             ),
-                          ),
-                        ),
-                ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 6),
               // Cancel icon

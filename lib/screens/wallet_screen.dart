@@ -1607,9 +1607,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       }
       
       // Get user details for withdrawal request
-      final userDoc = await _databaseService.getUser(currentUser.uid);
-      final userName = userDoc?['name'] as String?;
-      final displayId = userDoc?['displayId'] as String?;
+      final userModel = await _databaseService.getUserData(currentUser.uid);
+      final userName = userModel?.displayName;
+      final displayId = userModel?.numericUserId;
       
       // Prepare payment details
       final paymentDetails = {

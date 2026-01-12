@@ -146,49 +146,105 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
 
     try {
       // Get current user data
-      final currentUserDoc = await FirebaseFirestore.instance
+      DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
           .get();
       
+      // If user document doesn't exist, create it with basic data
       if (!currentUserDoc.exists || currentUserDoc.data() == null) {
-        if (!mounted) return;
-        Navigator.pop(context); // Close loading
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User profile not found. Please complete your profile first.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
+        debugPrint('📝 User document not found, creating basic profile...');
+        
+        // Get phone number from Firebase Auth
+        final phoneNumber = currentUser.phoneNumber ?? '';
+        String countryCode = '+91'; // Default to India
+        String cleanPhone = '';
+        
+        if (phoneNumber.isNotEmpty) {
+          // Extract country code (everything before last 10 digits)
+          if (phoneNumber.startsWith('+')) {
+            if (phoneNumber.length > 10) {
+              countryCode = phoneNumber.substring(0, phoneNumber.length - 10);
+              cleanPhone = phoneNumber.substring(phoneNumber.length - 10);
+            } else {
+              cleanPhone = phoneNumber.substring(1); // Remove +
+            }
+          } else {
+            // No + prefix, assume it's just the number
+            cleanPhone = phoneNumber.length > 10 
+                ? phoneNumber.substring(phoneNumber.length - 10)
+                : phoneNumber;
+          }
+        }
+        
+        // Create basic user document using DatabaseService method
+        try {
+          await _databaseService.createOrUpdateUser(
+            phoneNumber: cleanPhone,
+            countryCode: countryCode,
+          );
+        } catch (dbError) {
+          debugPrint('⚠️ Error using DatabaseService, creating manually: $dbError');
+          // Fallback: Create manually if DatabaseService fails
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .set({
+            'userId': currentUser.uid,
+            'phoneNumber': cleanPhone,
+            'countryCode': countryCode,
+            'displayName': null, // Will be set when profile is completed
+            'photoURL': null, // Will be set when profile is completed
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastLogin': FieldValue.serverTimestamp(),
+            'isActive': false, // New users need admin approval
+            'followersCount': 0,
+            'followingCount': 0,
+            'level': 1,
+          }, SetOptions(merge: true));
+        }
+        
+        // Re-fetch the document
+        currentUserDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+        
+        debugPrint('✅ User document created successfully');
       }
       
       final currentUserModel = UserModel.fromFirestore(currentUserDoc);
 
-      // Validate that both users have required fields (name getter returns 'User' if displayName is null)
-      final currentUserName = currentUserModel.name;
-      final otherUserName = widget.user.name;
+      // Use fallback values for chat participant names
+      // If displayName is null or 'User', use phone number or userId as fallback
+      String currentUserName = currentUserModel.displayName ?? 
+          (currentUserModel.phoneNumber.isNotEmpty 
+              ? '${currentUserModel.countryCode}${currentUserModel.phoneNumber}' 
+              : currentUser.uid.substring(0, 8));
       
-      if (currentUserName == 'User' || otherUserName == 'User' || 
-          currentUserName.isEmpty || otherUserName.isEmpty) {
-        if (!mounted) return;
-        Navigator.pop(context); // Close loading
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cannot start chat: User information incomplete. Please complete your profile.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
+      String otherUserName = widget.user.displayName ?? 
+          (widget.user.phoneNumber.isNotEmpty 
+              ? '${widget.user.countryCode}${widget.user.phoneNumber}' 
+              : widget.user.uid.substring(0, 8));
 
-      // Create or get chat
-      final chatId = await _chatService.createOrGetChat(currentUserModel, widget.user);
+      // Create UserModel with fallback names for chat creation
+      final currentUserForChat = currentUserModel.copyWith(
+        displayName: currentUserName,
+      );
+      
+      final otherUserForChat = widget.user.copyWith(
+        displayName: otherUserName,
+      );
+
+      // Create or get chat (now works with any logged-in user)
+      final chatId = await _chatService.createOrGetChat(currentUserForChat, otherUserForChat);
 
       if (!mounted) return;
       Navigator.pop(context); // Close loading
+
+      // Small delay to ensure chat document is fully committed to Firestore
+      // This prevents permission errors when ChatScreen tries to listen to messages
+      await Future.delayed(const Duration(milliseconds: 300));
 
       // Navigate to chat screen
       if (!mounted) return;
@@ -212,17 +268,17 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       if (!mounted) return;
       Navigator.pop(context); // Close loading
       
-      String errorMessage = 'Failed to open chat';
+      String errorMessage = 'Failed to open chat. Please try again.';
       if (e is FirebaseException) {
         if (e.code == 'permission-denied') {
-          errorMessage = 'Permission denied. Please check your account settings.';
+          errorMessage = 'Unable to create chat. Please try again later.';
         } else if (e.code == 'unavailable') {
           errorMessage = 'Service temporarily unavailable. Please try again later.';
+        } else if (e.code == 'network-request-failed') {
+          errorMessage = 'Network error. Please check your internet connection.';
         } else {
           errorMessage = 'Failed to open chat: ${e.message ?? e.code}';
         }
-      } else if (e.toString().contains('name') || e.toString().contains('Name')) {
-        errorMessage = 'Cannot start chat: User information incomplete';
       }
       
       ScaffoldMessenger.of(context).showSnackBar(

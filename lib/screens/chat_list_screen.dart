@@ -447,27 +447,42 @@ class _ChatListScreenState extends State<ChatListScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-              // Profile Image - NO border, NO container
+              // Profile Image - Real-time updates from Firestore
               Stack(
                 children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: otherUserImage.isNotEmpty
-                        ? NetworkImage(otherUserImage)
-                        : null,
-                    child: otherUserImage.isEmpty
-                        ? Text(
-                            otherUserName.isNotEmpty 
-                                ? otherUserName[0].toUpperCase() 
-                                : 'U',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(otherUserId)
+                        .snapshots(),
+                    builder: (context, userSnapshot) {
+                      // Get real-time profile image from Firestore
+                      String profileImage = otherUserImage; // Fallback to cached
+                      if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                        final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                        profileImage = userData?['photoURL'] ?? userData?['profileImage'] ?? otherUserImage;
+                      }
+                      
+                      return CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: profileImage.isNotEmpty
+                            ? NetworkImage(profileImage)
+                            : null,
+                        child: profileImage.isEmpty
+                            ? Text(
+                                otherUserName.isNotEmpty 
+                                    ? otherUserName[0].toUpperCase() 
+                                    : 'U',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      );
+                    },
                   ),
                   // Real-time online indicator (only shows green for online)
                   Positioned(

@@ -452,10 +452,11 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
         age--;
       }
 
-      // Update user profile in Firestore
+      // Create or update user profile in Firestore
       // Note: 'language' is mother tongue (spoken language), NOT app UI language
       // App language is controlled from Settings and defaults to English
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      // Using set() with merge: true to handle both new user creation and existing user updates
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
         'displayName': _nicknameController.text.trim(),
         'nickname': _nicknameController.text.trim(),
         'gender': _selectedGender,
@@ -464,7 +465,7 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
         'language': _selectedLanguage, // Mother tongue
         'profileCompleted': true,
         'profileCompletedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
 
       if (!mounted) return;
 

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/withdrawal_request_model.dart';
+import '../utils/app_logger.dart';
 
 class WithdrawalService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -32,7 +33,7 @@ class WithdrawalService {
       });
       return docRef.id;
     } catch (e) {
-      print('Error submitting withdrawal request: $e');
+      AppLogger.error('Error submitting withdrawal request', e);
       return null;
     }
   }
@@ -49,7 +50,7 @@ class WithdrawalService {
             .toList())
         .handleError((error) {
           // Log error but let it propagate to UI for handling
-          print('Error fetching withdrawal requests: $error');
+          AppLogger.error('Error fetching withdrawal requests', error);
           throw error;
         });
   }
@@ -92,7 +93,7 @@ class WithdrawalService {
       });
       return true;
     } catch (e) {
-      print('Error approving withdrawal request: $e');
+      AppLogger.error('Error approving withdrawal request', e);
       return false;
     }
   }
@@ -104,7 +105,7 @@ class WithdrawalService {
       // Get withdrawal request to get userId and amount
       final requestDoc = await _firestore.collection('withdrawal_requests').doc(requestId).get();
       if (!requestDoc.exists) {
-        print('❌ Withdrawal request not found: $requestId');
+        AppLogger.error('Withdrawal request not found: $requestId');
         return false;
       }
       
@@ -156,10 +157,10 @@ class WithdrawalService {
       // Commit batch (all updates atomic)
       await batch.commit();
       
-      print('✅ Withdrawal marked as paid: ₹${amountInINR.toStringAsFixed(2)} - Deducted $cCoinsToDeduct C Coins from user $userId');
+      AppLogger.success('Withdrawal marked as paid: ₹${amountInINR.toStringAsFixed(2)} - Deducted $cCoinsToDeduct C Coins from user $userId');
       return true;
     } catch (e) {
-      print('❌ Error marking withdrawal request as paid: $e');
+      AppLogger.error('Error marking withdrawal request as paid', e);
       return false;
     }
   }

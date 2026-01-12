@@ -1731,6 +1731,12 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
 
       if (!mounted) return;
 
+      // Small delay to ensure chat document is fully committed to Firestore
+      // This prevents permission errors when ChatScreen tries to listen to messages
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
       // Navigate to chat screen
       Navigator.push(
         context,
