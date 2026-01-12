@@ -344,13 +344,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   end: Alignment.centerRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x809C27B0),
-                    blurRadius: 10,
-                    offset: Offset(0, 3),
-                  ),
-                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

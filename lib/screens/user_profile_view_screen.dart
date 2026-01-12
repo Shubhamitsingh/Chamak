@@ -747,13 +747,6 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFFF1B7C).withOpacity(0.3),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              ),
-                            ],
                           ),
                           child: CircleAvatar(
                             radius: 45,

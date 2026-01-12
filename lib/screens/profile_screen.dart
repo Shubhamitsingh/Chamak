@@ -440,7 +440,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           Text('ID $displayId copied to clipboard!'),
                                         ],
                                       ),
-                                      backgroundColor: const Color(0xFF9C27B0),
+                                      backgroundColor: const Color(0xFFFF1B7C),
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,
                                       shape: RoundedRectangleBorder(
@@ -979,88 +979,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildDivider(),
             
-            // Level - placed just below Messages
-            _buildMenuOption(
-              icon: Icons.military_tech,
-              title: AppLocalizations.of(context)!.level,
-              subtitle: AppLocalizations.of(context)!.yourProgressAchievements,
-              color: const Color(0xFFF59E0B),
-              showLevel: true,
-              userLevel: user.level,
-              onTap: () {
-                if (!mounted) return;
-                _stopAutoScroll();
-                try {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LevelScreen(userLevel: user.level),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      _startAutoScroll();
-                    }
-                  });
-                } catch (e) {
-                  debugPrint('Navigation error: $e');
-                }
-              },
-            ),
-            _buildDivider(),
-            
-            // Promotion Screen
-            _buildMenuOption(
-              icon: Icons.campaign_rounded,
-              title: AppLocalizations.of(context)!.promotion,
-              subtitle: AppLocalizations.of(context)!.shareAndEarnRewards,
-              color: const Color(0xFFFF1B7C), // Pink - matches app theme
-              onTap: () {
-                if (!mounted) return;
-                _stopAutoScroll();
-                try {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PromotionScreen(),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      _startAutoScroll();
-                    }
-                  });
-                } catch (e) {
-                  debugPrint('Navigation error: $e');
-                }
-              },
-            ),
-            _buildDivider(),
-            
-            _buildMenuOption(
-              icon: Icons.thumb_down_rounded,
-              title: AppLocalizations.of(context)!.warnings,
-              subtitle: AppLocalizations.of(context)!.viewWarningsGuidelines,
-              color: const Color(0xFFEF4444),
-              onTap: () {
-                if (!mounted) return;
-                _stopAutoScroll();
-                try {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const WarningScreen(),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      _startAutoScroll();
-                    }
-                  });
-                } catch (e) {
-                  debugPrint('Navigation error: $e');
-                }
-              },
-            ),
-            _buildDivider(),
-            
             // Event Section with Badge Counter (Announcements + Events)
             StreamBuilder<List<AnnouncementModel>>(
               stream: _eventService.getAnnouncementsStream(),
@@ -1173,6 +1091,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildDivider(),
             
+            // Level - placed after Events
+            _buildMenuOption(
+              icon: Icons.military_tech,
+              title: AppLocalizations.of(context)!.level,
+              subtitle: AppLocalizations.of(context)!.yourProgressAchievements,
+              color: const Color(0xFFF59E0B),
+              showLevel: true,
+              userLevel: user.level,
+              onTap: () {
+                if (!mounted) return;
+                _stopAutoScroll();
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LevelScreen(userLevel: user.level),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
+              },
+            ),
+            _buildDivider(),
+            
+            // Promotion Screen
+            _buildMenuOption(
+              icon: Icons.campaign_rounded,
+              title: AppLocalizations.of(context)!.promotion,
+              subtitle: AppLocalizations.of(context)!.shareAndEarnRewards,
+              color: const Color(0xFFFF1B7C), // Pink - matches app theme
+              onTap: () {
+                if (!mounted) return;
+                _stopAutoScroll();
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PromotionScreen(),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
+              },
+            ),
+            _buildDivider(),
+            
+            _buildMenuOption(
+              icon: Icons.thumb_down_rounded,
+              title: AppLocalizations.of(context)!.warnings,
+              subtitle: AppLocalizations.of(context)!.viewWarningsGuidelines,
+              color: const Color(0xFFEF4444),
+              onTap: () {
+                if (!mounted) return;
+                _stopAutoScroll();
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WarningScreen(),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
+                    }
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
+              },
+            ),
+            _buildDivider(),
+            
             _buildMenuOption(
               icon: Icons.verified_user_rounded,
               title: AppLocalizations.of(context)!.accountSecurity,
@@ -1203,10 +1203,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildDivider(),
             
             _buildMenuOption(
-              icon: Icons.support_agent_rounded,
-              title: AppLocalizations.of(context)!.contactSupport,
-              subtitle: AppLocalizations.of(context)!.getHelpReportIssues,
-              color: const Color(0xFF06B6D4),
+              icon: Icons.tune_rounded,
+              title: AppLocalizations.of(context)!.settings,
+              subtitle: AppLocalizations.of(context)!.appPreferencesPrivacyTerms,
+              color: const Color(0xFF64748B),
               onTap: () {
                 if (!mounted) return;
                 _stopAutoScroll();
@@ -1214,7 +1214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ContactSupportScreen(),
+                      builder: (context) => const SettingsScreen(),
                     ),
                   ).then((_) {
                     if (mounted) {
@@ -1229,10 +1229,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildDivider(),
             
             _buildMenuOption(
-              icon: Icons.tune_rounded,
-              title: AppLocalizations.of(context)!.settings,
-              subtitle: AppLocalizations.of(context)!.appPreferencesPrivacyTerms,
-              color: const Color(0xFF64748B),
+              icon: Icons.support_agent_rounded,
+              title: AppLocalizations.of(context)!.contactSupport,
+              subtitle: AppLocalizations.of(context)!.getHelpReportIssues,
+              color: const Color(0xFF06B6D4),
               onTap: () {
                 if (!mounted) return;
                 _stopAutoScroll();
@@ -1240,7 +1240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
+                      builder: (context) => const ContactSupportScreen(),
                     ),
                   ).then((_) {
                     if (mounted) {
