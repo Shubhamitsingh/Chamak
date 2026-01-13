@@ -4,15 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LanguageService {
   static const String _languageKey = 'selected_language';
   
-  // Supported languages
+  // Supported languages - Only English and Hindi
   static const Map<String, Map<String, String>> supportedLanguages = {
     'en': {'name': 'English', 'nativeName': 'English'},
     'hi': {'name': 'Hindi', 'nativeName': 'हिंदी'},
-    'ta': {'name': 'Tamil', 'nativeName': 'தமிழ்'},
-    'te': {'name': 'Telugu', 'nativeName': 'తెలుగు'},
-    'ml': {'name': 'Malayalam', 'nativeName': 'മലയാളം'},
-    'mr': {'name': 'Marathi', 'nativeName': 'मराठी'},
-    'kn': {'name': 'Kannada', 'nativeName': 'ಕನ್ನಡ'},
   };
   
   /// Get saved language code from SharedPreferences

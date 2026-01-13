@@ -26,6 +26,7 @@ import '../widgets/coin_purchase_popup.dart';
 import '../services/location_permission_service.dart';
 import '../services/agora_token_service.dart';
 import 'live_reels_screen.dart';
+import 'nearby_users_screen.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 
@@ -98,9 +99,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _currentBottomIndex = 0;
-  int _topTabIndex = 0; // 0 = Explore, 1 = Live, 2 = Following, 3 = New
+  int _topTabIndex = 0; // 0 = Explore, 1 = Live, 2 = Following, 3 = New, 4 = Nearby
   final TextEditingController _searchController = TextEditingController();
-  final PageController _pageController = PageController();
+  late final PageController _pageController;
+  final ScrollController _topMenuScrollController = ScrollController(); // For scrolling menu to active tab
   final ChatService _chatService = ChatService();
   final EventService _eventService = EventService();
   final AnnouncementTrackingService _trackingService =
@@ -122,6 +124,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    // Initialize PageController with the current topTabIndex to preserve state
+    _pageController = PageController(initialPage: _topTabIndex);
+    
     // Add lifecycle observer for app state tracking
     WidgetsBinding.instance.addObserver(this);
     
@@ -159,6 +164,55 @@ class _HomeScreenState extends State<HomeScreen>
     Future.delayed(const Duration(seconds: 2), () {
       _checkAndShowCoinPopup();
     });
+    
+    // Sync topTabIndex with PageController's initial page after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _pageController.hasClients) {
+        final currentPage = _pageController.page?.round() ?? 0;
+        if (_topTabIndex != currentPage) {
+          setState(() {
+            _topTabIndex = currentPage;
+          });
+        }
+      }
+    });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sync topTabIndex when returning to this screen (when bottom tab changes to Home)
+    if (_currentBottomIndex == 0 && _pageController.hasClients) {
+      final currentPage = _pageController.page?.round() ?? _topTabIndex;
+      if (_topTabIndex != currentPage && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _currentBottomIndex == 0) {
+            setState(() {
+              _topTabIndex = currentPage;
+            });
+            // Scroll menu to show active tab
+            _scrollMenuToActiveTab();
+          }
+        });
+      }
+    }
+  }
+  
+  // Scroll menu to show the active tab
+  void _scrollMenuToActiveTab() {
+    if (!_topMenuScrollController.hasClients) return;
+    
+    // Calculate approximate position for each tab
+    // Each tab is approximately 80-100 pixels wide (including spacing)
+    final tabWidth = 100.0;
+    final scrollPosition = _topTabIndex * tabWidth;
+    
+    // Scroll to show the active tab
+    _topMenuScrollController.animateTo(
+      scrollPosition,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -546,6 +600,7 @@ class _HomeScreenState extends State<HomeScreen>
     _previewDelayNotifier.dispose();
     _searchController.dispose();
     _pageController.dispose();
+    _topMenuScrollController.dispose();
     _marqueeController.dispose();
     super.dispose();
   }
@@ -601,6 +656,16 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildBody() {
     switch (_currentBottomIndex) {
       case 0:
+        // When returning to Home tab, ensure PageController is on the correct page
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _currentBottomIndex == 0 && _pageController.hasClients) {
+            final currentPage = _pageController.page?.round() ?? _topTabIndex;
+            if (currentPage != _topTabIndex) {
+              // PageController is on different page, sync it
+              _pageController.jumpToPage(_topTabIndex);
+            }
+          }
+        });
         return _buildHomeTab();
       case 1:
         return _buildWalletTab();
@@ -626,6 +691,8 @@ class _HomeScreenState extends State<HomeScreen>
         return _buildFollowingContent();
       case 3:
         return _buildNewHostsContent();
+      case 4:
+        return _buildNearbyContent();
       default:
         return _buildExploreContent();
     }
@@ -653,14 +720,19 @@ class _HomeScreenState extends State<HomeScreen>
                     child: PageView.builder(
                       controller: _pageController,
                       onPageChanged: (index) {
-                        setState(() {
-                          _topTabIndex = index;
-                        });
+                        if (mounted) {
+                          setState(() {
+                            _topTabIndex = index;
+                          });
+                          debugPrint('📱 Page changed to index: $index, _topTabIndex: $_topTabIndex');
+                          // Scroll menu to show active tab
+                          _scrollMenuToActiveTab();
+                        }
                       },
                       physics: const PageScrollPhysics(),
                       allowImplicitScrolling: false,
                       pageSnapping: true,
-                      itemCount: 4,
+                      itemCount: 5, // 0=Explore, 1=Live, 2=Following, 3=New, 4=Nearby
                       itemBuilder: (context, index) {
                         return _buildPageContent(index);
                       },
@@ -721,6 +793,7 @@ class _HomeScreenState extends State<HomeScreen>
             // Text-Only Tabs (Left Side) - Scrollable
             Expanded(
               child: SingleChildScrollView(
+                controller: _topMenuScrollController,
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -908,6 +981,57 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           const SizedBox(height: 4),
                           if (_topTabIndex == 3)
+                            Container(
+                              width: 30,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color:
+                                    const Color(0xFFFF1B7C), // pink underline
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 15),
+
+                    // Nearby Button
+                    GestureDetector(
+                      onTap: () {
+                        _pageController.animateToPage(
+                          4,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.near_me,
+                                size: 16,
+                                color: Color(0xFFFF1B7C),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Nearby',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: _topTabIndex == 4
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _topTabIndex == 4
+                                      ? Colors.black87
+                                      : Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          if (_topTabIndex == 4)
                             Container(
                               width: 30,
                               height: 3,
@@ -2777,6 +2901,11 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  // ========== NEARBY CONTENT ==========
+  Widget _buildNearbyContent() {
+    return const NearbyUsersScreen();
   }
 
   // ========== START LIVE STREAM ==========

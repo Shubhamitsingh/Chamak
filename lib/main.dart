@@ -95,11 +95,6 @@ class LiveVibeApp extends StatelessWidget {
           supportedLocales: const [
             Locale('en'), // English
             Locale('hi'), // Hindi
-            Locale('ta'), // Tamil
-            Locale('te'), // Telugu
-            Locale('ml'), // Malayalam
-            Locale('mr'), // Marathi
-            Locale('kn'), // Kannada
           ],
           localeResolutionCallback: (locale, supportedLocales) {
             if (locale != null) {

@@ -76,6 +76,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 _buildSettingItem(
+                  title: Localizations.localeOf(context).languageCode == 'hi' 
+                      ? 'अपडेट' 
+                      : 'Update', // App Update menu - Translated
+                  onTap: () {
+                    try {
+                      final isHindi = Localizations.localeOf(context).languageCode == 'hi';
+                      // Show update dialog or navigate to update screen
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(isHindi ? 'अपडेट जांचें' : 'Check for Updates'),
+                          content: Text(
+                            isHindi 
+                                ? 'आप ऐप का नवीनतम संस्करण उपयोग कर रहे हैं।\n\nसंस्करण: 1.0.1'
+                                : 'You are using the latest version of the app.\n\nVersion: 1.0.1',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(isHindi ? 'ठीक है' : 'OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint('Error showing update dialog: $e');
+                    }
+                  },
+                ),
+                _buildSettingItem(
                   title: AppLocalizations.of(context)!.aboutUs,
                   onTap: () {
                     try {

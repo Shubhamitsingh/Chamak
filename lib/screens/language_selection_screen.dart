@@ -14,16 +14,6 @@ class LanguageSelectionScreen extends StatelessWidget {
         return const Color(0xFF3B82F6); // Blue
       case 'hi': // Hindi
         return const Color(0xFFFF6B35); // Orange
-      case 'ta': // Tamil
-        return const Color(0xFF10B981); // Green
-      case 'te': // Telugu
-        return const Color(0xFF8B5CF6); // Purple
-      case 'ml': // Malayalam
-        return const Color(0xFFEF4444); // Red
-      case 'mr': // Marathi
-        return const Color(0xFFF59E0B); // Amber
-      case 'kn': // Kannada
-        return const Color(0xFFEC4899); // Pink
       default:
         return Colors.grey;
     }

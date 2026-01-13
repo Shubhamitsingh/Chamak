@@ -956,6 +956,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: AppLocalizations.of(context)!.chatInbox,
                   color: const Color(0xFF3B82F6),
                   badgeCount: unreadCount,
+                  showBadgeOnTrailing: true, // Show badge on right side like level
                   onTap: () {
                     if (!mounted) return;
                     _stopAutoScroll();
@@ -1025,6 +1026,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   subtitle: AppLocalizations.of(context)!.upcomingEventsPosters,
                                   color: const Color(0xFF8B5CF6),
                                   badgeCount: totalUnseenCount > 0 ? totalUnseenCount : null,
+                                  showBadgeOnTrailing: true, // Show badge on right side like level
                                   onTap: () async {
                                     if (!mounted) return;
                                     _stopAutoScroll();
@@ -1296,6 +1298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     int? coinBalance, // Coin balance to display
     bool showLevel = false,
     int? userLevel, // User level to display
+    bool showBadgeOnTrailing = false, // Show badge on trailing (right side) instead of icon
   }) {
     return ListTile(
       onTap: onTap,
@@ -1315,8 +1318,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               size: 20,
             ),
           ),
-          // Unread Badge
-          if (badgeCount != null && badgeCount > 0)
+          // Unread Badge (only show on icon if not showing on trailing)
+          if (badgeCount != null && badgeCount > 0 && !showBadgeOnTrailing)
             Positioned(
               top: -4,
               right: -4,
@@ -1446,6 +1449,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Text(
                   'Lv.$userLevel',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+          // Badge Count Display (for Messages and Events - shown on right side like level)
+          if (showBadgeOnTrailing && badgeCount != null && badgeCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withValues(alpha: 0.2),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  badgeCount > 99 ? '99+' : badgeCount.toString(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,

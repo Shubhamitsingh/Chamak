@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'location_service.dart';
 import 'database_service.dart';
+import 'nearby_service.dart';
 
 /// Service to handle location permission request for new users
 class LocationPermissionService {
@@ -58,8 +59,21 @@ class LocationPermissionService {
         return true;
       }
 
-      // Request permission and get location
-      Map<String, String> location = await _locationService.getCurrentCityAndCountry();
+      // Request permission
+      await _locationService.requestLocationPermission();
+
+      // Get current GPS coordinates
+      final position = await _locationService.getCurrentLocation();
+      if (position == null) {
+        print('⚠️ Could not get GPS coordinates');
+        return false;
+      }
+
+      // Get address from coordinates
+      Map<String, String> location = await _locationService.getAddressFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
 
       if (location['city'] == null || location['city']!.isEmpty) {
         print('⚠️ Location data incomplete');
@@ -67,9 +81,20 @@ class LocationPermissionService {
       }
 
       print('✅ Location detected: ${location['city']}, ${location['country']}');
+      print('✅ Coordinates: ${position.latitude}, ${position.longitude}');
 
-      // Save location to user profile
+      // Save location to user profile (city and country)
       await _databaseService.updateUserProfile(
+        city: location['city'],
+        country: location['country'],
+      );
+
+      // Save GPS coordinates using NearbyService
+      final nearbyService = NearbyService();
+      await nearbyService.updateUserLocation(
+        userId: currentUser.uid,
+        latitude: position.latitude,
+        longitude: position.longitude,
         city: location['city'],
         country: location['country'],
       );

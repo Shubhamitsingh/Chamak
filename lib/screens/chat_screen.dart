@@ -188,8 +188,12 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
+        toolbarHeight: 52, // Reduced from default 56px
+        leadingWidth: 40, // Reduced leading width for less space
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 22), // Slightly smaller icon
+          padding: EdgeInsets.zero, // Remove default padding
+          constraints: const BoxConstraints(), // Remove default constraints
           onPressed: () => Navigator.pop(context),
         ),
         title: InkWell(
@@ -218,7 +222,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   }
                   
                   return CircleAvatar(
-                    radius: 18,
+                    radius: 15, // Reduced from 18 to 15 (30px diameter instead of 36px)
                     // Soft pink-purple so header avatar matches chat theme
                     backgroundColor: const Color(0xFFCE93D8),
                     backgroundImage: profileImage.isNotEmpty
@@ -229,7 +233,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             widget.otherUser.name[0].toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 14, // Reduced from 16 to match smaller avatar
                               fontWeight: FontWeight.bold,
                             ),
                           )
@@ -237,7 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 },
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8), // Reduced from 10 to 8
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,33 +339,33 @@ class _ChatScreenState extends State<ChatScreen> {
           GestureDetector(
             onTap: _initiateVideoCall,
             child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: const EdgeInsets.only(right: 6), // Reduced from 8 to 6
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Reduced from (12, 8) to (10, 6)
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18), // Slightly reduced from 20 to 18
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Image.asset(
                     'assets/images/video.png',
-                    width: 18,
-                    height: 18,
+                    width: 16, // Reduced from 18 to 16
+                    height: 16, // Reduced from 18 to 16
                     color: Colors.white,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5), // Reduced from 6 to 5
                   const Text(
                     'Video Call',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 11, // Reduced from 12 to 11
                       fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
+                      letterSpacing: 0.2, // Reduced from 0.3 to 0.2
                     ),
                   ),
                 ],
