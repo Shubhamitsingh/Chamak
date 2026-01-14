@@ -13,7 +13,9 @@ import '../services/chat_service.dart';
 import '../services/call_request_service.dart';
 import '../services/agora_token_service.dart';
 import '../services/database_service.dart';
+import '../services/rating_service.dart';
 import '../widgets/call_request_dialog.dart';
+import '../widgets/rating_popup_dialog.dart';
 import 'user_profile_view_screen.dart';
 import 'private_call_screen.dart';
 
@@ -36,10 +38,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final CallRequestService _callRequestService = CallRequestService();
   final AgoraTokenService _tokenService = AgoraTokenService();
   final DatabaseService _databaseService = DatabaseService();
+  final RatingService _ratingService = RatingService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String? _currentUserId;
   bool _containsDigitsWarning = false;
+  bool _hasShownRatingPopup = false; // Track if popup was shown in this session
   
   // Call request state
   String? _currentCallRequestId;
@@ -70,6 +74,58 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // Setup incoming call listener
     _setupIncomingCallListener();
+
+    // Check and show rating popup after screen loads
+    _checkAndShowRatingPopup();
+  }
+
+  /// Check if user has rated and show popup if needed
+  Future<void> _checkAndShowRatingPopup() async {
+    // Small delay to ensure screen is fully loaded
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted || _hasShownRatingPopup) return;
+
+    // TEMPORARY: Show popup to everyone for testing/demo
+    // TODO: Uncomment the check below when ready for production
+    /*
+    try {
+      final hasRated = await _ratingService.hasUserRated();
+      
+      if (!hasRated && mounted) {
+        _hasShownRatingPopup = true;
+        _showRatingPopup();
+      }
+    } catch (e) {
+      debugPrint('Error checking rating status: $e');
+    }
+    */
+    
+    // Always show popup (for testing/demo)
+    if (mounted) {
+      _hasShownRatingPopup = true;
+      _showRatingPopup();
+    }
+  }
+
+  /// Show rating popup dialog
+  void _showRatingPopup() {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (context) => RatingPopupDialog(
+        onRated: () async {
+          // Mark user as rated when they click "Rate Now"
+          await _ratingService.markUserAsRated();
+        },
+        onClosed: () {
+          // User closed without rating - will show again next time
+          _hasShownRatingPopup = false;
+        },
+      ),
+    );
   }
 
   @override

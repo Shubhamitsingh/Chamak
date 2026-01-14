@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:country_picker/country_picker.dart';
 import 'dart:async';
 import '../models/user_model.dart';
 import '../models/call_request_model.dart';
@@ -808,8 +809,8 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                               
                               // Age, Language, Country - Real Data Row
                               Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
+                                spacing: 4,
+                                runSpacing: 3,
                                 children: [
                                   // Age
                                   if (widget.user.age != null)
@@ -817,9 +818,9 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                   // Language
                                   if (widget.user.language != null && widget.user.language!.isNotEmpty)
                                     _buildInfoChip(widget.user.language!),
-                                  // Country
+                                  // Country (with flag emoji)
                                   if (widget.user.country != null && widget.user.country!.isNotEmpty)
-                                    _buildInfoChip(widget.user.country!),
+                                    _buildCountryChip(widget.user.country!, widget.user.countryCode),
                                 ],
                               ),
                               
@@ -1497,13 +1498,13 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
     );
   }
 
-  // Build info chip for Age, Language, Country
+  // Build info chip for Age, Language
   Widget _buildInfoChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: Colors.grey[300]!,
           width: 1,
@@ -1512,12 +1513,186 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 12,
+          fontSize: 10,
           color: Colors.black54,
           fontWeight: FontWeight.w500,
         ),
       ),
     );
+  }
+
+  // Build country chip with flag emoji
+  Widget _buildCountryChip(String countryName, String countryCode) {
+    // Get flag emoji from country code or country name
+    String flagEmoji = _getFlagEmoji(countryCode, countryName);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.grey[300]!,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Flag emoji
+          if (flagEmoji.isNotEmpty)
+            Text(
+              flagEmoji,
+              style: const TextStyle(fontSize: 10),
+            ),
+          if (flagEmoji.isNotEmpty) const SizedBox(width: 3),
+          // Country name
+          Text(
+            countryName,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper function to get flag emoji from country code or country name
+  String _getFlagEmoji(String countryCode, String countryName) {
+    try {
+      // First, try to find country by name (most reliable if country name is available)
+      if (countryName.isNotEmpty) {
+        try {
+          // Try common country name mappings
+          final countryNameMap = {
+            'India': 'IN',
+            'United States': 'US',
+            'United Kingdom': 'GB',
+            'Canada': 'CA',
+            'Australia': 'AU',
+            'United Arab Emirates': 'AE',
+            'Singapore': 'SG',
+            'Malaysia': 'MY',
+            'Pakistan': 'PK',
+            'Bangladesh': 'BD',
+            'China': 'CN',
+            'Japan': 'JP',
+            'South Korea': 'KR',
+            'Germany': 'DE',
+            'France': 'FR',
+            'Italy': 'IT',
+            'Spain': 'ES',
+            'Brazil': 'BR',
+            'Mexico': 'MX',
+            'Russia': 'RU',
+          };
+          
+          // Check if country name matches any in our map
+          String? matchedCode = countryNameMap[countryName];
+          if (matchedCode == null) {
+            // Try case-insensitive match
+            for (var entry in countryNameMap.entries) {
+              if (entry.key.toLowerCase() == countryName.toLowerCase()) {
+                matchedCode = entry.value;
+                break;
+              }
+            }
+          }
+          
+          if (matchedCode != null) {
+            try {
+              final country = Country.parse(matchedCode);
+              return country.flagEmoji;
+            } catch (e) {
+              // Fall through to country code method
+            }
+          }
+        } catch (e) {
+          // Continue to country code method
+        }
+      }
+      
+      // Second, try to parse as ISO country code (2 letters like "IN", "US")
+      if (countryCode.isNotEmpty) {
+        String code = countryCode.toUpperCase().trim();
+        
+        // Remove phone code prefix if present (e.g., "+91" -> "91")
+        if (code.startsWith('+')) {
+          code = code.substring(1);
+        }
+        
+        // If it's a 2-letter code, try to parse directly
+        if (code.length == 2 && code.contains(RegExp(r'^[A-Z]{2}$'))) {
+          try {
+            final country = Country.parse(code);
+            return country.flagEmoji;
+          } catch (e) {
+            // If parsing fails, try Unicode conversion
+            return _countryCodeToFlagEmoji(code);
+          }
+        }
+        
+        // If countryCode is a phone code (like "91"), try to find country by phone code
+        if (code.length <= 3 && code.contains(RegExp(r'^\d+$'))) {
+          // Try to find country by phone code using country_picker
+          try {
+            // Search through common countries
+            final commonCountries = ['IN', 'US', 'GB', 'CA', 'AU', 'AE', 'SG', 'MY', 'PK', 'BD', 'CN', 'JP', 'KR', 'DE', 'FR', 'IT', 'ES', 'BR', 'MX', 'RU'];
+            for (String isoCode in commonCountries) {
+              try {
+                final country = Country.parse(isoCode);
+                if (country.phoneCode == code) {
+                  return country.flagEmoji;
+                }
+              } catch (e) {
+                continue;
+              }
+            }
+          } catch (e) {
+            // Continue to fallback
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting flag emoji: $e');
+    }
+    return ''; // Return empty if unable to get flag
+  }
+
+  // Convert 2-letter country code to flag emoji using Unicode
+  String _countryCodeToFlagEmoji(String code) {
+    if (code.length != 2) return '';
+    
+    // Validate that it's only letters
+    if (!code.contains(RegExp(r'^[A-Z]{2}$'))) return '';
+    
+    // Unicode regional indicator symbols: A=0x1F1E6, B=0x1F1E7, etc.
+    // Flag emoji = regional indicator for first letter + regional indicator for second letter
+    try {
+      final codePoints = code
+          .toUpperCase()
+          .split('')
+          .map((char) {
+            final charCode = char.codeUnitAt(0);
+            if (charCode >= 0x41 && charCode <= 0x5A) { // A-Z
+              return 0x1F1E6 + (charCode - 0x41);
+            }
+            return null;
+          })
+          .where((codePoint) => codePoint != null)
+          .cast<int>()
+          .toList();
+      
+      if (codePoints.length == 2) {
+        return String.fromCharCodes(codePoints);
+      }
+    } catch (e) {
+      debugPrint('Error converting country code to flag: $e');
+    }
+    return '';
   }
 
   // Build clips horizontal list with pink border circles
