@@ -48,7 +48,11 @@ dependencies:
   cloud_functions: ^6.0.4
   firebase_storage: ^13.0.3
   firebase_messaging: ^16.0.3
+  firebase_remote_config: ^6.1.2
   flutter_local_notifications: ^18.0.1
+  
+  # App Info & Version
+  package_info_plus: ^8.0.0
   
   # Image Picker
   image_picker: ^1.2.0

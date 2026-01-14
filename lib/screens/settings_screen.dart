@@ -7,7 +7,9 @@ import 'privacy_policy_screen.dart';
 import 'terms_conditions_screen.dart';
 import 'about_screen.dart';
 import 'feedback_screen.dart';
+import 'update_details_screen.dart';
 import '../providers/language_provider.dart';
+import '../services/update_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -79,29 +81,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Localizations.localeOf(context).languageCode == 'hi' 
                       ? 'अपडेट' 
                       : 'Update', // App Update menu - Translated
-                  onTap: () {
+                  onTap: () async {
                     try {
-                      final isHindi = Localizations.localeOf(context).languageCode == 'hi';
-                      // Show update dialog or navigate to update screen
+                      // Show loading dialog
                       showDialog(
                         context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text(isHindi ? 'अपडेट जांचें' : 'Check for Updates'),
-                          content: Text(
-                            isHindi 
-                                ? 'आप ऐप का नवीनतम संस्करण उपयोग कर रहे हैं।\n\nसंस्करण: 1.0.1'
-                                : 'You are using the latest version of the app.\n\nVersion: 1.0.1',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: Text(isHindi ? 'ठीक है' : 'OK'),
-                            ),
-                          ],
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(),
                         ),
                       );
+
+                      // Check for updates
+                      final updateService = UpdateService();
+                      final updateModel = await updateService.checkForUpdates();
+
+                      // Close loading dialog
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
+
+                      // Navigate to update details screen
+                      if (mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UpdateDetailsScreen(
+                              updateModel: updateModel,
+                            ),
+                          ),
+                        );
+                      }
                     } catch (e) {
-                      debugPrint('Error showing update dialog: $e');
+                      // Close loading dialog if still open
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
+                      
+                      // Show error message
+                      if (mounted) {
+                        final isHindi = Localizations.localeOf(context).languageCode == 'hi';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isHindi 
+                                  ? 'अपडेट जांचने में त्रुटि हुई'
+                                  : 'Error checking for updates',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                      debugPrint('Error checking for updates: $e');
                     }
                   },
                 ),

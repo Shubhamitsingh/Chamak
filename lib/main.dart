@@ -11,6 +11,7 @@ import 'screens/intro_logo_screen.dart';
 import 'screens/login_screen.dart';
 import 'providers/language_provider.dart';
 import 'services/notification_service.dart';
+import 'services/update_service.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 
 void main() async {
@@ -23,6 +24,12 @@ void main() async {
   
   // Initialize Firebase Cloud Messaging - Background handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  
+  // Initialize Update Service (for checking app updates)
+  UpdateService().initialize().catchError((error) {
+    debugPrint('⚠️ Update service initialization error: $error');
+    // Don't block app startup if update service fails
+  });
   
   // Set system UI overlay style (non-blocking)
   SystemChrome.setSystemUIOverlayStyle(

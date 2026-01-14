@@ -9,8 +9,56 @@ class HelpFeedbackScreen extends StatefulWidget {
   State<HelpFeedbackScreen> createState() => _HelpFeedbackScreenState();
 }
 
-class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
+class _HelpFeedbackScreenState extends State<HelpFeedbackScreen>
+    with SingleTickerProviderStateMixin {
   int? _expandedIndex;
+  
+  // FAQ Data Structure
+  List<Map<String, String>> _getFaqData(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    return [
+      {
+        'question': localizations.faqUpdateProfile,
+        'answer': localizations.faqUpdateProfileAnswer,
+      },
+      {
+        'question': localizations.faqRechargeWallet,
+        'answer': localizations.faqRechargeWalletAnswer,
+      },
+      {
+        'question': localizations.faqSendMessages,
+        'answer': localizations.faqSendMessagesAnswer,
+      },
+      {
+        'question': localizations.faqFollowers,
+        'answer': localizations.faqFollowersAnswer,
+      },
+      {
+        'question': localizations.faqLevelSystem,
+        'answer': localizations.faqLevelSystemAnswer,
+      },
+      {
+        'question': localizations.faqChangePhone,
+        'answer': localizations.faqChangePhoneAnswer,
+      },
+      {
+        'question': localizations.faqWithdrawEarnings,
+        'answer': localizations.faqWithdrawEarningsAnswer,
+      },
+      {
+        'question': localizations.faqDeleteAccount,
+        'answer': localizations.faqDeleteAccountAnswer,
+      },
+      {
+        'question': localizations.faqEnableNotifications,
+        'answer': localizations.faqEnableNotificationsAnswer,
+      },
+      {
+        'question': localizations.faqAppNotWorking,
+        'answer': localizations.faqAppNotWorkingAnswer,
+      },
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,13 +69,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
         elevation: 1,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () {
-            try {
-              Navigator.pop(context);
-            } catch (e) {
-              debugPrint('Error navigating back: $e');
-            }
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           AppLocalizations.of(context)!.helpAndFeedback,
@@ -124,55 +166,10 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                   const SizedBox(height: 12),
                   
                   // FAQ Items
-                  ...List.generate(10, (index) {
+                  ...(_getFaqData(context).asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final faq = entry.value;
                     final isExpanded = _expandedIndex == index;
-                    
-                    // Get FAQ question and answer from translations
-                    String question = '';
-                    String answer = '';
-                    
-                    switch (index) {
-                      case 0:
-                        question = AppLocalizations.of(context)!.faqUpdateProfile;
-                        answer = AppLocalizations.of(context)!.faqUpdateProfileAnswer;
-                        break;
-                      case 1:
-                        question = AppLocalizations.of(context)!.faqRechargeWallet;
-                        answer = AppLocalizations.of(context)!.faqRechargeWalletAnswer;
-                        break;
-                      case 2:
-                        question = AppLocalizations.of(context)!.faqSendMessages;
-                        answer = AppLocalizations.of(context)!.faqSendMessagesAnswer;
-                        break;
-                      case 3:
-                        question = AppLocalizations.of(context)!.faqFollowers;
-                        answer = AppLocalizations.of(context)!.faqFollowersAnswer;
-                        break;
-                      case 4:
-                        question = AppLocalizations.of(context)!.faqLevelSystem;
-                        answer = AppLocalizations.of(context)!.faqLevelSystemAnswer;
-                        break;
-                      case 5:
-                        question = AppLocalizations.of(context)!.faqChangePhone;
-                        answer = AppLocalizations.of(context)!.faqChangePhoneAnswer;
-                        break;
-                      case 6:
-                        question = AppLocalizations.of(context)!.faqWithdrawEarnings;
-                        answer = AppLocalizations.of(context)!.faqWithdrawEarningsAnswer;
-                        break;
-                      case 7:
-                        question = AppLocalizations.of(context)!.faqDeleteAccount;
-                        answer = AppLocalizations.of(context)!.faqDeleteAccountAnswer;
-                        break;
-                      case 8:
-                        question = AppLocalizations.of(context)!.faqEnableNotifications;
-                        answer = AppLocalizations.of(context)!.faqEnableNotificationsAnswer;
-                        break;
-                      case 9:
-                        question = AppLocalizations.of(context)!.faqAppNotWorking;
-                        answer = AppLocalizations.of(context)!.faqAppNotWorkingAnswer;
-                        break;
-                    }
                     
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -215,16 +212,16 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                         color: const Color(0xFF6366F1).withValues(alpha:0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: Icon(
+                                      child: const Icon(
                                         Icons.help_outline,
-                                        color: const Color(0xFF6366F1),
+                                        color: Color(0xFF6366F1),
                                         size: 18,
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        question,
+                                        faq['question']!,
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
@@ -232,21 +229,25 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                         ),
                                       ),
                                     ),
-                                    Icon(
-                                      isExpanded 
-                                          ? Icons.keyboard_arrow_up 
-                                          : Icons.keyboard_arrow_down,
-                                      color: Colors.grey[600],
-                                      size: 22,
+                                    AnimatedRotation(
+                                      turns: isExpanded ? 0.5 : 0,
+                                      duration: const Duration(milliseconds: 200),
+                                      curve: Curves.easeInOut,
+                                      child: Icon(
+                                        Icons.keyboard_arrow_down,
+                                        color: Colors.grey[600],
+                                        size: 22,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
                             
-                            // Answer (Expandable)
-                            if (isExpanded)
-                              Container(
+                            // Answer (Expandable with Animation)
+                            AnimatedCrossFade(
+                              firstChild: const SizedBox.shrink(),
+                              secondChild: Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                                 decoration: BoxDecoration(
@@ -271,7 +272,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        answer,
+                                        faq['answer']!,
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: Colors.grey[700],
@@ -282,11 +283,17 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                   ],
                                 ),
                               ),
+                              crossFadeState: isExpanded 
+                                  ? CrossFadeState.showSecond 
+                                  : CrossFadeState.showFirst,
+                              duration: const Duration(milliseconds: 200),
+                              sizeCurve: Curves.easeInOut,
+                            ),
                           ],
                         ),
                       ),
                     );
-                  }),
+                  }).toList()),
                 ],
               ),
             ),
@@ -341,18 +348,14 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        try {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ContactSupportScreen(),
-                            ),
-                          );
-                        } catch (e) {
-                          debugPrint('Error navigating to contact support: $e');
-                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ContactSupportScreen(),
+                          ),
+                        );
                       },
-                      icon: Image.asset('assets/images/chat.png', width: 18, height: 18, color: Colors.white),
+                      icon: const Icon(Icons.support_agent_rounded, size: 18),
                       label: Text(
                         AppLocalizations.of(context)!.contactSupport,
                         style: const TextStyle(
