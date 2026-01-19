@@ -1,7 +1,7 @@
 name: Chamak
 description: A live streaming mobile app built with Flutter
 publish_to: 'none'
-version: 1.0.6+12
+version: 1.0.7+14
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -91,6 +91,9 @@ dependencies:
   
   # WebView for in-app payment
   webview_flutter: ^4.4.2
+  
+  # Screen Protection - Prevent screenshots and screen recording
+  screen_protector: ^1.2.0
 
 dev_dependencies:
   flutter_test:

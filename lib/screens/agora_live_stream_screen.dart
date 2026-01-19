@@ -34,6 +34,7 @@ import '../widgets/low_coin_popup.dart';
 import '../widgets/end_stream_confirmation_sheet.dart';
 import 'live_stream_summary_screen.dart';
 import 'package:country_picker/country_picker.dart';
+import '../services/screen_protection_service.dart';
 
 // Agora App ID
 const String appId = '43bb5e13c835444595c8cf087a0ccaa4';
@@ -128,6 +129,10 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   @override
   void initState() {
     super.initState();
+    
+    // 🛡️ Enable screen protection (prevent screenshots and screen recording)
+    ScreenProtectionService().enableProtection();
+    
     // Set pink status bar
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -358,7 +363,11 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   }
 
   @override
+  @override
   void dispose() {
+    // 🛡️ Disable screen protection when leaving the screen
+    ScreenProtectionService().disableProtection();
+    
     // Reset status bar
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -387,8 +396,54 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     _chatScrollController.dispose();
     _chatFocusNode.dispose();
     
+    // CRITICAL: End stream if host is still live (catches all exit scenarios)
+    // This ensures stream is marked inactive even if host force quits or crashes
+    if (widget.isHost && widget.streamId != null && widget.streamId!.isNotEmpty) {
+      _endStreamIfStillActive(widget.streamId!);
+    }
+    
     _cleanupAgoraEngine();
     super.dispose();
+  }
+  
+  /// End stream if host exits without properly ending (catches crashes, force quits, etc.)
+  Future<void> _endStreamIfStillActive(String streamId) async {
+    try {
+      debugPrint('🔍 Checking if stream needs to be ended: $streamId');
+      
+      // Check if stream is still active
+      final streamDoc = await FirebaseFirestore.instance
+          .collection('live_streams')
+          .doc(streamId)
+          .get();
+      
+      if (!streamDoc.exists) {
+        debugPrint('   Stream does not exist, skipping');
+        return;
+      }
+      
+      final streamData = streamDoc.data();
+      final isActive = streamData?['isActive'] ?? false;
+      
+      if (isActive) {
+        debugPrint('   ⚠️ Stream is still active - ending it now');
+        final liveStreamService = LiveStreamService();
+        await liveStreamService.endLiveStream(streamId);
+        debugPrint('   ✅ Stream auto-ended in dispose: $streamId');
+      } else {
+        debugPrint('   Stream already ended, no action needed');
+      }
+    } catch (e) {
+      debugPrint('❌ Error auto-ending stream in dispose: $e');
+      // Try once more with simpler approach
+      try {
+        final liveStreamService = LiveStreamService();
+        await liveStreamService.endLiveStream(streamId);
+        debugPrint('   ✅ Retry successful - stream ended');
+      } catch (retryError) {
+        debugPrint('❌ Retry also failed: $retryError');
+      }
+    }
   }
 
   // Set up the Agora RTC engine instance

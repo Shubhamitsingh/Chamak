@@ -3,11 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import '../services/admin_service.dart';
 import '../services/support_chat_service.dart';
 import '../services/withdrawal_service.dart';
 import '../services/storage_service.dart';
 import '../services/database_service.dart';
+import '../services/admin_team_message_service.dart';
 import '../models/withdrawal_request_model.dart';
 import 'admin_support_chat_screen.dart';
 
@@ -25,10 +27,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   final WithdrawalService _withdrawalService = WithdrawalService();
   final StorageService _storageService = StorageService();
   final DatabaseService _databaseService = DatabaseService();
+  final AdminTeamMessageService _teamMessageService = AdminTeamMessageService();
   final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _coinsController = TextEditingController();
   final TextEditingController _reasonController = TextEditingController();
+  final TextEditingController _teamMessageController = TextEditingController();
 
   bool _isLoading = false;
   bool _isAdmin = false;
@@ -43,7 +47,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _checkAdminStatus();
     _loadAdminActions();
   }
@@ -54,6 +58,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
     _searchController.dispose();
     _coinsController.dispose();
     _reasonController.dispose();
+    _teamMessageController.dispose();
     super.dispose();
   }
 
@@ -373,6 +378,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
               icon: const Icon(Icons.payment, size: 20),
               child: const Text('Payments'),
             ),
+            Tab(
+              icon: const Icon(Icons.group, size: 20),
+              child: const Text('Team Messages'),
+            ),
           ],
         ),
       ),
@@ -410,6 +419,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
           // Support Chats Tab
           _buildSupportChatsTab(),
           _buildPaymentsTab(),
+          // Team Messages Tab
+          _buildTeamMessagesTab(),
         ],
       ),
     );
@@ -1568,6 +1579,275 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  // ========== TEAM MESSAGES TAB ==========
+  Widget _buildTeamMessagesTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Send Message Section
+          Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.group, color: Color(0xFFFF1B7C)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Send Team Message',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF1B7C).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFF1B7C).withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Color(0xFFFF1B7C), size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'This message will be sent to all users in the app. Users will see it in the "Chamakz Team" chat.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFFF1B7C),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Message Input
+                  TextField(
+                    controller: _teamMessageController,
+                    decoration: InputDecoration(
+                      labelText: 'Message to all users',
+                      hintText: 'Enter your message here...',
+                      prefixIcon: const Icon(Icons.message, color: Color(0xFFFF1B7C)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 2),
+                      ),
+                    ),
+                    maxLines: 5,
+                  ),
+                  const SizedBox(height: 16),
+                  // Send Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _sendTeamMessage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF1B7C),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text(
+                              'Send to All Users',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Message History Section
+          const Text(
+            'Message History',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          StreamBuilder<List>(
+            stream: _teamMessageService.getMessageHistory(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: CircularProgressIndicator(color: Color(0xFFFF1B7C)),
+                  ),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Text(
+                      'Error loading messages: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                );
+              }
+
+              final messages = snapshot.data ?? [];
+              if (messages.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      children: [
+                        Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No messages sent yet',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  final message = messages[index];
+                  return _buildTeamMessageHistoryItem(message);
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamMessageHistoryItem(dynamic message) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  message.senderName ?? 'Chamakz Team',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFF1B7C),
+                  ),
+                ),
+                Text(
+                  _formatTeamMessageTimestamp(message.timestamp),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message.message ?? '',
+              style: const TextStyle(fontSize: 14),
+            ),
+            if (message.imageUrl != null && message.imageUrl.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  message.imageUrl,
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendTeamMessage() async {
+    final message = _teamMessageController.text.trim();
+    if (message.isEmpty) {
+      _showError('Please enter a message');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await _teamMessageService.sendBroadcastMessage(
+      message: message,
+      senderName: 'Chamakz Team',
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result['success'] == true && mounted) {
+      _showSuccess('✅ Message sent to all users!');
+      _teamMessageController.clear();
+    } else {
+      _showError(result['message'] ?? 'Failed to send message');
+    }
+  }
+
+  String _formatTeamMessageTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inDays == 0) {
+      return DateFormat('HH:mm').format(timestamp);
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return DateFormat('EEEE').format(timestamp);
+    } else {
+      return DateFormat('dd MMM yyyy').format(timestamp);
+    }
   }
 }
 

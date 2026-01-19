@@ -323,15 +323,24 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                     decoration: BoxDecoration(
-                                      color: Colors.grey[100],
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFFFF1B7C), Color(0xFFE91E63)],
+                                      ),
                                       borderRadius: BorderRadius.circular(6),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
+                                          blurRadius: 2,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
                                     ),
                                     child: Text(
                                       'Lv. $level',
-                                      style: TextStyle(
-                                        color: Colors.grey[700],
+                                      style: const TextStyle(
+                                        color: Colors.white,
                                         fontSize: 8,
-                                        fontWeight: FontWeight.w500,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),

@@ -596,12 +596,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       debugPrint('Navigation error: $e');
                     }
                   },
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha:0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Icon(
                       Icons.arrow_forward_ios,
                       size: 18,
@@ -859,6 +855,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: AppLocalizations.of(context)!.wallet,
                       subtitle: AppLocalizations.of(context)!.balanceRechargeWithdrawal,
                       color: const Color(0xFFFFB800),
+                      iconImage: 'assets/images/walleticon.png', // Use custom wallet icon
                       showCoinIcon: true,
                       coinBalance: uCoinsBalance, // Real-time coin balance
                       onTap: () {
@@ -955,6 +952,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: AppLocalizations.of(context)!.messages,
                   subtitle: AppLocalizations.of(context)!.chatInbox,
                   color: const Color(0xFF3B82F6),
+                  iconImage: 'assets/images/comment.png', // Use custom comment icon
                   badgeCount: unreadCount,
                   showBadgeOnTrailing: true, // Show badge on right side like level
                   onTap: () {
@@ -1299,6 +1297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     bool showLevel = false,
     int? userLevel, // User level to display
     bool showBadgeOnTrailing = false, // Show badge on trailing (right side) instead of icon
+    String? iconImage, // Optional image path to replace icon
   }) {
     return ListTile(
       onTap: onTap,
@@ -1312,11 +1311,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: color.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
+            child: iconImage != null
+                ? ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      color,
+                      BlendMode.srcIn, // Use srcIn to replace image colors with the color
+                    ),
+                    child: Image.asset(
+                      iconImage,
+                      width: 20,
+                      height: 20,
+                      fit: BoxFit.contain,
+                    ),
+                  )
+                : Icon(
+                    icon,
+                    color: color,
+                    size: 20,
+                  ),
           ),
           // Unread Badge (only show on icon if not showing on trailing)
           if (badgeCount != null && badgeCount > 0 && !showBadgeOnTrailing)

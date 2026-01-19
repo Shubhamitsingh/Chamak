@@ -25,6 +25,9 @@ import '../models/announcement_model.dart';
 import '../widgets/coin_purchase_popup.dart';
 import '../services/location_permission_service.dart';
 import '../services/agora_token_service.dart';
+import '../services/telegram_popup_service.dart';
+import '../widgets/telegram_channel_popup.dart';
+import '../widgets/enhanced_loading_screen.dart';
 import 'live_reels_screen.dart';
 import 'nearby_users_screen.dart';
 import 'dart:async';
@@ -108,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen>
   final AnnouncementTrackingService _trackingService =
       AnnouncementTrackingService();
   final CoinPopupService _popupService = CoinPopupService();
+  final TelegramPopupService _telegramPopupService = TelegramPopupService();
   final DatabaseService _databaseService = DatabaseService();
   final LocationPermissionService _locationPermissionService =
       LocationPermissionService();
@@ -163,6 +167,14 @@ class _HomeScreenState extends State<HomeScreen>
     // Production: Shows strategically (max 3/week, smart timing)
     Future.delayed(const Duration(seconds: 2), () {
       _checkAndShowCoinPopup();
+    });
+    
+    // 📱 Telegram Channel Popup
+    // Shows after coin popup (6 seconds delay to allow coin popup to show and be dismissed)
+    // Reset session flag on app start
+    _telegramPopupService.resetSessionFlag();
+    Future.delayed(const Duration(seconds: 6), () {
+      _checkAndShowTelegramPopup();
     });
     
     // Sync topTabIndex with PageController's initial page after first frame
@@ -640,6 +652,50 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (e) {
       // Silently fail - don't disrupt user experience
       debugPrint('Error checking coin popup: $e');
+    }
+  }
+
+  /// Check if Telegram popup should be shown and display it
+  Future<void> _checkAndShowTelegramPopup() async {
+    if (!mounted) return;
+
+    try {
+      // Check if should show popup
+      final shouldShow = await _telegramPopupService.shouldShowPopup();
+      if (!shouldShow) return;
+
+      // Check if user is in live stream (don't show during live)
+      if (_isLiveReelsFullScreen) {
+        return; // Don't show during live streams
+      }
+
+      // Mark as shown in session
+      await _telegramPopupService.markShownInSession();
+      await _telegramPopupService.incrementShowCount();
+
+      // Show popup
+      if (!mounted) return;
+
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: true, // Allow tap outside to dismiss
+        barrierColor: Colors.black.withOpacity(0.6),
+        builder: (context) => TelegramChannelPopup(
+          telegramChannelUrl: 'https://t.me/+kwidFzpWJ-k4ZTdl',
+          appName: 'Chamakz',
+          popupService: _telegramPopupService,
+        ),
+      );
+
+      // Handle result (optional analytics)
+      if (result == true) {
+        debugPrint('✅ User joined Telegram channel');
+      } else {
+        debugPrint('ℹ️ User skipped Telegram popup');
+      }
+    } catch (e) {
+      // Silently fail - don't disrupt user experience
+      debugPrint('Error showing Telegram popup: $e');
     }
   }
 
@@ -1459,6 +1515,19 @@ class _HomeScreenState extends State<HomeScreen>
                     return GestureDetector(
                       onTap: () async {
                         if (!mounted) return;
+                        
+                        // Show enhanced loading screen BEFORE token generation
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          barrierColor: Colors.transparent,
+                          builder: (context) => EnhancedLoadingScreen(
+                            hostPhotoUrl: stream.hostPhotoUrl,
+                            hostName: stream.hostName,
+                            message: 'Connecting to ${stream.hostName}...',
+                          ),
+                        );
+                        
                         try {
                           final tokenService = AgoraTokenService();
                           final token = await tokenService.getAudienceToken(
@@ -1467,6 +1536,9 @@ class _HomeScreenState extends State<HomeScreen>
                           );
 
                           if (!mounted) return;
+
+                          // Close loading dialog
+                          Navigator.of(context).pop();
 
                           liveStreamService.joinStream(stream.streamId);
 
@@ -1485,7 +1557,11 @@ class _HomeScreenState extends State<HomeScreen>
                           });
                         } catch (e) {
                           debugPrint('❌ Error joining stream (fallback): $e');
+                          // Close loading dialog if still open
                           if (mounted) {
+                            try {
+                              Navigator.of(context).pop();
+                            } catch (_) {}
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Failed to join stream: ${e.toString()}'),
@@ -1585,14 +1661,45 @@ class _HomeScreenState extends State<HomeScreen>
                 nonLiveHosts.add(host);
                 // Debug: Log first few non-live host IDs for comparison
                 if (nonLiveHosts.length <= 3) {
-                  debugPrint('   ⚪ Non-live host ID: ${host.id}');
+                  debugPrint('   ⚪ Non-live host ID: ${host.id} - HIDDEN from grid');
                 }
               }
             }
             
-            // Combine: Live hosts first, then others
-            final sortedHosts = [...liveHosts, ...nonLiveHosts];
-            debugPrint('📊 [EXPLORE] Sorted: ${liveHosts.length} live hosts + ${nonLiveHosts.length} non-live = ${sortedHosts.length} total');
+            // Show ONLY live hosts (real-time availability)
+            final sortedHosts = [...liveHosts];
+            debugPrint('📊 [EXPLORE] Showing ${liveHosts.length} live hosts only (${nonLiveHosts.length} offline hosts hidden)');
+            
+            // Show empty state if no hosts are live
+            if (sortedHosts.isEmpty) {
+              debugPrint('⚠️ [EXPLORE] No live hosts available');
+              if (!mounted) return const SizedBox.shrink();
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.tv_off, size: 80, color: Colors.grey[400]),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No hosts are live right now',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Check back later for live streams',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
             
             // Debug: Check current user
             final currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -1650,6 +1757,18 @@ class _HomeScreenState extends State<HomeScreen>
                     if (!mounted) return;
                     
                     if (isLive && liveStream != null) {
+                      // Show enhanced loading screen BEFORE token generation
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        barrierColor: Colors.transparent,
+                        builder: (context) => EnhancedLoadingScreen(
+                          hostPhotoUrl: hostPhotoUrl,
+                          hostName: hostName,
+                          message: 'Connecting to $hostName...',
+                        ),
+                      );
+                      
                       // Navigate to live stream
                       try {
                         final tokenService = AgoraTokenService();
@@ -1659,6 +1778,9 @@ class _HomeScreenState extends State<HomeScreen>
                         );
 
                         if (!mounted) return;
+
+                        // Close loading dialog
+                        Navigator.of(context).pop();
 
                         liveStreamService.joinStream(liveStream.streamId);
 
@@ -1677,7 +1799,11 @@ class _HomeScreenState extends State<HomeScreen>
                         });
                       } catch (e) {
                         debugPrint('❌ Error joining stream: $e');
+                        // Close loading dialog if still open
                         if (mounted) {
+                          try {
+                            Navigator.of(context).pop();
+                          } catch (_) {}
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Failed to join stream: ${e.toString()}'),
@@ -1745,71 +1871,77 @@ class _HomeScreenState extends State<HomeScreen>
     String? streamId, // Add streamId for chat
     String? hostId, // Add hostId to fetch user data
   }) {
-    // Default gradient background (fallback) - Pink and White gradient
-    final defaultDecoration = BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFFFF1B7C), // Pink
-          Colors.white, // White
-        ],
-      ),
+    // Logo placeholder widget (replaces pink gradient)
+    Widget _buildLogoPlaceholder() {
+      return Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.all(Radius.circular(10)),
+        ),
+        child: Center(
+          child: Opacity(
+            opacity: 0.6, // 60% opacity for better visibility
+            child: Image.asset(
+              'assets/images/logopink.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ClipRRect(
       borderRadius: const BorderRadius.all(Radius.circular(10)),
-    );
+      child: hostId != null
+          ? StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(hostId)
+                  .snapshots(),
+              builder: (context, userSnapshot) {
+                String? coverImageUrl;
 
-    return Container(
-      decoration: defaultDecoration,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.all(Radius.circular(10)),
-        child: hostId != null
-            ? StreamBuilder<DocumentSnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(hostId)
-                    .snapshots(),
-                builder: (context, userSnapshot) {
-                  String? coverImageUrl;
+                if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                  final userData =
+                      userSnapshot.data!.data() as Map<String, dynamic>?;
+                  final coverURL = userData?['coverURL'] as String?;
 
-                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                    final userData =
-                        userSnapshot.data!.data() as Map<String, dynamic>?;
-                    final coverURL = userData?['coverURL'] as String?;
-
-                    // Get first cover image URL if available
-                    if (coverURL != null && coverURL.isNotEmpty) {
-                      final coverImages = coverURL
-                          .split(',')
-                          .where((url) => url.trim().isNotEmpty)
-                          .toList();
-                      if (coverImages.isNotEmpty) {
-                        coverImageUrl = coverImages[0].trim();
-                      }
+                  // Get first cover image URL if available
+                  if (coverURL != null && coverURL.isNotEmpty) {
+                    final coverImages = coverURL
+                        .split(',')
+                        .where((url) => url.trim().isNotEmpty)
+                        .toList();
+                    if (coverImages.isNotEmpty) {
+                      coverImageUrl = coverImages[0].trim();
                     }
                   }
+                }
 
-                  // If cover image exists, show it, otherwise show gradient
-                  return Stack(
-                    children: [
-                      // Background: Cover Image or Gradient
-                      if (coverImageUrl != null && coverImageUrl.isNotEmpty)
-                        Positioned.fill(
-                          child: Image.network(
-                            coverImageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              // Fallback to gradient if image fails to load
-                              return Container(decoration: defaultDecoration);
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              // Show gradient while loading
-                              return Container(decoration: defaultDecoration);
-                            },
-                          ),
-                        )
-                      else
-                        Container(decoration: defaultDecoration),
+                // If cover image exists, show it, otherwise show logo
+                return Stack(
+                  children: [
+                    // Background: Cover Image or Logo
+                    if (coverImageUrl != null && coverImageUrl.isNotEmpty)
+                      Positioned.fill(
+                        child: Image.network(
+                          coverImageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback to logo if image fails to load
+                            return _buildLogoPlaceholder();
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            // Show logo while loading
+                            return _buildLogoPlaceholder();
+                          },
+                        ),
+                      )
+                    else
+                      _buildLogoPlaceholder(),
 
                       // Gradient overlay for better text visibility
                       Container(
@@ -2144,8 +2276,8 @@ class _HomeScreenState extends State<HomeScreen>
               )
             : Stack(
                 children: [
-                  // Default gradient background when no hostId
-                  Container(decoration: defaultDecoration),
+                  // Default logo background when no hostId
+                  _buildLogoPlaceholder(),
 
                   // Content
                   Padding(
@@ -2282,7 +2414,6 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
-      ),
     );
   }
 
@@ -2352,6 +2483,19 @@ class _HomeScreenState extends State<HomeScreen>
                     return GestureDetector(
                       onTap: () async {
                         if (!mounted) return;
+                        
+                        // Show enhanced loading screen BEFORE token generation
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          barrierColor: Colors.transparent,
+                          builder: (context) => EnhancedLoadingScreen(
+                            hostPhotoUrl: stream.hostPhotoUrl,
+                            hostName: stream.hostName,
+                            message: 'Connecting to ${stream.hostName}...',
+                          ),
+                        );
+                        
                         try {
                           final tokenService = AgoraTokenService();
                           final token = await tokenService.getAudienceToken(
@@ -2360,6 +2504,9 @@ class _HomeScreenState extends State<HomeScreen>
                           );
 
                           if (!mounted) return;
+
+                          // Close loading dialog
+                          Navigator.of(context).pop();
 
                           liveStreamService.joinStream(stream.streamId);
 
@@ -2378,7 +2525,11 @@ class _HomeScreenState extends State<HomeScreen>
                           });
                         } catch (e) {
                           debugPrint('❌ Error joining stream (fallback following): $e');
+                          // Close loading dialog if still open
                           if (mounted) {
+                            try {
+                              Navigator.of(context).pop();
+                            } catch (_) {}
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Failed to join stream: ${e.toString()}'),
@@ -2431,8 +2582,41 @@ class _HomeScreenState extends State<HomeScreen>
               }
             }
 
-            // Get all hosts
+            // Get all hosts and filter to ONLY live hosts
             final hosts = hostsSnapshot.data!.docs;
+            final liveHosts = hosts.where((host) => liveStreamsMap.containsKey(host.id)).toList();
+            
+            debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live hosts only (${hosts.length - liveHosts.length} offline hosts hidden)');
+            
+            // Show empty state if no hosts are live
+            if (liveHosts.isEmpty) {
+              if (!mounted) return const SizedBox.shrink();
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.tv_off, size: 80, color: Colors.grey[400]),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No hosts are live right now',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Check back later for live streams',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
 
             return GridView.builder(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -2444,9 +2628,9 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
-              itemCount: hosts.length > 50 ? 50 : hosts.length,
+              itemCount: liveHosts.length > 50 ? 50 : liveHosts.length,
               itemBuilder: (context, index) {
-                final hostDoc = hosts[index];
+                final hostDoc = liveHosts[index];
                 final hostData = hostDoc.data() as Map<String, dynamic>;
                 final hostId = hostDoc.id;
                 final hostName = hostData['displayName'] ?? 'Host';
@@ -2461,6 +2645,18 @@ class _HomeScreenState extends State<HomeScreen>
                     if (!mounted) return;
                     
                     if (isLive && liveStream != null) {
+                      // Show enhanced loading screen BEFORE token generation
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        barrierColor: Colors.transparent,
+                        builder: (context) => EnhancedLoadingScreen(
+                          hostPhotoUrl: hostPhotoUrl,
+                          hostName: hostName,
+                          message: 'Connecting to $hostName...',
+                        ),
+                      );
+                      
                       // Navigate to live stream
                       try {
                         final tokenService = AgoraTokenService();
@@ -2470,6 +2666,9 @@ class _HomeScreenState extends State<HomeScreen>
                         );
 
                         if (!mounted) return;
+
+                        // Close loading dialog
+                        Navigator.of(context).pop();
 
                         liveStreamService.joinStream(liveStream.streamId);
 
@@ -2488,7 +2687,11 @@ class _HomeScreenState extends State<HomeScreen>
                         });
                       } catch (e) {
                         debugPrint('❌ Error joining stream: $e');
+                        // Close loading dialog if still open
                         if (mounted) {
+                          try {
+                            Navigator.of(context).pop();
+                          } catch (_) {}
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Failed to join stream: ${e.toString()}'),
@@ -2611,6 +2814,19 @@ class _HomeScreenState extends State<HomeScreen>
                     return GestureDetector(
                       onTap: () async {
                         if (!mounted) return;
+                        
+                        // Show enhanced loading screen BEFORE token generation
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          barrierColor: Colors.transparent,
+                          builder: (context) => EnhancedLoadingScreen(
+                            hostPhotoUrl: stream.hostPhotoUrl,
+                            hostName: stream.hostName,
+                            message: 'Connecting to ${stream.hostName}...',
+                          ),
+                        );
+                        
                         try {
                           final tokenService = AgoraTokenService();
                           final token = await tokenService.getAudienceToken(
@@ -2619,6 +2835,9 @@ class _HomeScreenState extends State<HomeScreen>
                           );
 
                           if (!mounted) return;
+
+                          // Close loading dialog
+                          Navigator.of(context).pop();
 
                           liveStreamService.joinStream(stream.streamId);
 
@@ -2637,7 +2856,11 @@ class _HomeScreenState extends State<HomeScreen>
                           });
                         } catch (e) {
                           debugPrint('❌ Error joining stream (fallback new): $e');
+                          // Close loading dialog if still open
                           if (mounted) {
+                            try {
+                              Navigator.of(context).pop();
+                            } catch (_) {}
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Failed to join stream: ${e.toString()}'),
@@ -2690,8 +2913,41 @@ class _HomeScreenState extends State<HomeScreen>
               }
             }
 
-            // Get all hosts
+            // Get all hosts and filter to ONLY live hosts
             final hosts = hostsSnapshot.data!.docs;
+            final liveHosts = hosts.where((host) => liveStreamsMap.containsKey(host.id)).toList();
+            
+            debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live hosts only (${hosts.length - liveHosts.length} offline hosts hidden)');
+            
+            // Show empty state if no hosts are live
+            if (liveHosts.isEmpty) {
+              if (!mounted) return const SizedBox.shrink();
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.tv_off, size: 80, color: Colors.grey[400]),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No hosts are live right now',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Check back later for live streams',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
 
             return GridView.builder(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -2703,9 +2959,9 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
-              itemCount: hosts.length > 50 ? 50 : hosts.length,
+              itemCount: liveHosts.length > 50 ? 50 : liveHosts.length,
               itemBuilder: (context, index) {
-                final hostDoc = hosts[index];
+                final hostDoc = liveHosts[index];
                 final hostData = hostDoc.data() as Map<String, dynamic>;
                 final hostId = hostDoc.id;
                 final hostName = hostData['displayName'] ?? 'Host';
@@ -2720,6 +2976,18 @@ class _HomeScreenState extends State<HomeScreen>
                     if (!mounted) return;
                     
                     if (isLive && liveStream != null) {
+                      // Show enhanced loading screen BEFORE token generation
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        barrierColor: Colors.transparent,
+                        builder: (context) => EnhancedLoadingScreen(
+                          hostPhotoUrl: hostPhotoUrl,
+                          hostName: hostName,
+                          message: 'Connecting to $hostName...',
+                        ),
+                      );
+                      
                       // Navigate to live stream
                       try {
                         final tokenService = AgoraTokenService();
@@ -2729,6 +2997,9 @@ class _HomeScreenState extends State<HomeScreen>
                         );
 
                         if (!mounted) return;
+
+                        // Close loading dialog
+                        Navigator.of(context).pop();
 
                         liveStreamService.joinStream(liveStream.streamId);
 

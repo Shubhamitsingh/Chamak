@@ -47,17 +47,20 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   bool _listenersSetup = false; // Track if listeners are set up
   
-  // Recharge packages - 9 options
+  // Recharge packages - 12 options (added ₹9, ₹49, ₹149, ₹199; removed ₹7,999)
   final List<Map<String, dynamic>> rechargePackages = [
+    {'coins': 90, 'inr': 9, 'bonus': 0, 'badge': null}, // Entry level - no badge
+    {'coins': 550, 'inr': 49, 'bonus': 10, 'badge': 'Starter'}, // Casual users
     {'coins': 1100, 'inr': 99, 'bonus': 10, 'badge': 'Popular Choice'},
-    {'coins': 3500, 'inr': 299, 'bonus': 17, 'badge': 'Great Value'},
+    {'coins': 1700, 'inr': 149, 'bonus': 14, 'badge': null}, // Mid-tier - fills gap between ₹99-₹199
+    {'coins': 2400, 'inr': 199, 'bonus': 18, 'badge': 'Smart Buy'}, // Mid-tier value
+    {'coins': 3500, 'inr': 299, 'bonus': 20, 'badge': 'Great Value'}, // Increased bonus from 17% to 20%
     {'coins': 7500, 'inr': 599, 'bonus': 25, 'badge': 'Best Value'},
     {'coins': 13000, 'inr': 999, 'bonus': 30, 'badge': 'VIP Choice'},
     {'coins': 28000, 'inr': 1999, 'bonus': 40, 'badge': 'Most Popular'},
     {'coins': 45000, 'inr': 2999, 'bonus': 50, 'badge': 'Exclusive'},
     {'coins': 80000, 'inr': 4999, 'bonus': 60, 'badge': 'Elite Member'},
-    {'coins': 135000, 'inr': 7999, 'bonus': 69, 'badge': 'Ultimate Deal'},
-    {'coins': 175000, 'inr': 9999, 'bonus': 75, 'badge': 'Legendary'},
+    {'coins': 175000, 'inr': 9999, 'bonus': 75, 'badge': 'Legendary'}, // Removed ₹7,999 - cleaner progression
   ];
 
   @override
@@ -602,11 +605,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Secure Checkout
+          // Secure Checkout - Green color
           _buildTrustBadge(
             icon: Icons.verified_user_rounded,
             topText: AppLocalizations.of(context)!.secure,
             bottomText: AppLocalizations.of(context)!.checkout,
+            iconColor: Colors.green, // Green color for secure icon
           ),
           
           // Divider
@@ -616,11 +620,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             color: Colors.grey[300],
           ),
           
-          // Satisfaction Guaranteed
+          // Satisfaction Guaranteed - Gold/Amber color
           _buildTrustBadge(
             icon: Icons.emoji_events_rounded,
             topText: AppLocalizations.of(context)!.satisfaction,
             bottomText: AppLocalizations.of(context)!.guaranteed,
+            iconColor: Colors.amber[700], // Gold/Amber color for achievement
           ),
           
           // Divider
@@ -630,11 +635,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             color: Colors.grey[300],
           ),
           
-          // Privacy Protected
+          // Privacy Protected - Blue color
           _buildTrustBadge(
             icon: Icons.lock_rounded,
             topText: AppLocalizations.of(context)!.privacy,
             bottomText: AppLocalizations.of(context)!.protected,
+            iconColor: Colors.blue[700], // Blue color for security/trust
           ),
         ],
       ),
@@ -645,6 +651,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     required IconData icon,
     required String topText,
     required String bottomText,
+    Color? iconColor, // Optional icon color parameter
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -652,7 +659,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         Icon(
           icon,
           size: 24,
-          color: Colors.grey[600],
+          color: iconColor ?? Colors.grey[600], // Use provided color or default grey
         ),
         const SizedBox(height: 6),
         Text(
@@ -1019,8 +1026,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     final int inr = package['inr'];
     final dynamic bonusValue = package['bonus'];
     final int bonus = (bonusValue is int) ? bonusValue : (bonusValue is String) ? int.tryParse(bonusValue) ?? 0 : 0;
-    final bool showBadge = bonus > 0 && index > 1 && index != 3 && index != 5 && index != 7; // Hide badge for 1st (index 0), 2nd (index 1), 4th (index 3), 6th (index 5), and 8th (index 7) grid
-    final bool showBadgeText = (index == 3 || index == 5 || index == 7) && package['badge'] != null; // Show badge text for 4th (index 3), 6th (index 5), and 8th (index 7) grid items
+    // Badge display logic for 11 packages (removed ₹7,999)
+    // Show bonus badge (star + %) for packages with bonus > 0, except entry level (index 0)
+    final bool showBadge = bonus > 0 && index > 0;
+    // Show badge text container for specific packages (₹199, ₹599, ₹1999, ₹4999)
+    // Updated indices after removing ₹7,999: ₹199(index 3), ₹599(index 5), ₹1999(index 7), ₹4999(index 9)
+    final bool showBadgeText = (index == 3 || index == 5 || index == 7 || index == 9) && package['badge'] != null;
     
     return GestureDetector(
       onTap: () => _handleRecharge(package),

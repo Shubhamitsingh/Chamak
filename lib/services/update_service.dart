@@ -29,7 +29,7 @@ class UpdateService {
 
       // Set defaults (only strings, numbers, and booleans are allowed)
       await _remoteConfig!.setDefaults({
-        'latest_version': '1.0.6',
+        'latest_version': '1.0.7',
         'update_details_features': '',
         'update_details_improvements': '',
         'update_details_bug_fixes': '',
@@ -56,10 +56,10 @@ class UpdateService {
   Future<String> getCurrentVersion() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      return packageInfo.version; // e.g., "1.0.6"
+      return packageInfo.version; // e.g., "1.0.7"
     } catch (e) {
       debugPrint('Error getting app version: $e');
-      return '1.0.6'; // Fallback
+      return '1.0.7'; // Fallback
     }
   }
 

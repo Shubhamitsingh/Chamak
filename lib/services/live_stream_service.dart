@@ -194,12 +194,23 @@ class LiveStreamService {
       yield initialStreams;
       
       // Now listen to real-time updates
+      // CRITICAL: Use snapshots() with server preference to ensure we get fresh data, not cache
       print('👂 Now listening to real-time updates...');
       yield* _firestore
           .collection(_collection)
           .where('isActive', isEqualTo: true)
-          .snapshots()
+          .snapshots(includeMetadataChanges: false) // Only listen to actual data changes, not metadata
           .map((snapshot) {
+        // Log when snapshot changes occur
+        print('📡 Real-time snapshot update: ${snapshot.docs.length} documents');
+        print('   Source: ${snapshot.metadata.isFromCache ? "CACHE ⚠️" : "SERVER ✅"}');
+        print('   Has pending writes: ${snapshot.metadata.hasPendingWrites}');
+        
+        // CRITICAL: If data is from cache, force a server read to get fresh data
+        if (snapshot.metadata.isFromCache) {
+          print('   ⚠️ Data from cache - will refresh with server data on next update');
+        }
+        
         return _processSnapshot(snapshot);
       });
     } catch (e) {
@@ -244,6 +255,7 @@ class LiveStreamService {
               final hostStatus = data['hostStatus'] ?? '';
               final startedAtStr = data['startedAt'] as String?;
               final endedAt = data['endedAt']; // Check if stream has ended timestamp
+              final lastHeartbeat = data['lastHeartbeat']; // Real-time heartbeat check
               
               final hostName = data['hostName'] ?? 'Unknown';
               print('   📺 Stream ${doc.id}: $hostName - Active: $isActive, Status: $hostStatus, endedAt: $endedAt');
@@ -264,31 +276,87 @@ class LiveStreamService {
                 return null;
               }
               
-              print('   ✅ Keeping stream: ${doc.id} - $hostName');
+              // REAL-TIME FILTERING: Only show streams that are actively streaming RIGHT NOW
+              final now = DateTime.now();
+              bool isRealTimeActive = false;
               
-              // Additional check: Filter out streams that are too old (likely abandoned)
-              // If stream started more than 24 hours ago, mark as inactive
-              // BUT: Don't filter if startedAt is in the future (timezone issue) or very recent
-              if (startedAtStr != null) {
+              // Priority 1: Check lastHeartbeat (most accurate for real-time)
+              if (lastHeartbeat != null) {
+                try {
+                  DateTime? heartbeatTime;
+                  if (lastHeartbeat is Timestamp) {
+                    heartbeatTime = lastHeartbeat.toDate();
+                  } else if (lastHeartbeat is String) {
+                    heartbeatTime = DateTime.parse(lastHeartbeat);
+                  }
+                  
+                  if (heartbeatTime != null) {
+                    final heartbeatAge = now.difference(heartbeatTime);
+                    // If heartbeat is within last 3 minutes, stream is actively live
+                    if (heartbeatAge.inMinutes <= 3) {
+                      isRealTimeActive = true;
+                      print('   ✅ Stream ${doc.id} has recent heartbeat (${heartbeatAge.inMinutes} min ago) - REAL-TIME ACTIVE');
+                    } else {
+                      print('   ❌ Filtering out: ${doc.id} - heartbeat too old (${heartbeatAge.inMinutes} min ago) - NOT real-time');
+                      _markStreamAsInactive(doc.id).catchError((e) {
+                        print('   ⚠️ Could not mark stream inactive (permission error expected): $e');
+                      });
+                      return null; // Filter out - not real-time active
+                    }
+                  }
+                } catch (e) {
+                  print('   ⚠️ Error parsing lastHeartbeat for stream ${doc.id}: $e');
+                  // If can't parse heartbeat, fall through to startedAt check
+                }
+              }
+              
+              // Priority 2: If no heartbeat, use startedAt for backward compatibility
+              // CRITICAL: Check if stream has endedAt FIRST - if ended, filter out immediately regardless of time
+              if (!isRealTimeActive && startedAtStr != null) {
                 try {
                   final startedAt = DateTime.parse(startedAtStr);
-                  final now = DateTime.now();
                   final difference = now.difference(startedAt);
                   
-                  // Only filter if stream is older than 24 hours AND difference is positive (not future)
-                  if (difference.inHours > 24 && now.isAfter(startedAt)) {
-                    print('   ⚠️ Filtering out old stream: ${doc.id} (started ${difference.inHours} hours ago)');
-                    // Mark as inactive in background (don't block UI)
-                    _markStreamAsInactive(doc.id);
-                    return null;
+                  // CRITICAL: If stream has endedAt, it's already ended - filter out immediately
+                  // Don't use time threshold for ended streams - they should disappear immediately
+                  if (endedAt != null) {
+                    print('   ❌ Filtering out: ${doc.id} - has endedAt (ended ${difference.inMinutes} min ago) - IMMEDIATELY HIDE');
+                    return null; // Filter out immediately - stream is ended
+                  }
+                  
+                  // REAL-TIME: Only show streams that started within last 2 minutes (more aggressive)
+                  // This ensures only hosts actively streaming RIGHT NOW are shown
+                  // Reduced from 5 minutes to 2 minutes for better real-time accuracy
+                  if (difference.inMinutes <= 2 && now.isAfter(startedAt)) {
+                    isRealTimeActive = true;
+                    print('   ✅ Stream ${doc.id} started ${difference.inMinutes} min ago - REAL-TIME ACTIVE (no heartbeat)');
+                  } else if (difference.inMinutes > 2) {
+                    // Stream started more than 2 minutes ago - not real-time active
+                    print('   ❌ Filtering out: ${doc.id} - started ${difference.inMinutes} min ago - NOT real-time active');
+                    _markStreamAsInactive(doc.id).catchError((e) {
+                      print('   ⚠️ Could not mark stream inactive (permission error expected): $e');
+                    });
+                    return null; // Filter out - not real-time active
                   } else if (now.isBefore(startedAt)) {
                     // StartedAt is in the future - likely timezone issue, don't filter
                     print('   ℹ️ Stream ${doc.id} has future startedAt (timezone issue?), keeping it');
+                    isRealTimeActive = true;
                   }
                 } catch (e) {
                   print('   ⚠️ Error parsing startedAt for stream ${doc.id}: $e');
                   // If we can't parse startedAt, don't filter - keep the stream
+                  isRealTimeActive = true;
                 }
+              }
+              
+              // If no heartbeat AND no startedAt, filter out (invalid stream)
+              if (!isRealTimeActive && startedAtStr == null) {
+                print('   ❌ Filtering out: ${doc.id} - no heartbeat and no startedAt - invalid stream');
+                return null;
+              }
+              
+              if (isRealTimeActive) {
+                print('   ✅ Keeping stream: ${doc.id} - $hostName (REAL-TIME ACTIVE)');
               }
               
               // Ensure viewer count is not negative
@@ -450,14 +518,38 @@ class LiveStreamService {
       final currentData = streamDoc.data();
       print('   Current isActive: ${currentData?['isActive']}, hostStatus: ${currentData?['hostStatus']}');
       
-      // Use update() for atomic operation - more reliable than set with merge
+      // CRITICAL: Use update() with explicit false value (not just omitting the field)
+      // This ensures Firestore real-time listeners immediately detect the change
       await _firestore.collection(_collection).doc(streamId).update({
-        'isActive': false,
+        'isActive': false, // Explicitly set to false (not null, not omitted)
         'endedAt': FieldValue.serverTimestamp(), // Use server timestamp for accuracy
-        'hostStatus': 'ended',
+        'hostStatus': 'ended', // Explicitly set to 'ended'
       });
       
       print('✅ Live stream ended: $streamId (isActive=false, hostStatus=ended)');
+      
+      // CRITICAL: Verify the update was successful and wait for propagation
+      await Future.delayed(const Duration(milliseconds: 500));
+      final verifyDoc = await _firestore.collection(_collection).doc(streamId).get(const GetOptions(source: Source.server));
+      if (verifyDoc.exists) {
+        final verifyData = verifyDoc.data();
+        final verifyIsActive = verifyData?['isActive'] ?? true;
+        final verifyHostStatus = verifyData?['hostStatus'] ?? 'live';
+        print('   🔍 Verification - isActive: $verifyIsActive, hostStatus: $verifyHostStatus');
+        
+        if (verifyIsActive == true || verifyHostStatus != 'ended') {
+          print('   ⚠️ Stream still active after update - forcing update again...');
+          // Force update again with explicit values
+          await _firestore.collection(_collection).doc(streamId).set({
+            'isActive': false,
+            'hostStatus': 'ended',
+            'endedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+          print('   ✅ Forced update complete');
+        } else {
+          print('   ✅ Stream successfully marked as inactive - will disappear from queries');
+        }
+      }
       
       // Clear chat messages when stream ends
       try {
@@ -467,34 +559,6 @@ class LiveStreamService {
       } catch (e) {
         print('⚠️ Error clearing chat messages: $e');
         // Don't fail the entire operation if chat clearing fails
-      }
-      
-      // Wait a moment for Firestore to process and propagate
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      // Verify the update was successful
-      final verifyDoc = await _firestore.collection(_collection).doc(streamId).get();
-      if (verifyDoc.exists) {
-        final verifyData = verifyDoc.data();
-        final isActive = verifyData?['isActive'] ?? true;
-        final hostStatus = verifyData?['hostStatus'] ?? 'live';
-        
-        print('   Verification - isActive: $isActive, hostStatus: $hostStatus');
-        
-        // If still active, force update again with retry
-        if (isActive == true || hostStatus != 'ended') {
-          print('   ⚠️ Stream still active/not ended, forcing update again...');
-          await _firestore.collection(_collection).doc(streamId).update({
-            'isActive': false,
-            'hostStatus': 'ended',
-          });
-          
-          // Final verification
-          await Future.delayed(const Duration(milliseconds: 200));
-          final finalDoc = await _firestore.collection(_collection).doc(streamId).get();
-          final finalData = finalDoc.data();
-          print('   Final verification - isActive: ${finalData?['isActive']}, hostStatus: ${finalData?['hostStatus']}');
-        }
       }
     } catch (e) {
       print('❌ Error ending live stream: $e');

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Meta App ID for App Events SDK -->
+    <!-- This ID is used to track app installs and events for Meta ad campaigns -->
+    <string name="facebook_app_id">870685012329386</string>
+</resources>

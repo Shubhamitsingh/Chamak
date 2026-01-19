@@ -488,6 +488,26 @@ service cloud.firestore {
       allow delete: if isAdmin(); // Only admin
     }
     
+    // Team messages collection (Chamakz Team broadcast messages)
+    match /team_messages/{messageId} {
+      // Allow public read for admin panel access (TEMPORARY - will require auth later)
+      // TODO: Implement authentication in ChamakzTeam.jsx and change to: allow read: if request.auth != null;
+      allow read: if true;
+      
+      // Allow authenticated users to create team messages (TEMPORARY - for admin panel)
+      // TODO: Change back to: allow create: if isAdmin(); after implementing authentication
+      allow create: if request.auth != null;
+      
+      // Users can update readBy field (mark as read), admins can update all fields
+      allow update: if request.auth != null 
+        && (isAdmin() 
+            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) 
+                && request.resource.data.readBy.keys().hasOnly([request.auth.uid])));
+      
+      // Only admins can delete team messages
+      allow delete: if isAdmin();
+    }
+    
     // Default: Deny all other collections
     match /{document=**} {
       allow read, write: if false;

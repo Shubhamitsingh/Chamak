@@ -265,9 +265,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ],
       ),
-      body: StreamBuilder<List<ChatModel>>(
-        stream: _chatService.getUserChats(_currentUserId!),
-        builder: (context, snapshot) {
+      body: Column(
+        children: [
+          // Chat List
+          Expanded(
+            child: StreamBuilder<List<ChatModel>>(
+              stream: _chatService.getUserChats(_currentUserId!),
+              builder: (context, snapshot) {
           // Loading
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -395,7 +399,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
               return _buildChatItem(chat);
             },
           );
-        },
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

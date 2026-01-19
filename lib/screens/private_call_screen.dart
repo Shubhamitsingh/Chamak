@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/call_request_service.dart';
 import '../services/call_coin_deduction_service.dart';
 import '../services/coin_conversion_service.dart';
+import '../services/screen_protection_service.dart';
 import 'call_summary_screen.dart';
 
 // Agora App ID (same as live stream)
@@ -82,6 +83,10 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // 🛡️ Enable screen protection (prevent screenshots and screen recording)
+    ScreenProtectionService().enableProtection();
+    
     _initializeAgora();
     // Only start timer and deduction if caller (not host)
     if (!widget.isHost) {
@@ -93,6 +98,9 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
 
   @override
   void dispose() {
+    // 🛡️ Disable screen protection when leaving the screen
+    ScreenProtectionService().disableProtection();
+    
     _callTimer?.cancel();
     _deductionTimer?.cancel();
     _balanceSubscription?.cancel();
