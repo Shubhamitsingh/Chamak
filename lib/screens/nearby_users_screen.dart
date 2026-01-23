@@ -439,15 +439,19 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
-                            color: Colors.grey[100],
+                            color: const Color(0xFFFF1B7C).withOpacity(0.15),
                             borderRadius: BorderRadius.circular(5),
+                            border: Border.all(
+                              color: const Color(0xFFFF1B7C).withOpacity(0.3),
+                              width: 0.5,
+                            ),
                           ),
                           child: Text(
                             'Lv.${user.userLevel}',
-                            style: TextStyle(
-                              color: Colors.grey[700],
+                            style: const TextStyle(
+                              color: Color(0xFFFF1B7C),
                               fontSize: 9,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),

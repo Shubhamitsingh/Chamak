@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:animate_do/animate_do.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Modern Play Store rating popup dialog
+/// Modern Play Store rating popup dialog - Matching Telegram popup layout
 class RatingPopupDialog extends StatefulWidget {
   final VoidCallback? onRated;
   final VoidCallback? onClosed;
@@ -17,19 +18,9 @@ class RatingPopupDialog extends StatefulWidget {
 }
 
 class _RatingPopupDialogState extends State<RatingPopupDialog>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _rotationController;
-  late AnimationController _buttonController;
-  late AnimationController _buttonTextController;
-  late AnimationController _sparkleController1;
-  late AnimationController _sparkleController2;
-  late AnimationController _sparkleController3;
-  late Animation<Offset> _buttonSlideAnimation;
-  late Animation<double> _buttonOpacityAnimation;
-  late Animation<Offset> _buttonTextSlideAnimation;
-  late Animation<double> _sparkleAnimation1;
-  late Animation<double> _sparkleAnimation2;
-  late Animation<double> _sparkleAnimation3;
+  bool _isRating = false;
 
   /// Play Store URL for the app
   static const String playStoreUrl =
@@ -38,455 +29,362 @@ class _RatingPopupDialogState extends State<RatingPopupDialog>
   @override
   void initState() {
     super.initState();
-    // Rotation animation for star icon
+    // Rotation animation for achievement icon
     _rotationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat();
-
-    // Button slide up animation (inside container)
-    _buttonController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-
-    _buttonSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3), // Start slightly down inside container
-      end: Offset.zero, // End at normal position
-    ).animate(
-      CurvedAnimation(
-        parent: _buttonController,
-        curve: Curves.easeOut,
-      ),
-    );
-
-    _buttonOpacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _buttonController,
-        curve: Curves.easeOut,
-      ),
-    );
-
-    // Button text animation (inside button)
-    _buttonTextController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-
-    _buttonTextSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5), // Start below
-      end: Offset.zero, // End at normal position
-    ).animate(
-      CurvedAnimation(
-        parent: _buttonTextController,
-        curve: Curves.easeOut,
-      ),
-    );
-
-    // Sparkle animations (fade in/out)
-    _sparkleController1 = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-    
-    _sparkleController2 = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2500),
-    )..repeat(reverse: true);
-    
-    _sparkleController3 = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-
-    _sparkleAnimation1 = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _sparkleController1, curve: Curves.easeInOut),
-    );
-    
-    _sparkleAnimation2 = Tween<double>(begin: 0.4, end: 0.9).animate(
-      CurvedAnimation(parent: _sparkleController2, curve: Curves.easeInOut),
-    );
-    
-    _sparkleAnimation3 = Tween<double>(begin: 0.2, end: 0.8).animate(
-      CurvedAnimation(parent: _sparkleController3, curve: Curves.easeInOut),
-    );
-
-    // Start button animation
-    _buttonController.forward();
-    
-    // Start button text animation with delay
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) {
-        _buttonTextController.forward();
-      }
-    });
   }
 
   @override
   void dispose() {
     _rotationController.dispose();
-    _buttonController.dispose();
-    _buttonTextController.dispose();
-    _sparkleController1.dispose();
-    _sparkleController2.dispose();
-    _sparkleController3.dispose();
     super.dispose();
   }
 
   /// Open Play Store rating page
-  Future<void> _openPlayStore() async {
+  Future<void> _handleRateNow() async {
+    if (_isRating) return;
+    
+    setState(() => _isRating = true);
+    
     try {
+      // Mark as rated
+      widget.onRated?.call();
+      
+      // Open Play Store link
       final uri = Uri.parse(playStoreUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(
+      
+      // Try to open in Play Store app first
+      try {
+        final launched = await launchUrl(
           uri,
-          mode: LaunchMode.externalApplication,
+          mode: LaunchMode.externalNonBrowserApplication,
         );
-        // Callback to mark user as rated
-        widget.onRated?.call();
-      } else {
-        debugPrint('Could not launch Play Store URL');
+        
+        if (launched) {
+          debugPrint('✅ Play Store opened in app');
+          // Close popup after short delay
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            Navigator.of(context).pop(true); // true = user rated
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('⚠️ Play Store app not found, trying browser: $e');
+      }
+      
+      // Fallback: Open in browser
+      try {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.platformDefault,
+        );
+        
+        if (launched) {
+          debugPrint('✅ Play Store opened in browser');
+          // Close popup after short delay
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            Navigator.of(context).pop(true); // true = user rated
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('❌ Error opening in browser: $e');
+      }
+      
+      // If both fail, show error message
+      if (mounted) {
+        setState(() => _isRating = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to open Play Store. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
-      debugPrint('Error opening Play Store: $e');
+      debugPrint('❌ Error opening Play Store: $e');
+      if (mounted) {
+        setState(() => _isRating = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
       backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: Container(
-          width: MediaQuery.of(context).size.width * 0.55, // 55% of screen width
-          padding: const EdgeInsets.all(14),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: FadeInDown(
+        duration: const Duration(milliseconds: 400),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 300),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white,
-                const Color(0xFFFFF5F8), // Very subtle light pink tint
-                Colors.white,
-              ],
-              stops: const [0.0, 0.5, 1.0],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFFFE4E9).withValues(alpha: 0.5),
-              width: 1,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with gradient and star icon (matching Telegram popup)
+              _buildHeader(),
+              
+              // Content box (matching Telegram popup)
+              _buildContent(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFF6B9D), // Pink
+            Color(0xFFFF8E53), // Orange
+          ],
+        ),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Star icon on the left (animated)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _buildStarIcon(),
+          ),
+          // "Rate Us" text - truly centered
+          const Text(
+            'Rate Us',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
             ),
           ),
-          child: Stack(
-            clipBehavior: Clip.none,
+          // Close icon on the right
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              onPressed: () {
+                widget.onClosed?.call();
+                if (mounted) {
+                  Navigator.of(context).pop(false);
+                }
+              },
+              icon: const Icon(
+                Icons.close_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarIcon() {
+    return RotationTransition(
+      turns: Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+          parent: _rotationController,
+          curve: Curves.linear,
+        ),
+      ),
+      child: const Icon(
+        Icons.star_rounded,
+        color: Color(0xFFFFD700), // Golden color
+        size: 32,
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(16),
+          bottomRight: Radius.circular(16),
+        ),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Welcome message with star icon (matching Telegram popup)
+          _buildWelcomeMessage(),
+          
+          const SizedBox(height: 8),
+          
+          // Call to action text (matching Telegram popup)
+          _buildCallToAction(),
+          
+          const SizedBox(height: 10),
+          
+          // Benefits list (matching Telegram popup)
+          _buildBenefitsList(),
+          
+          const SizedBox(height: 12),
+          
+          // Rate Now button (matching Telegram Join button)
+          _buildRateButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeMessage() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFA726).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.star_rounded,
+            color: Color(0xFFFFA726),
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Love our app?',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCallToAction() {
+    return Text(
+      'Your feedback helps us improve! Please rate us on the Play Store and enjoy exclusive rewards:',
+      style: TextStyle(
+        fontSize: 12,
+        color: Colors.grey[700],
+        height: 1.3,
+      ),
+    );
+  }
+
+  Widget _buildBenefitsList() {
+    final benefits = [
+      {'emoji': '⭐', 'text': 'Help us grow and improve'},
+      {'emoji': '🎁', 'text': 'Earn special rewards'},
+      {'emoji': '💎', 'text': 'Get priority support'},
+    ];
+
+    return Column(
+      children: benefits.map((benefit) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
             children: [
-              // Floating Sparkles around edges
-              // Top-left sparkle
-              Positioned(
-                top: 5,
-                left: 10,
-                child: AnimatedBuilder(
-                  animation: _sparkleAnimation1,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _sparkleAnimation1.value,
-                      child: Transform.rotate(
-                        angle: _sparkleAnimation1.value * 0.5,
-                        child: const Text(
-                          '✨',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              Text(
+                benefit['emoji']!,
+                style: const TextStyle(fontSize: 18),
               ),
-              // Top-right sparkle
-              Positioned(
-                top: 8,
-                right: 15,
-                child: AnimatedBuilder(
-                  animation: _sparkleAnimation2,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _sparkleAnimation2.value,
-                      child: Transform.rotate(
-                        angle: -_sparkleAnimation2.value * 0.5,
-                        child: const Text(
-                          '✨',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              // Bottom-left sparkle
-              Positioned(
-                bottom: 5,
-                left: 12,
-                child: AnimatedBuilder(
-                  animation: _sparkleAnimation3,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _sparkleAnimation3.value,
-                      child: Transform.rotate(
-                        angle: _sparkleAnimation3.value * 0.3,
-                        child: const Text(
-                          '✨',
-                          style: TextStyle(fontSize: 15),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Star Icon with Gradient Background (like the image) - Moved to top with rotation animation
-                  const SizedBox(height: 8),
-                  Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF6C5CE7), // Light purple-blue
-                              Color(0xFF4834D4), // Dark purple-blue
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF4834D4).withValues(alpha: 0.4),
-                              blurRadius: 15,
-                              spreadRadius: 3,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Large center star with rotation animation
-                            Positioned(
-                              child: RotationTransition(
-                                turns: Tween<double>(begin: 0, end: 1).animate(
-                                  CurvedAnimation(
-                                    parent: _rotationController,
-                                    curve: Curves.linear,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.star_rounded,
-                                  color: const Color(0xFFFFA726),
-                                  size: 28,
-                                ),
-                              ),
-                            ),
-                            // Small star top-left
-                            Positioned(
-                              left: 6,
-                              top: 10,
-                              child: Icon(
-                                Icons.star_rounded,
-                                color: const Color(0xFFFFA726),
-                                size: 14,
-                              ),
-                            ),
-                            // Small star bottom-left
-                            Positioned(
-                              left: 8,
-                              bottom: 12,
-                              child: Icon(
-                                Icons.star_rounded,
-                                color: const Color(0xFFFFA726),
-                                size: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  benefit['text']!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[800],
+                    fontWeight: FontWeight.w500,
                   ),
-
-                  const SizedBox(height: 10),
-
-                  // Title
-                  const Text(
-                    'Rate Us on Play Store',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // Star Rating Display
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      5,
-                      (index) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 1.5),
-                        child: Icon(
-                          Icons.star_rounded,
-                          color: const Color(0xFFFFA726),
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Message with emojis on sides
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      AnimatedBuilder(
-                        animation: _sparkleAnimation1,
-                        builder: (context, child) {
-                          return Opacity(
-                            opacity: _sparkleAnimation1.value,
-                            child: const Text(
-                              '✨',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Please rate our app on the Play Store and earn exciting rewards.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[700],
-                            height: 1.3,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      AnimatedBuilder(
-                        animation: _sparkleAnimation2,
-                        builder: (context, child) {
-                          return Opacity(
-                            opacity: _sparkleAnimation2.value,
-                            child: const Text(
-                              '✨',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Rate Now Button (Primary - Blue) - Reduced Width with slide up animation (inside container)
-                  SlideTransition(
-                    position: _buttonSlideAnimation,
-                    child: FadeTransition(
-                      opacity: _buttonOpacityAnimation,
-                      child: Center(
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.5,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              Navigator.of(context).pop();
-                              await _openPlayStore();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4834D4),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              elevation: 0,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ).copyWith(
-                              backgroundColor: MaterialStateProperty.all(
-                                const Color(0xFF4834D4),
-                              ),
-                              overlayColor: MaterialStateProperty.all(
-                                Colors.white.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            child: SlideTransition(
-                              position: _buttonTextSlideAnimation,
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.star_rounded,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
-                                  SizedBox(width: 5),
-                                  Text(
-                                    'Rate Now',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                ],
-              ),
-
-              // Close Icon at Top Right Corner
-              Positioned(
-                top: 4,
-                right: 4,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    widget.onClosed?.call();
-                  },
-                  icon: Icon(
-                    Icons.close_rounded,
-                    color: Colors.grey[600],
-                    size: 20,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
                 ),
               ),
             ],
           ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildRateButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isRating ? null : _handleRateNow,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2196F3), // Blue (matching Telegram)
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          elevation: 2,
+        ),
+        child: _isRating
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('⭐', style: TextStyle(fontSize: 16)),
+                  SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Rate on Play Store',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
+
 }

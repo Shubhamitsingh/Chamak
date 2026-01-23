@@ -10,7 +10,9 @@ import '../services/withdrawal_service.dart';
 import '../services/storage_service.dart';
 import '../services/database_service.dart';
 import '../services/admin_team_message_service.dart';
+import '../services/host_application_service.dart';
 import '../models/withdrawal_request_model.dart';
+import '../models/host_application_model.dart';
 import 'admin_support_chat_screen.dart';
 
 /// Admin Panel Screen for managing user coins
@@ -28,6 +30,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   final StorageService _storageService = StorageService();
   final DatabaseService _databaseService = DatabaseService();
   final AdminTeamMessageService _teamMessageService = AdminTeamMessageService();
+  final HostApplicationService _hostApplicationService = HostApplicationService();
   final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _coinsController = TextEditingController();
@@ -47,7 +50,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _checkAdminStatus();
     _loadAdminActions();
   }
@@ -382,6 +385,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
               icon: const Icon(Icons.group, size: 20),
               child: const Text('Team Messages'),
             ),
+            Tab(
+              icon: const Icon(Icons.star, size: 20),
+              child: const Text('Host Applications'),
+            ),
           ],
         ),
       ),
@@ -421,6 +428,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
           _buildPaymentsTab(),
           // Team Messages Tab
           _buildTeamMessagesTab(),
+          // Host Applications Tab
+          _buildHostApplicationsTab(),
         ],
       ),
     );
@@ -1847,6 +1856,529 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
       return DateFormat('EEEE').format(timestamp);
     } else {
       return DateFormat('dd MMM yyyy').format(timestamp);
+    }
+  }
+
+  // ========== HOST APPLICATIONS TAB ==========
+  Widget _buildHostApplicationsTab() {
+    return StreamBuilder<List<HostApplicationModel>>(
+      stream: _hostApplicationService.getAllApplications(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFFFF1B7C)),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('Error: ${snapshot.error}'),
+              ],
+            ),
+          );
+        }
+
+        final applications = snapshot.data ?? [];
+
+        if (applications.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No host applications yet',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Group applications by status
+        final pendingApps = applications.where((app) => app.isPending).toList();
+        final approvedApps = applications.where((app) => app.isApproved).toList();
+        final rejectedApps = applications.where((app) => app.isRejected).toList();
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Summary Cards
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatusCard('Pending', pendingApps.length, Colors.orange),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatusCard('Approved', approvedApps.length, Colors.green),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatusCard('Rejected', rejectedApps.length, Colors.red),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Pending Applications
+              if (pendingApps.isNotEmpty) ...[
+                const Text(
+                  'Pending Applications',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...pendingApps.map((app) => _buildApplicationCard(app)),
+                const SizedBox(height: 24),
+              ],
+
+              // Approved Applications
+              if (approvedApps.isNotEmpty) ...[
+                const Text(
+                  'Approved Applications',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...approvedApps.map((app) => _buildApplicationCard(app)),
+                const SizedBox(height: 24),
+              ],
+
+              // Rejected Applications
+              if (rejectedApps.isNotEmpty) ...[
+                const Text(
+                  'Rejected Applications',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...rejectedApps.map((app) => _buildApplicationCard(app)),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusCard(String title, int count, Color color) {
+    return Card(
+      elevation: 2,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApplicationCard(HostApplicationModel application) {
+    final statusColor = application.isPending
+        ? Colors.orange
+        : application.isApproved
+            ? Colors.green
+            : Colors.red;
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                // Profile Photo
+                if (application.profilePhotoUrl != null)
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundImage: NetworkImage(application.profilePhotoUrl!),
+                  )
+                else
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundColor: const Color(0xFFFF1B7C).withOpacity(0.2),
+                    child: const Icon(Icons.person, color: Color(0xFFFF1B7C)),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        application.username,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'ID: ${application.userDisplayId}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Status Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor),
+                  ),
+                  child: Text(
+                    application.statusString.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Details
+            _buildDetailRow(Icons.phone, application.phoneNumber),
+            if (application.email != null) ...[
+              const SizedBox(height: 8),
+              _buildDetailRow(Icons.email, application.email!),
+            ],
+            const SizedBox(height: 8),
+            _buildDetailRow(
+              Icons.cake,
+              'DOB: ${DateFormat('dd/MM/yyyy').format(application.dateOfBirth)}',
+            ),
+            const SizedBox(height: 12),
+
+            // Bio
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Bio:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    application.bio,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+
+            // Social Media Links
+            if (application.socialMediaLinks != null &&
+                application.socialMediaLinks!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: application.socialMediaLinks!.entries.map((entry) {
+                  IconData icon;
+                  switch (entry.key.toLowerCase()) {
+                    case 'instagram':
+                      icon = Icons.camera_alt;
+                      break;
+                    case 'tiktok':
+                      icon = Icons.music_note;
+                      break;
+                    case 'youtube':
+                      icon = Icons.play_circle;
+                      break;
+                    default:
+                      icon = Icons.link;
+                  }
+                  return Chip(
+                    avatar: Icon(icon, size: 16),
+                    label: Text(entry.value),
+                    backgroundColor: Colors.grey[100],
+                  );
+                }).toList(),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Submission Date
+            Text(
+              'Submitted: ${_formatTimestamp(application.submittedAt)}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+
+            // Rejection Reason
+            if (application.isRejected && application.rejectionReason != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Reason: ${application.rejectionReason}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Action Buttons (only for pending)
+            if (application.isPending) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _rejectApplication(application),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Reject'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _approveApplication(application),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Approve'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[700],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _approveApplication(HostApplicationModel application) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Approve Application'),
+        content: Text('Are you sure you want to approve ${application.username}\'s application?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Approve'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      setState(() {
+        _isLoading = true;
+      });
+
+      final success = await _hostApplicationService.approveApplication(
+        application.applicationId,
+        currentUser.uid,
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Application approved successfully'
+                  : 'Failed to approve application',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _rejectApplication(HostApplicationModel application) async {
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject Application'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Are you sure you want to reject ${application.username}\'s application?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Rejection Reason',
+                hintText: 'Enter reason for rejection...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (reasonController.text.trim().isNotEmpty) {
+                Navigator.pop(context, true);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && reasonController.text.trim().isNotEmpty) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      setState(() {
+        _isLoading = true;
+      });
+
+      final success = await _hostApplicationService.rejectApplication(
+        application.applicationId,
+        currentUser.uid,
+        reasonController.text.trim(),
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Application rejected'
+                  : 'Failed to reject application',
+            ),
+            backgroundColor: success ? Colors.orange : Colors.red,
+          ),
+        );
+      }
     }
   }
 }

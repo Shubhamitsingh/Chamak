@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:country_picker/country_picker.dart';
 import 'otp_screen.dart';
 import 'kyc_verification_screen.dart';
+import 'login_screen.dart';
 import '../services/database_service.dart';
 
 class AccountSecurityScreen extends StatefulWidget {
@@ -23,6 +24,28 @@ class AccountSecurityScreen extends StatefulWidget {
 }
 
 class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
+  String? _userEmail;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserEmail();
+  }
+
+  Future<void> _loadUserEmail() async {
+    try {
+      // Get email from Firebase Auth
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (mounted) {
+        setState(() {
+          _userEmail = currentUser?.email;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user email: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,178 +67,209 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
         ),
         centerTitle: true,
       ),
-      body: ListView(
+      body: Column(
         children: [
-          _buildSettingItem(
-            title: AppLocalizations.of(context)!.id,
-            value: widget.userId,
-            onTap: () async {
-              try {
-                await Clipboard.setData(ClipboardData(text: widget.userId));
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(AppLocalizations.of(context)!.idCopiedToClipboard),
-                    backgroundColor: const Color(0xFF6C63FF),
-                    behavior: SnackBarBehavior.floating,
-                    duration: const Duration(seconds: 2),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: [
+                const SizedBox(height: 16),
+                
+                // Security Status Section
+                _buildSecurityStatusSection(),
+                
+                const SizedBox(height: 24),
+                
+                // UID
+                _buildSettingItem(
+                  title: AppLocalizations.of(context)!.id,
+                  trailing: widget.userId,
+                  onTap: () async {
+                    try {
+                      await Clipboard.setData(ClipboardData(text: widget.userId));
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)!.idCopiedToClipboard),
+                          backgroundColor: const Color(0xFF6C63FF),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint('Error copying to clipboard: $e');
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)!.errorOccurred),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                
+                // Phone Number
+                _buildSettingItem(
+                  title: AppLocalizations.of(context)!.phoneNumber,
+                  trailing: 'Update Number >',
+                  onTap: () => _showUpdatePhoneDialog(),
+                ),
+                
+                // Email Id
+                _buildSettingItem(
+                  title: 'Email Id',
+                  trailing: 'Bind >',
+                  onTap: () => _showEmailDialog(),
+                ),
+                
+                // Login Password
+                _buildSettingItem(
+                  title: 'Login Password',
+                  trailing: 'Not Enabled >',
+                  onTap: () {
+                    // TODO: Implement login password functionality
+                  },
+                ),
+                
+                // KYC Verification
+                _buildSettingItem(
+                  title: AppLocalizations.of(context)!.kycVerification,
+                  trailing: 'Enable >',
+                  onTap: () => _showKYCDialog(),
+                ),
+                
+                // Delete Account
+                _buildSettingItem(
+                  title: AppLocalizations.of(context)!.deleteAccount,
+                  trailing: '>',
+                  isDestructive: true,
+                  onTap: () => _showDeleteAccountDialog(),
+                ),
+              ],
+            ),
+          ),
+          
+          // Switch Account Button - Fixed at bottom
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 60),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () => _showSwitchAccountDialog(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pink,
+                  foregroundColor: Colors.white,
+                  elevation: 8,
+                  shadowColor: Colors.pink.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                );
-              } catch (e) {
-                debugPrint('Error copying to clipboard: $e');
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(AppLocalizations.of(context)!.errorOccurred),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-          ),
-          
-          _buildSettingItem(
-            title: AppLocalizations.of(context)!.phoneNumber,
-            value: widget.phoneNumber,
-            onTap: () => _showUpdatePhoneDialog(),
-          ),
-          
-          _buildSettingItem(
-            title: AppLocalizations.of(context)!.kycVerification,
-            onTap: () => _showKYCDialog(),
-          ),
-          
-          _buildSettingItem(
-            title: AppLocalizations.of(context)!.switchAccount,
-            onTap: () => _showSwitchAccountDialog(),
-          ),
-          
-          _buildSettingItem(
-            title: AppLocalizations.of(context)!.deleteAccount,
-            isDestructive: true,
-            onTap: () => _showDeleteAccountDialog(),
-          ),
-          
-          const SizedBox(height: 30),
-          
-          // Logout Button in centered container
-          Center(
-            child: GestureDetector(
-              onTap: () => _showLogoutDialog(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  AppLocalizations.of(context)!.logout,
+                  AppLocalizations.of(context)!.switchAccount,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
           ),
-          
-          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
   // ========== HELPER WIDGETS ==========
+  Widget _buildSecurityStatusSection() {
+    return Column(
+      children: [
+        // Shield Icon from assets
+        Image.asset(
+          'assets/images/shield.png',
+          width: 80,
+          height: 80,
+          fit: BoxFit.contain,
+        ),
+        const SizedBox(height: 14),
+        // "Low Security" Text
+        const Text(
+          'Low Security',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Description Text
+        Text(
+          'Bind email and link social media to increase security level',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+            height: 1.4,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
   Widget _buildSettingItem({
     required String title,
-    String? value,
+    String? trailing,
     bool isDestructive = false,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              color: isDestructive ? const Color.fromARGB(240, 240, 52, 38) : Colors.black87,
-            ),
-          ),
-          if (value != null) ...[
-            const SizedBox(height: 4),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
             Text(
-              value,
+              title,
               style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
+                fontSize: 15,
+                color: isDestructive ? const Color.fromARGB(240, 240, 52, 38) : Colors.black87,
+                fontWeight: FontWeight.w500,
               ),
             ),
+            if (trailing != null)
+              Text(
+                trailing,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDestructive 
+                      ? const Color.fromARGB(240, 240, 52, 38) 
+                      : Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
           ],
-        ],
+        ),
       ),
-      onTap: onTap,
     );
   }
 
   // ========== DIALOGS ==========
   void _showUpdatePhoneDialog() {
-    final TextEditingController phoneController = TextEditingController();
-    
-    // Extract current country from phone number (default to India)
-    Country currentCountry = Country.parse('IN');
-    if (widget.phoneNumber.isNotEmpty) {
-      // Try to detect country code from existing phone number
-      // The phone number format should be like: +91XXXXXXXXXX
-      String phoneNum = widget.phoneNumber.startsWith('+') 
-          ? widget.phoneNumber.substring(1) 
-          : widget.phoneNumber;
-      
-      // Common country codes to check
-      final commonCountryCodes = {
-        '91': 'IN',   // India
-        '1': 'US',    // USA (also Canada)
-        '44': 'GB',   // UK
-        '61': 'AU',   // Australia
-        '971': 'AE',  // UAE
-        '65': 'SG',   // Singapore
-        '60': 'MY',   // Malaysia
-        '92': 'PK',   // Pakistan
-        '880': 'BD',  // Bangladesh
-      };
-      
-      // Try to match country code
-      for (var entry in commonCountryCodes.entries) {
-        if (phoneNum.startsWith(entry.key)) {
-          try {
-            currentCountry = Country.parse(entry.value);
-            break;
-          } catch (e) {
-            debugPrint('Error parsing country: $e');
-          }
-        }
-      }
-    }
-    
     if (!mounted) return;
     try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) {
-          return _PhoneUpdateDialog(
-            phoneController: phoneController,
-            currentCountry: currentCountry,
-            parentContext: context,
-          );
-        },
+      // Navigate to Login Screen for phone number update
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
       );
     } catch (e) {
-      debugPrint('Error showing phone update dialog: $e');
+      debugPrint('Error navigating to login screen: $e');
     }
   }
 
@@ -910,6 +964,119 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
     }
   }
 
+  void _showEmailDialog() {
+    if (!mounted) return;
+    try {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Email Id',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_userEmail != null && _userEmail!.isNotEmpty) ...[
+                Text(
+                  'Your email address:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Colors.grey[300]!,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.email_outlined,
+                        color: Color(0xFFFF1B7C),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _userEmail!,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        color: const Color(0xFFFF1B7C),
+                        onPressed: () async {
+                          try {
+                            await Clipboard.setData(ClipboardData(text: _userEmail!));
+                            if (!mounted) return;
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Email copied to clipboard'),
+                                backgroundColor: Color(0xFFFF1B7C),
+                                behavior: SnackBarBehavior.floating,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          } catch (e) {
+                            debugPrint('Error copying email: $e');
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  'No email address is set for this account.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Close',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFFF1B7C),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error showing email dialog: $e');
+    }
+  }
+
   void _showLogoutDialog() {
     if (!mounted) return;
     try {
@@ -1115,7 +1282,7 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
         child: Material(
           color: Colors.transparent,
           child: Padding(
-            padding: const EdgeInsets.all(25),
+            padding: const EdgeInsets.all(30),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1130,7 +1297,7 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
                   textAlign: TextAlign.center,
                 ),
                 
-                const SizedBox(height: 15),
+                const SizedBox(height: 25),
                 
                 // Description
                 Text(
@@ -1143,7 +1310,7 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
                   textAlign: TextAlign.center,
                 ),
                 
-                const SizedBox(height: 25),
+                const SizedBox(height: 35),
                 
                 // Country Code Selector and Phone Input Container
                 Container(
@@ -1227,7 +1394,7 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
                   ),
                 ),
                 
-                const SizedBox(height: 25),
+                const SizedBox(height: 35),
                 
                 // Buttons
                 Row(

@@ -317,13 +317,17 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () {
               if (!mounted) return;
               try {
-                // Navigate back to splash screen instead of pop
-                // This prevents black screen when there's no route in stack
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => const SplashScreen(),
-                  ),
-                );
+                // If there's a route to pop back to, use pop
+                // Otherwise, navigate to splash screen (initial route scenario)
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => const SplashScreen(),
+                    ),
+                  );
+                }
               } catch (e) {
                 debugPrint('Navigation error: $e');
               }

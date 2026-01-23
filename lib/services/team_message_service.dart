@@ -9,13 +9,45 @@ class TeamMessageService {
 
   // Get team messages stream (sorted by timestamp descending - newest first)
   Stream<List<TeamMessageModel>> getTeamMessagesStream() {
-    return _firestore
-        .collection('team_messages')
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => TeamMessageModel.fromFirestore(doc))
-            .toList());
+    try {
+      return _firestore
+          .collection('team_messages')
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .handleError((error) {
+        debugPrint('❌ Error in team messages stream: $error');
+        debugPrint('❌ Error type: ${error.runtimeType}');
+        if (error.toString().contains('index')) {
+          debugPrint('⚠️ Index error detected. Messages may still exist but query needs index.');
+        }
+        // Return empty stream on error
+        return Stream.value(<QueryDocumentSnapshot>[]);
+      })
+          .map((snapshot) {
+        debugPrint('📨 Team messages snapshot: ${snapshot.docs.length} messages');
+        if (snapshot.docs.isNotEmpty) {
+          debugPrint('✅ First message ID: ${snapshot.docs.first.id}');
+          debugPrint('✅ First message data: ${snapshot.docs.first.data()}');
+        }
+        return snapshot.docs
+            .map((doc) {
+              try {
+                final model = TeamMessageModel.fromFirestore(doc);
+                debugPrint('✅ Parsed message: ${model.messageId} - ${model.message.substring(0, model.message.length > 20 ? 20 : model.message.length)}...');
+                return model;
+              } catch (e) {
+                debugPrint('❌ Error parsing message ${doc.id}: $e');
+                debugPrint('❌ Document data: ${doc.data()}');
+                return null;
+              }
+            })
+            .whereType<TeamMessageModel>()
+            .toList();
+      });
+    } catch (e) {
+      debugPrint('❌ Error creating team messages stream: $e');
+      return Stream.value(<TeamMessageModel>[]);
+    }
   }
 
   // Get unread team messages count for current user

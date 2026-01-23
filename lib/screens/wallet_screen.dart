@@ -605,12 +605,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Secure Checkout - Green color
+          // Secure Checkout - Gray color
           _buildTrustBadge(
             icon: Icons.verified_user_rounded,
             topText: AppLocalizations.of(context)!.secure,
             bottomText: AppLocalizations.of(context)!.checkout,
-            iconColor: Colors.green, // Green color for secure icon
+            iconColor: Colors.grey[600], // Gray color for secure icon
           ),
           
           // Divider
@@ -620,12 +620,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             color: Colors.grey[300],
           ),
           
-          // Satisfaction Guaranteed - Gold/Amber color
+          // Satisfaction Guaranteed - Gray color
           _buildTrustBadge(
             icon: Icons.emoji_events_rounded,
             topText: AppLocalizations.of(context)!.satisfaction,
             bottomText: AppLocalizations.of(context)!.guaranteed,
-            iconColor: Colors.amber[700], // Gold/Amber color for achievement
+            iconColor: Colors.grey[600], // Gray color to match other icons
           ),
           
           // Divider
@@ -635,12 +635,12 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
             color: Colors.grey[300],
           ),
           
-          // Privacy Protected - Blue color
+          // Privacy Protected - Gray color
           _buildTrustBadge(
             icon: Icons.lock_rounded,
             topText: AppLocalizations.of(context)!.privacy,
             bottomText: AppLocalizations.of(context)!.protected,
-            iconColor: Colors.blue[700], // Blue color for security/trust
+            iconColor: Colors.grey[600], // Gray color to match other icons
           ),
         ],
       ),
@@ -1041,16 +1041,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: const Color(0xFFFF1B7C).withOpacity(0.2),
+            color: Colors.amber[700]!.withOpacity(0.3),
             width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFF1B7C).withOpacity(0.1),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
       child: Stack(
         clipBehavior: Clip.none,

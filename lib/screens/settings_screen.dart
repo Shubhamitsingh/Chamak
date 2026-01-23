@@ -8,6 +8,7 @@ import 'terms_conditions_screen.dart';
 import 'about_screen.dart';
 import 'feedback_screen.dart';
 import 'update_details_screen.dart';
+import 'general_screen.dart';
 import '../providers/language_provider.dart';
 import '../services/update_service.dart';
 
@@ -46,6 +47,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: ListView(
           children: [
+                _buildSettingItem(
+                  title: 'General',
+                  onTap: () {
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GeneralScreen(),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint('Error navigating to general screen: $e');
+                    }
+                  },
+                ),
                 _buildSettingItem(
                   title: AppLocalizations.of(context)!.language,
                   subtitle: Provider.of<LanguageProvider>(context).currentLanguageNativeName,
@@ -202,7 +218,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           
           // Fixed App Name and Version at Bottom
           Container(
-            padding: const EdgeInsets.only(top: 20, bottom: 30),
+            padding: const EdgeInsets.only(top: 30, bottom: 50),
         child: Column(
           children: [
                 Padding(
@@ -216,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
@@ -227,7 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
               ],
             ),
             ),

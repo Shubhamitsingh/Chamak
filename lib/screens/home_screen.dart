@@ -31,6 +31,7 @@ import '../widgets/enhanced_loading_screen.dart';
 import 'live_reels_screen.dart';
 import 'nearby_users_screen.dart';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/services.dart';
 
 // Optimized Scrolling Text Widget for Banner
@@ -1496,7 +1497,9 @@ class _HomeScreenState extends State<HomeScreen>
               if (liveStreamsSnapshot.hasData &&
                   liveStreamsSnapshot.data != null &&
                   liveStreamsSnapshot.data!.isNotEmpty) {
-                final liveStreams = liveStreamsSnapshot.data!;
+                final liveStreams = [...liveStreamsSnapshot.data!];
+                // Shuffle streams randomly for fair distribution
+                liveStreams.shuffle(Random());
                 debugPrint('✅ [EXPLORE] Fallback: showing ${liveStreams.length} live streams without host docs');
                 
                 return GridView.builder(
@@ -1668,6 +1671,8 @@ class _HomeScreenState extends State<HomeScreen>
             
             // Show ONLY live hosts (real-time availability)
             final sortedHosts = [...liveHosts];
+            // Shuffle hosts randomly for fair distribution
+            sortedHosts.shuffle(Random());
             debugPrint('📊 [EXPLORE] Showing ${liveHosts.length} live hosts only (${nonLiveHosts.length} offline hosts hidden)');
             
             // Show empty state if no hosts are live
@@ -2466,7 +2471,9 @@ class _HomeScreenState extends State<HomeScreen>
               if (liveStreamsSnapshot.hasData &&
                   liveStreamsSnapshot.data != null &&
                   liveStreamsSnapshot.data!.isNotEmpty) {
-                final liveStreams = liveStreamsSnapshot.data!;
+                final liveStreams = [...liveStreamsSnapshot.data!];
+                // Shuffle streams randomly for fair distribution
+                liveStreams.shuffle(Random());
                 return GridView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -2585,6 +2592,8 @@ class _HomeScreenState extends State<HomeScreen>
             // Get all hosts and filter to ONLY live hosts
             final hosts = hostsSnapshot.data!.docs;
             final liveHosts = hosts.where((host) => liveStreamsMap.containsKey(host.id)).toList();
+            // Shuffle hosts randomly for fair distribution
+            liveHosts.shuffle(Random());
             
             debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live hosts only (${hosts.length - liveHosts.length} offline hosts hidden)');
             
@@ -2797,7 +2806,9 @@ class _HomeScreenState extends State<HomeScreen>
               if (liveStreamsSnapshot.hasData &&
                   liveStreamsSnapshot.data != null &&
                   liveStreamsSnapshot.data!.isNotEmpty) {
-                final liveStreams = liveStreamsSnapshot.data!;
+                final liveStreams = [...liveStreamsSnapshot.data!];
+                // Shuffle streams randomly for fair distribution
+                liveStreams.shuffle(Random());
                 return GridView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -2916,6 +2927,8 @@ class _HomeScreenState extends State<HomeScreen>
             // Get all hosts and filter to ONLY live hosts
             final hosts = hostsSnapshot.data!.docs;
             final liveHosts = hosts.where((host) => liveStreamsMap.containsKey(host.id)).toList();
+            // Shuffle hosts randomly for fair distribution
+            liveHosts.shuffle(Random());
             
             debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live hosts only (${hosts.length - liveHosts.length} offline hosts hidden)');
             
@@ -3291,12 +3304,22 @@ class _HomeScreenState extends State<HomeScreen>
                                 size: 18,
                               ),
                               const SizedBox(width: 10),
-                              Text(
-                                'info@chamakz.app',
-                                style: TextStyle(
-                                  color: const Color(0xFFFF69B4),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                              ShaderMask(
+                                shaderCallback: (Rect bounds) {
+                                  return const LinearGradient(
+                                    colors: [
+                                      Color(0xFF9C27B0), // Purple
+                                      Color(0xFFE91E63), // Pink
+                                    ],
+                                  ).createShader(bounds);
+                                },
+                                child: const Text(
+                                  'info@chamakz.app',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white, // This color will be masked by the gradient
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),

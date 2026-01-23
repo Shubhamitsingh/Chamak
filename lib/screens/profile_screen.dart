@@ -23,9 +23,13 @@ import '../services/id_generator_service.dart';
 import '../services/chat_service.dart';
 import '../services/event_service.dart';
 import '../services/announcement_tracking_service.dart';
+import '../services/banner_service.dart';
+import '../services/host_application_service.dart';
 import '../models/user_model.dart';
 import '../models/announcement_model.dart';
 import '../models/event_model.dart';
+import '../models/banner_model.dart';
+import 'become_creator_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String phoneNumber;
@@ -44,6 +48,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ChatService _chatService = ChatService();
   final EventService _eventService = EventService();
   final AnnouncementTrackingService _trackingService = AnnouncementTrackingService();
+  final BannerService _bannerService = BannerService();
+  final HostApplicationService _hostApplicationService = HostApplicationService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -52,16 +58,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Timer? _timer;
   int _currentPage = 0;
   bool _isSliderActive = false;
+  List<BannerModel> _currentBanners = [];
+  bool _isUserScrolling = false; // Track if user is manually scrolling
   
   // Cache user data to prevent unnecessary rebuilds
   UserModel? _cachedUser;
-  
-  // Sample images for the slider
-  final List<String> _sliderImages = [
-    'assets/images/bannerpromo1.jpg',
-    'assets/images/promobanner2.jpg',
-    'assets/images/promobanner1.jpg',
-  ];
 
   @override
   void initState() {
@@ -83,20 +84,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
       
-      int nextPage;
-      if (_currentPage < _sliderImages.length - 1) {
-        nextPage = _currentPage + 1;
-      } else {
-        nextPage = 0;
+      // Use current banners length instead of hardcoded
+      final bannerCount = _currentBanners.length;
+      
+      // Only auto-scroll if we have more than 1 banner
+      if (bannerCount <= 1) {
+        // Don't cancel timer, just skip this iteration (banner might load later)
+        return;
       }
       
+      // Ensure current page is valid (in case it got out of sync)
+      if (_currentPage >= bannerCount) {
+        _currentPage = 0;
+      }
+      if (_currentPage < 0) {
+        _currentPage = 0;
+      }
+      
+      // Calculate next page
+      int nextPage;
+      if (_currentPage < bannerCount - 1) {
+        nextPage = _currentPage + 1;
+      } else {
+        nextPage = 0; // Loop back to first banner
+      }
+      
+      debugPrint('🔄 Auto-scrolling banner: page $_currentPage -> $nextPage (total: $bannerCount)');
+      
       if (mounted && _pageController.hasClients) {
-        // Don't call setState, just animate
-        _pageController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
+        // Only scroll if not already on that page (prevent duplicate scrolls)
+        if (_currentPage != nextPage) {
+          _pageController.animateToPage(
+            nextPage,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
+        }
       }
     });
   }
@@ -242,8 +265,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               
               const SizedBox(height: 2),
               
-              // Image Slider Section
-              _buildImageSlider(),
+              // Image Slider Section (Dynamic Banners)
+              _buildImageSlider(user),
               
               const SizedBox(height: 2),
               
@@ -742,58 +765,228 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ========== IMAGE SLIDER SECTION ==========
-  Widget _buildImageSlider() {
-    return Container(
-      key: const ValueKey('image_slider'), // Key prevents animation restart
-        height: 55,
-        child: PageView.builder(
-          controller: _pageController,
-          onPageChanged: (index) {
-            // Only update state if value actually changed (prevents unnecessary rebuilds)
-            if (_currentPage != index && mounted) {
-              setState(() {
-                _currentPage = index;
-              });
+  // ========== IMAGE SLIDER SECTION (Dynamic Banners) ==========
+  Widget _buildImageSlider(UserModel user) {
+    // Get isHost status from Firestore
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _firestore.collection('users').doc(user.userId).snapshots(),
+      builder: (context, userSnapshot) {
+        final isHost = userSnapshot.hasData && userSnapshot.data!.exists
+          ? (userSnapshot.data!.data() as Map<String, dynamic>)['isHost'] ?? false
+          : false;
+        
+        return StreamBuilder<List<BannerModel>>(
+          stream: _bannerService.getActiveBannersStream(
+            userLevel: user.level,
+            userType: isHost ? 'host' : 'audience',
+            userCountry: user.countryCode,
+          ),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            height: 60,
+            child: Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF69B4),
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        }
+
+        // Error state - hide banner section
+        if (snapshot.hasError) {
+          debugPrint('❌ Error loading banners: ${snapshot.error}');
+          return SizedBox.shrink();
+        }
+
+        final banners = snapshot.data ?? [];
+        
+        // No banners - hide section
+        if (banners.isEmpty) {
+          return SizedBox.shrink();
+        }
+
+        // Update current banners list for auto-scroll
+        // Only reset page if banner count actually changed (not on every rebuild)
+        final bannerIds = banners.map((b) => b.id).toList();
+        final currentBannerIds = _currentBanners.map((b) => b.id).toList();
+        
+        if (bannerIds.toString() != currentBannerIds.toString()) {
+          // Banners actually changed (added/removed)
+          _currentBanners = banners;
+          debugPrint('📋 Banners changed: ${_currentBanners.length} -> ${banners.length}');
+          
+          // Only reset to first page if banner COUNT changed AND user is not scrolling
+          if (_currentBanners.length != currentBannerIds.length) {
+            if (_pageController.hasClients && mounted && !_isUserScrolling) {
+              _currentPage = 0;
+              _pageController.jumpToPage(0); // Use jumpToPage to instantly reset without animation
+              debugPrint('🔄 Reset to page 0 due to banner count change (${currentBannerIds.length} -> ${_currentBanners.length})');
+            } else if (_isUserScrolling) {
+              debugPrint('⏸️ Skipping page reset - user is scrolling');
             }
-          },
-          itemCount: _sliderImages.length,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: Image.asset(
-                _sliderImages[index],
-                width: double.infinity,
-                height: 55,
-                fit: BoxFit.fitWidth, // Shows full image without cropping top/bottom
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: double.infinity,
-                    height: 55,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFFE91E63),
-                          Color(0xFF9C27B0),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.image_outlined,
-                        size: 28,
-                        color: Colors.white.withValues(alpha:0.8),
+          } else {
+            // Same count, just update list reference (DON'T reset page position - this was the bug!)
+            debugPrint('📋 Banners list updated but count same (${_currentBanners.length}) - keeping current page $_currentPage');
+          }
+          
+          // Restart auto-scroll if we have banners now
+          if (banners.length > 1 && !_isSliderActive) {
+            _startAutoScroll();
+          }
+        } else {
+          // Banners are the same, just update the list reference
+          _currentBanners = banners;
+        }
+        
+        // Ensure auto-scroll is running if we have multiple banners
+        if (banners.length > 1 && !_isSliderActive) {
+          _startAutoScroll();
+        }
+
+        return Container(
+          key: const ValueKey('image_slider'),
+          height: 60,
+          child: Stack(
+            children: [
+              NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  // Detect when user starts manually scrolling
+                  if (notification is ScrollStartNotification) {
+                    _isUserScrolling = true;
+                    debugPrint('👆 User started scrolling - pausing auto-scroll');
+                    // Reset flag after scroll completes (delay)
+                    Future.delayed(Duration(milliseconds: 500), () {
+                      _isUserScrolling = false;
+                    });
+                  }
+                  return false; // Allow notification to continue
+                },
+                child: PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    // Always update current page when PageView changes (user swipe or auto-scroll)
+                    if (mounted) {
+                      // Update _currentPage to match PageView (don't use setState to avoid rebuild)
+                      _currentPage = index;
+                      // Reset scrolling flag after page change completes
+                      Future.delayed(Duration(milliseconds: 100), () {
+                        _isUserScrolling = false;
+                      });
+                      debugPrint('📄 PageView changed to page $index (total: ${banners.length})');
+                      // Track impression when banner is viewed
+                      if (index < banners.length) {
+                        _bannerService.trackImpression(banners[index].id);
+                      }
+                    }
+                  },
+                  itemCount: banners.length,
+                itemBuilder: (context, index) {
+                  final banner = banners[index];
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      _bannerService.handleBannerAction(
+                        context,
+                        banner,
+                        widget.phoneNumber,
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 60,
+                      child: Image.network(
+                        banner.imageUrl,
+                        width: double.infinity,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            height: 60,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color(0xFFE91E63),
+                                  Color(0xFF9C27B0),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                  : null,
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('❌ Error loading banner image: $error');
+                          return Container(
+                            height: 60,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color(0xFFE91E63),
+                                  Color(0xFF9C27B0),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: 24,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   );
                 },
+                ),
               ),
-            );
-          },
-      ),
+              // Page Indicators (dots)
+              if (banners.length > 1)
+                Positioned(
+                  bottom: 6,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(banners.length, (index) {
+                      return Container(
+                        width: _currentPage == index ? 7 : 5,
+                        height: 5,
+                        margin: EdgeInsets.symmetric(horizontal: 2.5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.rectangle,
+                          borderRadius: BorderRadius.circular(2.5),
+                          color: _currentPage == index
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.4),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+            ],
+          ),
+        );
+        },
+      );
+      },
     );
   }
 
@@ -1146,6 +1339,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
             ),
             _buildDivider(),
+            
+            // Become a Creator - Only show if user is not already a host
+            StreamBuilder<DocumentSnapshot>(
+              stream: _firestore.collection('users').doc(user.userId).snapshots(),
+              builder: (context, userSnapshot) {
+                final isHost = userSnapshot.hasData && userSnapshot.data!.exists
+                    ? (userSnapshot.data!.data() as Map<String, dynamic>)['isHost'] ?? false
+                    : false;
+                
+                // Don't show if user is already a host
+                if (isHost) {
+                  return const SizedBox.shrink();
+                }
+                
+                // Check application status
+                return StreamBuilder<DocumentSnapshot?>(
+                  stream: _hostApplicationService.getApplicationStatus(user.userId),
+                  builder: (context, appSnapshot) {
+                    // Show menu item if no application or application is rejected
+                    final hasPendingOrApproved = appSnapshot.hasData && appSnapshot.data != null;
+                    if (hasPendingOrApproved) {
+                      final appData = appSnapshot.data!.data() as Map<String, dynamic>?;
+                      final status = appData?['status'] ?? 'pending';
+                      
+                      // Only show if rejected (can reapply) or pending (show status)
+                      if (status == 'approved') {
+                        return const SizedBox.shrink(); // Already approved, don't show
+                      }
+                      
+                      // Show with status badge if pending
+                      return Column(
+                        children: [
+                          _buildMenuOption(
+                            icon: Icons.star_rounded,
+                            title: 'Become a Creator',
+                            subtitle: status == 'pending'
+                                ? 'Application under review'
+                                : 'Reapply to become a creator',
+                            color: const Color(0xFFFF1B7C),
+                            badgeCount: status == 'pending' ? 1 : null,
+                            showBadgeOnTrailing: true,
+                            onTap: () {
+                              if (!mounted) return;
+                              _stopAutoScroll();
+                              try {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => BecomeCreatorScreen(
+                                      phoneNumber: widget.phoneNumber,
+                                    ),
+                                  ),
+                                ).then((_) {
+                                  if (mounted) {
+                                    _startAutoScroll();
+                                  }
+                                });
+                              } catch (e) {
+                                debugPrint('Navigation error: $e');
+                              }
+                            },
+                          ),
+                          _buildDivider(),
+                        ],
+                      );
+                    }
+                    
+                    // No application - show normal menu item
+                    return Column(
+                      children: [
+                        _buildMenuOption(
+                          icon: Icons.star_rounded,
+                          title: 'Become a Creator',
+                          subtitle: 'Apply to become a host and earn more',
+                          color: const Color(0xFFFF1B7C),
+                          onTap: () {
+                            if (!mounted) return;
+                            _stopAutoScroll();
+                            try {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BecomeCreatorScreen(
+                                    phoneNumber: widget.phoneNumber,
+                                  ),
+                                ),
+                              ).then((_) {
+                                if (mounted) {
+                                  _startAutoScroll();
+                                }
+                              });
+                            } catch (e) {
+                              debugPrint('Navigation error: $e');
+                            }
+                          },
+                        ),
+                        _buildDivider(),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
             
             _buildMenuOption(
               icon: Icons.thumb_down_rounded,

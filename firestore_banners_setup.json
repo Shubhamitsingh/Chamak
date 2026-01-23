@@ -1,0 +1,63 @@
+{
+  "banners": [
+    {
+      "id": "banner_001",
+      "imageUrl": "https://via.placeholder.com/800x200/FF1B7C/FFFFFF?text=Welcome+Banner",
+      "title": "Welcome to Chamak",
+      "description": "Discover amazing live streams",
+      "actionType": "none",
+      "actionTarget": null,
+      "priority": 5,
+      "isActive": true,
+      "startDate": null,
+      "endDate": null,
+      "targetAudience": null,
+      "createdAt": "2024-12-01T10:00:00Z",
+      "updatedAt": "2024-12-01T10:00:00Z",
+      "createdBy": "admin",
+      "impressions": 0,
+      "clicks": 0
+    },
+    {
+      "id": "banner_002",
+      "imageUrl": "https://via.placeholder.com/800x200/FFB800/FFFFFF?text=Wallet+Promotion",
+      "title": "Special Wallet Offer",
+      "description": "Get coins and enjoy premium features",
+      "actionType": "navigate",
+      "actionTarget": "wallet_screen",
+      "priority": 8,
+      "isActive": true,
+      "startDate": null,
+      "endDate": null,
+      "targetAudience": {
+        "minLevel": 1,
+        "maxLevel": 100,
+        "userTypes": ["all"],
+        "countries": []
+      },
+      "createdAt": "2024-12-01T10:00:00Z",
+      "updatedAt": "2024-12-01T10:00:00Z",
+      "createdBy": "admin",
+      "impressions": 0,
+      "clicks": 0
+    },
+    {
+      "id": "banner_003",
+      "imageUrl": "https://via.placeholder.com/800x200/8B5CF6/FFFFFF?text=Events+%26+Promotions",
+      "title": "Check Out Events",
+      "description": "See upcoming events and announcements",
+      "actionType": "navigate",
+      "actionTarget": "event_screen",
+      "priority": 6,
+      "isActive": true,
+      "startDate": null,
+      "endDate": null,
+      "targetAudience": null,
+      "createdAt": "2024-12-01T10:00:00Z",
+      "updatedAt": "2024-12-01T10:00:00Z",
+      "createdBy": "admin",
+      "impressions": 0,
+      "clicks": 0
+    }
+  ]
+}

@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
-import '../providers/language_provider.dart';
 import '../models/chat_model.dart';
-import '../models/team_message_model.dart';
 import '../services/chat_service.dart';
 import '../services/database_service.dart';
-import '../services/team_message_service.dart';
 import 'chat_screen.dart';
-import 'team_messages_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
   final bool hideSearchBar;
@@ -35,7 +30,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ChatService _chatService = ChatService();
   final DatabaseService _databaseService = DatabaseService();
-  final TeamMessageService _teamMessageService = TeamMessageService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _currentUserId;
@@ -80,10 +74,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to language provider to force rebuild when locale changes
-    final languageProvider = Provider.of<LanguageProvider>(context, listen: true);
-    final currentLocale = languageProvider.locale;
-    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -113,7 +103,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
         centerTitle: true,
         title: Text(
           AppLocalizations.of(context)!.messages,
-          key: ValueKey('messages_title_${currentLocale.languageCode}'),
           style: const TextStyle(
             color: Color(0xFF9C27B0),
             fontSize: 18,
@@ -131,8 +120,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
       ),
       body: Column(
         children: [
-          // Chamakz Team Box (Top)
-          _buildTeamBox(),
           // Search Bar (only if not hidden)
           if (!widget.hideSearchBar) _buildSearchBar(),
           
@@ -155,154 +142,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
               backgroundColor: const Color(0xFF9C27B0),
               child: const Icon(Icons.edit),
             ),
-    );
-  }
-
-  // ========== TEAM BOX ==========
-  Widget _buildTeamBox() {
-    return StreamBuilder<List<TeamMessageModel>>(
-      stream: _teamMessageService.getTeamMessagesStream(),
-      builder: (context, messagesSnapshot) {
-        // Handle errors in messages stream
-        if (messagesSnapshot.hasError) {
-          debugPrint('❌ Team messages stream error: ${messagesSnapshot.error}');
-        }
-        
-        return StreamBuilder<int>(
-          stream: _teamMessageService.getUnreadTeamMessagesCount(),
-          builder: (context, unreadSnapshot) {
-            // Handle errors in unread count stream
-            if (unreadSnapshot.hasError) {
-              debugPrint('❌ Unread count stream error: ${unreadSnapshot.error}');
-            }
-            
-            // Always show the team box, even during loading
-            final unreadCount = unreadSnapshot.data ?? 0;
-            final messages = messagesSnapshot.data ?? [];
-            final lastMessage = messages.isNotEmpty ? messages.first.message : 'No messages yet';
-            final lastMessageTime = messages.isNotEmpty ? messages.first.timestamp : null;
-            
-            // Debug: Print state
-            if (messagesSnapshot.connectionState == ConnectionState.waiting || 
-                unreadSnapshot.connectionState == ConnectionState.waiting) {
-              debugPrint('⏳ Team box loading - messages: ${messagesSnapshot.connectionState}, unread: ${unreadSnapshot.connectionState}');
-            }
-            
-            // Clean design - NO containers, NO borders, NO backgrounds - same as chat items
-            // Ensure minimum height to always show
-            return Material(
-              color: Colors.transparent,
-              elevation: 0,
-              child: InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TeamMessagesScreen(),
-                    ),
-                  );
-                },
-                splashColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                hoverColor: Colors.transparent,
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 50),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      // Avatar - Compact size (same as chat items)
-                      Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: const Color(0xFFFF1B7C).withValues(alpha: 0.1),
-                            backgroundImage: const AssetImage('assets/images/logopink.png'),
-                          ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFF1B7C),
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 16,
-                                  minHeight: 16,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    unreadCount > 99 ? '99+' : unreadCount.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      // Name and Message - Compact (same structure as chat items)
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    'Chamakz Team',
-                                    style: TextStyle(
-                                      fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
-                                      fontSize: 12,
-                                      color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.black87,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              lastMessage,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: unreadCount > 0 ? Colors.black87 : Colors.grey[600],
-                                fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Time - Compact (same as chat items)
-                      if (lastMessageTime != null)
-                        Text(
-                          _formatTimestamp(lastMessageTime),
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.grey[600],
-                            fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 

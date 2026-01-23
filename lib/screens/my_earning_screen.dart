@@ -1396,22 +1396,17 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFFFF1B7C).withOpacity(0.15),
-                const Color(0xFFFF69B4).withOpacity(0.1),
-              ],
-            ),
+            color: Colors.grey[100],
             shape: BoxShape.circle,
             border: Border.all(
-              color: const Color(0xFFFF1B7C).withOpacity(0.3),
+              color: Colors.grey[300]!,
               width: 1.5,
             ),
           ),
           child: Icon(
             icon,
             size: 24,
-            color: const Color(0xFFFF1B7C),
+            color: Colors.grey[600],
           ),
         ),
         const SizedBox(height: 10),

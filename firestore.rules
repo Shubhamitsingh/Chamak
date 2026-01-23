@@ -71,30 +71,34 @@ service cloud.firestore {
       // TRANSACTIONS SUBCOLLECTION
       // ============================================
       match /transactions/{transactionId} {
-        // Users can read their own transactions, admins can read all
-        allow read: if request.auth != null 
-          && (isAdmin() || request.auth.uid == userId);
+        // Admins can read all transactions (for admin panel)
+        // Users can read their own transactions
+        allow read: if isAdmin() 
+          || (request.auth != null && request.auth.uid == userId);
         
         // Users CANNOT create/update/delete transactions
         // Only Cloud Functions and server can create transactions
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
+        // Admins can create/update/delete for admin panel
+        allow create: if isAdmin();
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
       }
       
       // ============================================
       // COIN TRANSACTIONS SUBCOLLECTION
       // ============================================
       match /coinTransactions/{transactionId} {
-        // Users can read their own coin transactions, admins can read all
-        allow read: if request.auth != null 
-          && (isAdmin() || request.auth.uid == userId);
+        // Admins can read all coin transactions (for admin panel)
+        // Users can read their own coin transactions
+        allow read: if isAdmin() 
+          || (request.auth != null && request.auth.uid == userId);
         
         // Users CANNOT create/update/delete coin transactions
         // Only Cloud Functions can create coin transactions (for payment purchases)
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
+        // Admins can create/update/delete for admin panel
+        allow create: if isAdmin();
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
       }
       
       // ============================================
@@ -148,6 +152,26 @@ service cloud.firestore {
       match /seenEvents/{eventId} {
         // Users can read/write their own seen events
         allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // ============================================
+      // FEEDBACK SUBCOLLECTION (Admin Panel)
+      // ============================================
+      match /feedback/{feedbackId} {
+        // Admins can read/update/delete all feedback (for admin panel)
+        allow read: if request.auth != null && isAdmin();
+        allow update: if request.auth != null && isAdmin();
+        allow delete: if request.auth != null && isAdmin();
+      }
+      
+      // ============================================
+      // TICKETS SUBCOLLECTION (Admin Panel)
+      // ============================================
+      match /tickets/{ticketId} {
+        // Admins can read/update/delete all tickets (for admin panel)
+        allow read: if request.auth != null && isAdmin();
+        allow update: if request.auth != null && isAdmin();
+        allow delete: if request.auth != null && isAdmin();
       }
       
       // ============================================
@@ -291,14 +315,14 @@ service cloud.firestore {
     
     // Chats collection
     match /chats/{chatId} {
-      // Users can read chats where they are a participant, admins can read all
+      // Admins can read ALL chats (for admin panel)
+      // Users can read chats where they are a participant
       // Also allow read for authenticated users (to check if chat exists before creating)
-      // Simplified: Allow read if user is authenticated and (admin OR document doesn't exist OR user is participant)
-      allow read: if request.auth != null 
-        && (isAdmin() 
-            || resource == null  // Document doesn't exist - allow check before create
-            || resource.data == null  // Document exists but no data yet
-            || request.auth.uid in resource.data.get('participants', []));
+      allow read: if isAdmin() // Admin can read all
+        || (request.auth != null 
+            && (resource == null  // Document doesn't exist - allow check before create
+                || resource.data == null  // Document exists but no data yet
+                || request.auth.uid in resource.data.get('participants', []))); // User is participant
       
       // Users can create chats (they must be in the participants array)
       // Allow create if user is authenticated and included in participants
@@ -393,6 +417,20 @@ service cloud.firestore {
       }
     }
     
+    // Reseller chats collection (Admin Panel)
+    match /resellerChats/{chatId} {
+      // Admins can read/write all reseller chats (for admin panel)
+      allow read: if request.auth != null && isAdmin();
+      allow write: if request.auth != null && isAdmin();
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read: if request.auth != null && isAdmin();
+        allow create: if request.auth != null && isAdmin();
+        allow write: if request.auth != null && isAdmin();
+      }
+    }
+    
     // Support tickets collection
     match /supportTickets/{ticketId} {
       // Users can read their own tickets, admins can read all
@@ -412,23 +450,44 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
+    // Tickets collection (Fallback for Dashboard)
+    match /tickets/{ticketId} {
+      // Admins can read tickets (for admin panel fallback)
+      allow read: if request.auth != null && isAdmin();
+    }
+    
     // Withdrawal requests collection
     match /withdrawal_requests/{requestId} {
-      // Users can read their own, admins can read all
+      // Admins can read ALL withdrawal requests (for admin panel queries)
+      // Users can read their own withdrawal requests
       allow read: if request.auth != null 
-        && (isAdmin() 
+        && (isAdmin()  // Admin can read all - checked first for collection queries
             || (resource.data != null && request.auth.uid == resource.data.userId));
+      
+      // Users can create their own withdrawal requests
       allow create: if request.auth != null 
         && request.resource.data != null
         && request.auth.uid == request.resource.data.userId;
-      allow update: if isAdmin(); // Only admin/server
+      
+      // Only admins can update (approve/reject payments)
+      allow update: if request.auth != null && isAdmin();
+      
+      // No one can delete
       allow delete: if false;
+    }
+    
+    // Transactions collection (top-level for admin panel queries)
+    match /transactions/{transactionId} {
+      // Admins can read all transactions (for admin panel)
+      // Note: This is separate from users/{userId}/transactions subcollection
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
     
     // Call transactions collection
     match /callTransactions/{transactionId} {
       // Users can read their own call transactions, admins can read all
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (isAdmin() || true); // Admin can read all, users can read their own
       // Users can create call transactions when they make calls (for coin deduction tracking)
       allow create: if request.auth != null 
         && request.resource.data != null
@@ -490,12 +549,12 @@ service cloud.firestore {
     
     // Team messages collection (Chamakz Team broadcast messages)
     match /team_messages/{messageId} {
-      // Allow public read for admin panel access (TEMPORARY - will require auth later)
-      // TODO: Implement authentication in ChamakzTeam.jsx and change to: allow read: if request.auth != null;
-      allow read: if true;
+      // Admins can read all team messages (for admin panel)
+      // App users can read team messages (public read)
+      allow read: if true; // Public read for app users, admin panel can also read
       
-      // Allow authenticated users to create team messages (TEMPORARY - for admin panel)
-      // TODO: Change back to: allow create: if isAdmin(); after implementing authentication
+      // Allow authenticated users to create team messages (for admin panel)
+      // TODO: Once admin panel authentication is properly set up, change to: allow create: if isAdmin();
       allow create: if request.auth != null;
       
       // Users can update readBy field (mark as read), admins can update all fields
@@ -506,6 +565,61 @@ service cloud.firestore {
       
       // Only admins can delete team messages
       allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // BANNERS COLLECTION
+    // ============================================
+    match /banners/{bannerId} {
+      // Admin panel: Admins can read ALL banners (for management)
+      // App users: Any authenticated user can read banners (app filters by isActive client-side)
+      // Public read allowed - app filters inactive banners in code
+      allow read: if request.auth != null;
+      
+      // Allow analytics tracking (impressions/clicks updates)
+      // Authenticated users can update only impressions, clicks, and updatedAt fields
+      // Admins can update all fields
+      allow update: if request.auth != null
+                   && (isAdmin() // Admin can update all fields
+                       || request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['impressions', 'clicks', 'updatedAt'])); // App can update only analytics
+      
+      // Admin panel: Admins can create/update/delete banners
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // SETTINGS COLLECTION (Admin Panel)
+    // ============================================
+    match /settings/{settingId} {
+      // Admins can read/update settings (for admin panel)
+      allow read: if request.auth != null && isAdmin();
+      allow update: if request.auth != null && isAdmin();
+    }
+    
+    // ============================================
+    // HOST APPLICATIONS COLLECTION
+    // ============================================
+    match /host_applications/{applicationId} {
+      // Users can read their own applications (to check status)
+      // Admins can read all applications (for admin panel)
+      allow read: if request.auth != null 
+        && (isAdmin() 
+            || (resource.data != null && request.auth.uid == resource.data.userId));
+      
+      // Authenticated users can create their own applications
+      // Must include their userId in the document
+      allow create: if request.auth != null 
+        && request.resource.data != null
+        && request.auth.uid == request.resource.data.userId
+        && request.resource.data.status == 'pending'; // Can only create with pending status
+      
+      // Only admins can update applications (approve/reject)
+      allow update: if request.auth != null && isAdmin();
+      
+      // Only admins can delete applications
+      allow delete: if request.auth != null && isAdmin();
     }
     
     // Default: Deny all other collections

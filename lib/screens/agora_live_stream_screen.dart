@@ -4482,12 +4482,16 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
           if (widget.isHost) {
             _showEndStreamConfirmation();
           } else {
-            // For viewer, end directly
-            debugPrint('🔙 Back button pressed - cleaning up...');
-            await _cleanupAgoraEngine();
+            // For viewer, exit immediately for instant response
+            debugPrint('🔙 Back button pressed - exiting immediately...');
+            // Navigate immediately for instant exit (best UX)
             if (mounted) {
               Navigator.of(context).pop();
             }
+            // Cleanup in background (non-blocking)
+            _cleanupAgoraEngine().catchError((e) {
+              debugPrint('⚠️ Background cleanup error: $e');
+            });
           }
         },
         child: Scaffold(
