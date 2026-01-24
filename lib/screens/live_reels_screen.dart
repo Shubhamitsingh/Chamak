@@ -7,7 +7,9 @@ import 'agora_live_stream_screen.dart';
 
 /// Reels-style vertical live viewer showing only active live hosts.
 class LiveReelsScreen extends StatefulWidget {
-  const LiveReelsScreen({super.key});
+  final VoidCallback? onBackPressed;
+  
+  const LiveReelsScreen({super.key, this.onBackPressed});
 
   @override
   State<LiveReelsScreen> createState() => _LiveReelsScreenState();
@@ -38,16 +40,17 @@ class _LiveReelsScreenState extends State<LiveReelsScreen> {
 
   @override
   void dispose() {
-    // Keep overlays visible; home handles final theme
+    // Reset status bar to default (transparent) - HomeScreen will handle final theme
+    // This prevents status bar conflicts when navigating away
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: SystemUiOverlay.values,
     );
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFFFF1B7C),
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
     );
     _pageController.dispose();
@@ -72,7 +75,16 @@ class _LiveReelsScreenState extends State<LiveReelsScreen> {
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
       ),
-      child: StreamBuilder<List<LiveStreamModel>>(
+      child: PopScope(
+        canPop: false, // Prevent default pop - handle manually
+        onPopInvoked: (didPop) {
+          if (didPop) return;
+          // Handle Android back button - navigate to Explore tab
+          if (widget.onBackPressed != null) {
+            widget.onBackPressed!();
+          }
+        },
+        child: StreamBuilder<List<LiveStreamModel>>(
         stream: _liveStreamService.getActiveLiveStreams(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -130,12 +142,15 @@ class _LiveReelsScreenState extends State<LiveReelsScreen> {
                     token: token,
                     isHost: false,
                     streamId: stream.streamId,
+                    isInReelsView: true, // Mark that it's in reels view
+                    onReelsBackPressed: widget.onBackPressed, // Pass callback
                   );
                 },
               );
             },
           );
         },
+        ),
       ),
     );
   }

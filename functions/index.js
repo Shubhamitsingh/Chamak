@@ -619,12 +619,6 @@ exports.initiatePayment = onCall(
       if (payprimeData.gpay_upi_intent_url) {
         upiUrls.gpay_upi_intent_url = payprimeData.gpay_upi_intent_url;
       }
-      if (payprimeData.phonepe_upi_intent_url) {
-        upiUrls.phonepe_upi_intent_url = payprimeData.phonepe_upi_intent_url;
-      }
-      if (payprimeData.paytm_upi_intent_url) {
-        upiUrls.paytm_upi_intent_url = payprimeData.paytm_upi_intent_url;
-      }
       if (payprimeData.upi_intent_url) {
         upiUrls.upi_intent_url = payprimeData.upi_intent_url;
       }
@@ -635,7 +629,7 @@ exports.initiatePayment = onCall(
         identifier: identifier,
         paymentId: paymentId,
         paymentUrl: paymentUrl, // Primary URL (for backward compatibility)
-        upiUrls: upiUrls, // All available UPI URLs
+        upiUrls: upiUrls, // All available UPI URLs + Card Payment URL
         amount: amount,
         currency: currency.toUpperCase(),
         coins: coins,

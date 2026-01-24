@@ -624,96 +624,40 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
   // End call
   Future<void> _endCall() async {
     try {
-      // Cancel timers
+      // Cancel timers immediately
       _callTimer?.cancel();
       _deductionTimer?.cancel();
       
-      // Deduct partial minute if call ended before full minute
-      if (!widget.isHost && _callDurationSeconds > 0) {
-        final partialSeconds = _callDurationSeconds % 60;
-        final fullMinutes = _callDurationSeconds ~/ 60;
-        
-        // If we haven't deducted for the last partial minute, deduct it now
-        if (partialSeconds > 0 && _lastDeductionMinute < fullMinutes) {
-          try {
-            await _deductPartialMinute(partialSeconds);
-          } catch (e) {
-            debugPrint('⚠️ Error deducting partial minute: $e');
-            // Continue even if deduction fails
-          }
-        }
-      }
-      
-      // Update call request status and make host available (don't block on this)
-      // For chat calls, streamId will be empty, which is handled by the service
-      try {
-        await _callRequestService.endCall(
-          requestId: widget.requestId,
-          streamId: widget.streamId.isEmpty ? null : widget.streamId, // Pass null for chat calls
-        );
-      } catch (e) {
-        debugPrint('⚠️ Error updating call request status: $e');
-        // Continue even if update fails
-      }
-
-      // Calculate call duration (ensure minimum 1 second)
+      // Calculate call duration and coins immediately (using local values)
       final callDuration = Duration(seconds: _callDurationSeconds > 0 ? _callDurationSeconds : 1);
       
-      // Calculate coins spent/earned with fallbacks
+      // Calculate coins using local values (instant, no Firestore queries)
       int coinsSpent = 0;
       int coinsEarned = 0;
       
       if (!widget.isHost) {
-        // For caller: calculate coins spent from transactions
-        try {
-          coinsSpent = await _coinDeductionService.getTotalCoinsDeducted(widget.requestId)
-              .timeout(const Duration(seconds: 5));
-          debugPrint('💰 Coins spent from transactions: $coinsSpent');
-        } catch (e) {
-          debugPrint('⚠️ Error getting coins spent from transactions: $e');
-        }
-        
-        // Fallback to calculated value if transaction fetch fails or returns 0
-        if (coinsSpent == 0 && _callDurationSeconds > 0) {
+        // For caller: use calculated value immediately
+        if (_callDurationSeconds > 0) {
           final minutes = (_callDurationSeconds / 60).ceil();
           coinsSpent = minutes * 300; // 300 coins per minute
-          debugPrint('💰 Using calculated coins spent: $coinsSpent (${minutes} minutes)');
         }
       } else {
-        // For host: calculate coins earned from transactions
-        try {
-          final transactions = await _firestore
-              .collection('callTransactions')
-              .where('callRequestId', isEqualTo: widget.requestId)
-              .get(const GetOptions(source: Source.server))
-              .timeout(const Duration(seconds: 5));
-          
-          for (var doc in transactions.docs) {
-            final data = doc.data();
-            final cCoins = (data['cCoinsCredited'] as int?) ?? 0;
-            coinsEarned += cCoins;
-          }
-          debugPrint('💰 Coins earned from transactions: $coinsEarned');
-        } catch (e) {
-          debugPrint('⚠️ Error getting coins earned from transactions: $e');
-        }
-        
-        // Fallback calculation if no transactions found
-        if (coinsEarned == 0 && _callDurationSeconds > 0) {
+        // For host: use calculated value immediately
+        if (_callDurationSeconds > 0) {
           final minutes = (_callDurationSeconds / 60).ceil();
           final uCoins = minutes * 300;
-          // Convert U Coins to C Coins using conversion service
           coinsEarned = CoinConversionService.convertUtoC(uCoins);
-          debugPrint('💰 Using calculated coins earned: $coinsEarned (${minutes} minutes, $uCoins U Coins)');
         }
       }
 
       debugPrint('📊 Call Summary - Duration: ${callDuration.inSeconds}s, Coins Spent: $coinsSpent, Coins Earned: $coinsEarned');
 
-      // Small delay to ensure cleanup is complete
-      await Future.delayed(const Duration(milliseconds: 300));
+      // IMMEDIATE: Leave Agora channel (non-blocking - fire and forget)
+      _cleanupAgoraEngine().catchError((e) {
+        debugPrint('⚠️ Error cleaning up Agora (non-blocking): $e');
+      });
 
-      // Navigate to summary screen (always show, even if data calculation had issues)
+      // IMMEDIATE: Navigate to summary screen (don't wait for anything)
       if (mounted) {
         try {
           Navigator.of(context).pushReplacement(
@@ -729,7 +673,7 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
               ),
             ),
           );
-          debugPrint('✅ Navigated to call summary screen');
+          debugPrint('✅ Navigated to call summary screen immediately');
         } catch (navError, stackTrace) {
           debugPrint('❌ Error navigating to summary screen: $navError');
           debugPrint('❌ Navigation stack trace: $stackTrace');
@@ -743,6 +687,10 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
           }
         }
       }
+
+      // BACKGROUND: Do cleanup operations (non-blocking - fire and forget)
+      _performBackgroundCleanup(coinsSpent, coinsEarned);
+      
     } catch (e, stackTrace) {
       debugPrint('❌ Critical error ending call: $e');
       debugPrint('❌ Stack trace: $stackTrace');
@@ -755,7 +703,12 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
               ? ((_callDurationSeconds / 60).ceil() * 300) 
               : 0;
           
-          await Navigator.of(context).pushReplacement(
+          // Leave Agora channel immediately (non-blocking)
+          _cleanupAgoraEngine().catchError((e) {
+            debugPrint('⚠️ Error cleaning up Agora (non-blocking): $e');
+          });
+          
+          Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (context) => CallSummaryScreen(
                 otherUserId: widget.otherUserId,
@@ -777,6 +730,76 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
           }
         }
       }
+    }
+  }
+
+  // Perform background cleanup (non-blocking)
+  Future<void> _performBackgroundCleanup(int calculatedCoinsSpent, int calculatedCoinsEarned) async {
+    try {
+      // Deduct partial minute if call ended before full minute
+      if (!widget.isHost && _callDurationSeconds > 0) {
+        final partialSeconds = _callDurationSeconds % 60;
+        final fullMinutes = _callDurationSeconds ~/ 60;
+        
+        // If we haven't deducted for the last partial minute, deduct it now
+        if (partialSeconds > 0 && _lastDeductionMinute < fullMinutes) {
+          try {
+            await _deductPartialMinute(partialSeconds);
+          } catch (e) {
+            debugPrint('⚠️ Error deducting partial minute (background): $e');
+            // Continue even if deduction fails
+          }
+        }
+      }
+      
+      // Update call request status and make host available (background)
+      // For chat calls, streamId will be empty, which is handled by the service
+      try {
+        await _callRequestService.endCall(
+          requestId: widget.requestId,
+          streamId: widget.streamId.isEmpty ? null : widget.streamId, // Pass null for chat calls
+        );
+      } catch (e) {
+        debugPrint('⚠️ Error updating call request status (background): $e');
+        // Continue even if update fails
+      }
+
+      // Try to get accurate coins from Firestore (optional - for verification)
+      // This is just for logging/verification, not blocking
+      if (!widget.isHost) {
+        try {
+          final accurateCoins = await _coinDeductionService.getTotalCoinsDeducted(widget.requestId)
+              .timeout(const Duration(seconds: 5));
+          if (accurateCoins != calculatedCoinsSpent && accurateCoins > 0) {
+            debugPrint('💰 Coins verification: Calculated=$calculatedCoinsSpent, Actual=$accurateCoins');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error verifying coins spent (background): $e');
+        }
+      } else {
+        try {
+          final transactions = await _firestore
+              .collection('callTransactions')
+              .where('callRequestId', isEqualTo: widget.requestId)
+              .get(const GetOptions(source: Source.server))
+              .timeout(const Duration(seconds: 5));
+          
+          int accurateCoins = 0;
+          for (var doc in transactions.docs) {
+            final data = doc.data();
+            final cCoins = (data['cCoinsCredited'] as int?) ?? 0;
+            accurateCoins += cCoins;
+          }
+          if (accurateCoins != calculatedCoinsEarned && accurateCoins > 0) {
+            debugPrint('💰 Coins verification: Calculated=$calculatedCoinsEarned, Actual=$accurateCoins');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error verifying coins earned (background): $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in background cleanup: $e');
+      // Silently fail - cleanup is not critical
     }
   }
 

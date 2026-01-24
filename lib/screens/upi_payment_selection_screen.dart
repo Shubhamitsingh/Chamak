@@ -183,6 +183,31 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
     super.dispose();
   }
 
+  /// Extract UPI parameters from Android Intent URL and create generic UPI URL
+  String? _extractUpiUrlFromIntent(String intentUrl) {
+    try {
+      // Intent URL format: intent://pay?pa=...&tr=...&am=...&cu=INR#Intent;scheme=upi;package=...;end;
+      if (!intentUrl.contains('intent://')) {
+        return null;
+      }
+
+      // Extract the query part before #Intent
+      final queryPart = intentUrl.split('#Intent')[0];
+      if (queryPart.startsWith('intent://')) {
+        // Remove 'intent://' prefix
+        final queryString = queryPart.substring(9);
+        
+        // Create generic UPI URL
+        final genericUpiUrl = 'upi://pay?$queryString';
+        debugPrint('📱 Extracted generic UPI URL from intent: $genericUpiUrl');
+        return genericUpiUrl;
+      }
+    } catch (e) {
+      debugPrint('❌ Error extracting UPI URL from intent: $e');
+    }
+    return null;
+  }
+
   Future<void> _launchPayment() async {
     if (_selectedMethod == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -204,16 +229,17 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
       return;
     }
 
-    final upiUrl = widget.upiUrls[_selectedMethod!]!;
+    final paymentUrl = widget.upiUrls[_selectedMethod!]!;
     
     try {
-      final uri = Uri.parse(upiUrl);
+      final uri = Uri.parse(paymentUrl);
       debugPrint('🚀 Launching UPI app: $uri');
       debugPrint('   URL scheme: ${uri.scheme}');
+      debugPrint('   Selected method: $_selectedMethod');
       
       // Determine launch mode based on URL type
       LaunchMode launchMode;
-      if (upiUrl.startsWith('intent://')) {
+      if (paymentUrl.startsWith('intent://')) {
         // Android Intent URLs work better with platformDefault
         launchMode = LaunchMode.platformDefault;
         debugPrint('   Using LaunchMode.platformDefault for intent:// URL');
@@ -234,6 +260,7 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
           debugPrint('✅ UPI app launched successfully');
           // Don't close screen - let user complete payment
           // Firestore listener will close it when payment completes
+          return;
         } else {
           // launchUrl returned false - try alternative launch mode
           debugPrint('⚠️ First launch attempt returned false, trying alternative mode...');
@@ -250,39 +277,60 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
             
             if (retryLaunched) {
               debugPrint('✅ UPI app launched successfully with alternative mode');
+              return;
             } else {
               debugPrint('❌ Both launch modes returned false');
-              _showLaunchError();
+              // Try fallback to generic UPI
+              await _tryGenericUpiFallback(paymentUrl);
             }
           } catch (retryError) {
             debugPrint('❌ Retry launch exception: $retryError');
-            _showLaunchError();
+            // Check if it's ACTIVITY_NOT_FOUND error
+            if (retryError.toString().contains('ACTIVITY_NOT_FOUND')) {
+              debugPrint('📱 App not installed, trying generic UPI fallback...');
+              await _tryGenericUpiFallback(paymentUrl);
+            } else {
+              _showLaunchError();
+            }
           }
         }
       } catch (launchError) {
-        // Launch threw an exception - try alternative mode
+        // Launch threw an exception - check if app is not installed
         debugPrint('⚠️ Launch exception: $launchError');
-        debugPrint('   Trying alternative launch mode...');
         
-        try {
-          final alternativeMode = launchMode == LaunchMode.externalApplication
-              ? LaunchMode.platformDefault
-              : LaunchMode.externalApplication;
+        // Check if it's ACTIVITY_NOT_FOUND (app not installed)
+        if (launchError.toString().contains('ACTIVITY_NOT_FOUND')) {
+          debugPrint('📱 App not installed, trying generic UPI fallback...');
+          await _tryGenericUpiFallback(paymentUrl);
+        } else {
+          // Try alternative launch mode for other errors
+          debugPrint('   Trying alternative launch mode...');
           
-          final retryLaunched = await launchUrl(
-            uri,
-            mode: alternativeMode,
-          );
-          
-          if (retryLaunched) {
-            debugPrint('✅ UPI app launched successfully with alternative mode after error');
-          } else {
-            debugPrint('❌ Alternative mode also failed');
-            _showLaunchError();
+          try {
+            final alternativeMode = launchMode == LaunchMode.externalApplication
+                ? LaunchMode.platformDefault
+                : LaunchMode.externalApplication;
+            
+            final retryLaunched = await launchUrl(
+              uri,
+              mode: alternativeMode,
+            );
+            
+            if (retryLaunched) {
+              debugPrint('✅ UPI app launched successfully with alternative mode after error');
+              return;
+            } else {
+              debugPrint('❌ Alternative mode also failed');
+              await _tryGenericUpiFallback(paymentUrl);
+            }
+          } catch (retryError) {
+            debugPrint('❌ Alternative mode also threw exception: $retryError');
+            if (retryError.toString().contains('ACTIVITY_NOT_FOUND')) {
+              await _tryGenericUpiFallback(paymentUrl);
+            } else {
+              _showLaunchError();
+            }
           }
-        } catch (retryError) {
-          debugPrint('❌ Alternative mode also threw exception: $retryError');
-          _showLaunchError();
         }
       }
     } catch (e) {
@@ -299,11 +347,84 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
     }
   }
 
+  /// Try to launch generic UPI URL as fallback
+  Future<void> _tryGenericUpiFallback(String originalUrl) async {
+    try {
+      // Try to extract generic UPI URL from intent
+      final genericUpiUrl = _extractUpiUrlFromIntent(originalUrl);
+      
+      if (genericUpiUrl != null) {
+        debugPrint('🔄 Trying generic UPI URL: $genericUpiUrl');
+        final genericUri = Uri.parse(genericUpiUrl);
+        
+        try {
+          final launched = await launchUrl(
+            genericUri,
+            mode: LaunchMode.externalApplication,
+          );
+          
+          if (launched) {
+            debugPrint('✅ Generic UPI URL launched successfully');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Opening UPI payment. Please select your preferred UPI app.'),
+                  backgroundColor: Colors.blue,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+            return;
+          }
+        } catch (e) {
+          debugPrint('❌ Generic UPI launch also failed: $e');
+        }
+      }
+      
+      // If generic UPI also fails, check if we have a generic UPI URL in the list
+      if (widget.upiUrls.containsKey('upi_intent_url')) {
+        debugPrint('🔄 Trying fallback generic UPI URL from list...');
+        final fallbackUrl = widget.upiUrls['upi_intent_url']!;
+        final fallbackUri = Uri.parse(fallbackUrl);
+        
+        try {
+          final launched = await launchUrl(
+            fallbackUri,
+            mode: LaunchMode.externalApplication,
+          );
+          
+          if (launched) {
+            debugPrint('✅ Fallback generic UPI URL launched successfully');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Opening UPI payment. Please select your preferred UPI app.'),
+                  backgroundColor: Colors.blue,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+            return;
+          }
+        } catch (e) {
+          debugPrint('❌ Fallback generic UPI also failed: $e');
+        }
+      }
+      
+      // All attempts failed
+      debugPrint('❌ All UPI launch attempts failed');
+      _showLaunchError();
+    } catch (e) {
+      debugPrint('❌ Error in generic UPI fallback: $e');
+      _showLaunchError();
+    }
+  }
+
   void _showLaunchError() {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Could not open payment app. Please make sure you have a UPI app installed (GPay, PhonePe, Paytm or any other UPI app).'),
+          content: const Text('Could not open payment app. The selected app may not be installed. Please install the app or try a different payment method.'),
           backgroundColor: Colors.orange,
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
@@ -394,7 +515,7 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
                     imagePath: 'assets/images/gpay.png',
                   ),
 
-                // Generic UPI
+                // Generic UPI (Pay by Any UPI app)
                 if (widget.upiUrls.containsKey('upi_intent_url'))
                   _buildPaymentOption(
                     icon: Icons.qr_code_scanner,
@@ -403,16 +524,6 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
                     subtitle: 'Use any UPI app on your phone to pay',
                     value: 'upi_intent_url',
                     imagePath: 'assets/images/upi.png',
-                  ),
-
-                // Card Payment (if available)
-                if (widget.upiUrls.containsKey('card_payment_url'))
-                  _buildPaymentOption(
-                    icon: Icons.credit_card,
-                    iconColor: Colors.orange,
-                    title: 'Card Payment',
-                    subtitle: 'Credit/Debit Card',
-                    value: 'card_payment_url',
                   ),
               ],
             ),

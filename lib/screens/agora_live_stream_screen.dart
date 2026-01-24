@@ -44,6 +44,8 @@ class AgoraLiveStreamScreen extends StatefulWidget {
   final String token;
   final bool isHost;
   final String? streamId; // Stream ID for cleanup when host ends stream
+  final bool isInReelsView; // True if this screen is inside LiveReelsScreen
+  final VoidCallback? onReelsBackPressed; // Callback for back button when in reels view
 
   const AgoraLiveStreamScreen({
     super.key,
@@ -51,6 +53,8 @@ class AgoraLiveStreamScreen extends StatefulWidget {
     required this.token,
     this.isHost = true,
     this.streamId,
+    this.isInReelsView = false,
+    this.onReelsBackPressed,
   });
 
   @override
@@ -4477,6 +4481,17 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
         canPop: false, // Prevent default back button behavior
         onPopInvoked: (didPop) async {
           if (didPop) return;
+          
+          // If in reels view, use callback to navigate to Explore tab
+          if (widget.isInReelsView && widget.onReelsBackPressed != null) {
+            debugPrint('🔙 Back button pressed in reels view - navigating to Explore');
+            widget.onReelsBackPressed!();
+            // Cleanup in background (non-blocking)
+            _cleanupAgoraEngine().catchError((e) {
+              debugPrint('⚠️ Background cleanup error: $e');
+            });
+            return;
+          }
           
           // For host, show confirmation popup
           if (widget.isHost) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:country_picker/country_picker.dart';
 import 'otp_screen.dart';
@@ -343,42 +342,32 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 10),
               
               // Title
-              FadeInDown(
-                duration: const Duration(milliseconds: 800),
-                child: const Text(
-                  'Phone Number Login',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+              const Text(
+                'Phone Number Login',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
               
               const SizedBox(height: 6),
               
               // Subtitle
-              FadeInDown(
-                duration: const Duration(milliseconds: 800),
-                delay: const Duration(milliseconds: 200),
-                child: Text(
-                  'Simple, fast, and safe',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
+              Text(
+                'Simple, fast, and safe',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
                 ),
               ),
               
               const SizedBox(height: 16),
-                
-                // Mobile Number Box with Country Selector
-                FadeInUp(
-                  duration: const Duration(milliseconds: 800),
-                  delay: const Duration(milliseconds: 400),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              
+              // Mobile Number Box with Country Selector
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                       Container(
                         height: 48,
                         decoration: BoxDecoration(
@@ -512,58 +501,50 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-              ],
-            ),
-          ),
+                ],
+              ),
           
           const Spacer(),
           
           // Send OTP Button at Bottom
-          FadeInUp(
-            duration: const Duration(milliseconds: 800),
-            delay: const Duration(milliseconds: 600),
-            child: SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _sendOTP,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF1B7C), // Pink
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey[300],
-                  elevation: 8,
-                  shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4), // Pink shadow
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _sendOTP,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF1B7C), // Pink
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey[300],
+                elevation: 8,
+                shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4), // Pink shadow
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
-                        ),
-                      )
-                    : const Text(
-                        'Send OTP',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
               ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Text(
+                      'Send OTP',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
           
           const SizedBox(height: 20),
           
           // Terms Text at Bottom
-          FadeInUp(
-            duration: const Duration(milliseconds: 800),
-            delay: const Duration(milliseconds: 700),
-            child: Center(
+          Center(
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: Wrap(
@@ -633,12 +614,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
-            ),
           ),
-        ],
-      ),
-    ),
-  ),
+            ],
+          ),
+        ),
+        ),
       ),
     );
   }

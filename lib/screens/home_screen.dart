@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -31,7 +30,6 @@ import '../widgets/enhanced_loading_screen.dart';
 import 'live_reels_screen.dart';
 import 'nearby_users_screen.dart';
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/services.dart';
 
 // Optimized Scrolling Text Widget for Banner
@@ -104,7 +102,6 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _currentBottomIndex = 0;
   int _topTabIndex = 0; // 0 = Explore, 1 = Live, 2 = Following, 3 = New, 4 = Nearby
-  final TextEditingController _searchController = TextEditingController();
   late final PageController _pageController;
   final ScrollController _topMenuScrollController = ScrollController(); // For scrolling menu to active tab
   final ChatService _chatService = ChatService();
@@ -611,7 +608,6 @@ class _HomeScreenState extends State<HomeScreen>
     _onlineStatusService.stopStatusTracking();
     _previewDelayTimer?.cancel();
     _previewDelayNotifier.dispose();
-    _searchController.dispose();
     _pageController.dispose();
     _topMenuScrollController.dispose();
     _marqueeController.dispose();
@@ -765,84 +761,148 @@ class _HomeScreenState extends State<HomeScreen>
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
-      child: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                if (!_isLiveReelsFullScreen) _buildTopBar(),
-                if (!_isLiveReelsFullScreen) _buildAnnouncementBar(),
-                Expanded(
-                  child: ClipRect(
-                    child: PageView.builder(
-                      controller: _pageController,
-                      onPageChanged: (index) {
-                        if (mounted) {
-                          setState(() {
-                            _topTabIndex = index;
-                          });
-                          debugPrint('📱 Page changed to index: $index, _topTabIndex: $_topTabIndex');
-                          // Scroll menu to show active tab
-                          _scrollMenuToActiveTab();
-                        }
-                      },
-                      physics: const PageScrollPhysics(),
-                      allowImplicitScrolling: false,
-                      pageSnapping: true,
-                      itemCount: 5, // 0=Explore, 1=Live, 2=Following, 3=New, 4=Nearby
-                      itemBuilder: (context, index) {
-                        return _buildPageContent(index);
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (_isLiveReelsFullScreen)
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () {
-                          setState(() {
-                            _topTabIndex = 0;
-                            _pageController.animateToPage(
-                              0,
-                              duration: const Duration(milliseconds: 250),
-                              curve: Curves.easeInOut,
-                            );
-                          });
+      child: PopScope(
+        canPop: false, // Always prevent default pop - we handle navigation manually
+        onPopInvoked: (didPop) {
+          if (didPop) return; // Already popped, nothing to do
+          
+          // Handle back button based on current tab
+          if (_topTabIndex == 1) {
+            // In Live tab - navigate to Explore
+            debugPrint('🔙 Android back button pressed while in Live tab');
+            _navigateToExploreTab();
+          } else if (_topTabIndex == 0) {
+            // In Explore tab - do nothing (prevent app closure)
+            debugPrint('🔙 Android back button pressed while in Explore tab - ignoring to prevent app closure');
+          } else {
+            // In other tabs - navigate to Explore
+            debugPrint('🔙 Android back button pressed while in tab $_topTabIndex - navigating to Explore');
+            _navigateToExploreTab();
+          }
+        },
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  if (!_isLiveReelsFullScreen) _buildTopBar(),
+                  if (!_isLiveReelsFullScreen) _buildAnnouncementBar(),
+                  Expanded(
+                    child: ClipRect(
+                      child: PageView.builder(
+                        controller: _pageController,
+                        onPageChanged: (index) {
+                          if (mounted) {
+                            setState(() {
+                              _topTabIndex = index;
+                            });
+                            debugPrint('📱 Page changed to index: $index, _topTabIndex: $_topTabIndex');
+                            // Scroll menu to show active tab
+                            _scrollMenuToActiveTab();
+                            // Reset status bar style when leaving Live tab
+                            if (index != 1) {
+                              SystemChrome.setSystemUIOverlayStyle(
+                                const SystemUiOverlayStyle(
+                                  statusBarColor: Colors.transparent,
+                                  statusBarIconBrightness: Brightness.dark,
+                                  statusBarBrightness: Brightness.light,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        physics: const PageScrollPhysics(),
+                        allowImplicitScrolling: false,
+                        pageSnapping: true,
+                        itemCount: 5, // 0=Explore, 1=Live, 2=Following, 3=New, 4=Nearby
+                        itemBuilder: (context, index) {
+                          return _buildPageContent(index);
                         },
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-          ],
+              if (_isLiveReelsFullScreen)
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: _navigateToExploreTab,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  // Navigate to Explore tab (used by back button and Android back button)
+  void _navigateToExploreTab() {
+    if (!mounted) return;
+    
+    debugPrint('🔙 Navigating to Explore tab from tab $_topTabIndex...');
+    
+    // Reset status bar style immediately
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+    );
+    
+    // CRITICAL: Update state FIRST to ensure UI is ready
+    // This ensures _isLiveReelsFullScreen becomes false immediately
+    // So top bar and announcement bar will show
+    setState(() {
+      _topTabIndex = 0;
+    });
+    
+    // Then navigate to page 0 (synchronously)
+    // This ensures Explore content is shown immediately
+    if (_pageController.hasClients) {
+      try {
+        _pageController.jumpToPage(0);
+        debugPrint('✅ Jumped to Explore tab (page 0)');
+      } catch (e) {
+        debugPrint('❌ Error jumping to page 0: $e');
+        // Fallback: try animateToPage if jumpToPage fails
+        if (mounted && _pageController.hasClients) {
+          _pageController.animateToPage(
+            0,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+          );
+        }
+      }
+    }
+    
+    debugPrint('✅ Navigated to Explore tab');
+  }
+
   // ========== TOP BAR (Explore/Live/Following Toggle + Search in One Line) ==========
   Widget _buildTopBar() {
-    return FadeInDown(
-      child: Container(
+    return Container(
         margin: const EdgeInsets.fromLTRB(12, 4, 12, 0),
         height: 42,
         child: Row(
@@ -1271,8 +1331,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   // Helper method to sanitize text and remove problematic characters
@@ -1436,7 +1495,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== LIVE CONTENT ==========
   Widget _buildLiveContent() {
-    return const LiveReelsScreen();
+    return LiveReelsScreen(
+      onBackPressed: _navigateToExploreTab, // Pass callback for Android back button
+    );
   }
 
   // ========== EXPLORE CONTENT ==========
@@ -1498,8 +1559,6 @@ class _HomeScreenState extends State<HomeScreen>
                   liveStreamsSnapshot.data != null &&
                   liveStreamsSnapshot.data!.isNotEmpty) {
                 final liveStreams = [...liveStreamsSnapshot.data!];
-                // Shuffle streams randomly for fair distribution
-                liveStreams.shuffle(Random());
                 debugPrint('✅ [EXPLORE] Fallback: showing ${liveStreams.length} live streams without host docs');
                 
                 return GridView.builder(
@@ -1671,8 +1730,6 @@ class _HomeScreenState extends State<HomeScreen>
             
             // Show ONLY live hosts (real-time availability)
             final sortedHosts = [...liveHosts];
-            // Shuffle hosts randomly for fair distribution
-            sortedHosts.shuffle(Random());
             debugPrint('📊 [EXPLORE] Showing ${liveHosts.length} live hosts only (${nonLiveHosts.length} offline hosts hidden)');
             
             // Show empty state if no hosts are live
@@ -2472,8 +2529,6 @@ class _HomeScreenState extends State<HomeScreen>
                   liveStreamsSnapshot.data != null &&
                   liveStreamsSnapshot.data!.isNotEmpty) {
                 final liveStreams = [...liveStreamsSnapshot.data!];
-                // Shuffle streams randomly for fair distribution
-                liveStreams.shuffle(Random());
                 return GridView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -2592,8 +2647,6 @@ class _HomeScreenState extends State<HomeScreen>
             // Get all hosts and filter to ONLY live hosts
             final hosts = hostsSnapshot.data!.docs;
             final liveHosts = hosts.where((host) => liveStreamsMap.containsKey(host.id)).toList();
-            // Shuffle hosts randomly for fair distribution
-            liveHosts.shuffle(Random());
             
             debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live hosts only (${hosts.length - liveHosts.length} offline hosts hidden)');
             
@@ -2807,8 +2860,6 @@ class _HomeScreenState extends State<HomeScreen>
                   liveStreamsSnapshot.data != null &&
                   liveStreamsSnapshot.data!.isNotEmpty) {
                 final liveStreams = [...liveStreamsSnapshot.data!];
-                // Shuffle streams randomly for fair distribution
-                liveStreams.shuffle(Random());
                 return GridView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -2927,8 +2978,6 @@ class _HomeScreenState extends State<HomeScreen>
             // Get all hosts and filter to ONLY live hosts
             final hosts = hostsSnapshot.data!.docs;
             final liveHosts = hosts.where((host) => liveStreamsMap.containsKey(host.id)).toList();
-            // Shuffle hosts randomly for fair distribution
-            liveHosts.shuffle(Random());
             
             debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live hosts only (${hosts.length - liveHosts.length} offline hosts hidden)');
             
@@ -3105,28 +3154,26 @@ class _HomeScreenState extends State<HomeScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FadeIn(
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF8E24AA), Color(0xFF5E35B1)],
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF8E24AA), Color(0xFF5E35B1)],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF8E24AA).withValues(alpha: 0.45),
+                    blurRadius: 20,
+                    spreadRadius: 5,
                   ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF8E24AA).withValues(alpha: 0.45),
-                      blurRadius: 20,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.videocam,
-                  color: Colors.white,
-                  size: 50,
-                ),
+                ],
+              ),
+              child: const Icon(
+                Icons.videocam,
+                color: Colors.white,
+                size: 50,
               ),
             ),
             const SizedBox(height: 30),
