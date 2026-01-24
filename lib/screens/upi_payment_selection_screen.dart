@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
+import 'payment_failure_screen.dart';
 
 /// UPI Payment Selection Screen
 /// 
@@ -30,6 +32,12 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
   String? _selectedMethod;
   StreamSubscription<DocumentSnapshot>? _paymentSubscription;
   bool _paymentCompleted = false;
+  
+  // ⚠️ CRITICAL FIX: Payment status tracking
+  Timer? _paymentTimeoutTimer; // Timeout after 10 minutes
+  Timer? _statusPollingTimer; // Poll status every 5 seconds (fallback)
+  
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
@@ -43,8 +51,10 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
     
     // Setup Firestore listener to monitor payment status
     _setupPaymentListener();
+    _startStatusPolling(); // ⚠️ CRITICAL FIX: Start polling fallback
+    _startPaymentTimeout(); // ⚠️ CRITICAL FIX: Start timeout timer
   }
-
+  
   /// Setup Firestore listener to monitor payment status
   /// This is the SINGLE SOURCE OF TRUTH for payment confirmation
   void _setupPaymentListener() {
@@ -77,7 +87,84 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
     );
   }
 
+  /// ⚠️ CRITICAL FIX: Start status polling as fallback
+  void _startStatusPolling() {
+    _statusPollingTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (timer) async {
+        if (_paymentCompleted || !mounted) {
+          timer.cancel();
+          return;
+        }
+        
+        try {
+          final paymentDoc = await FirebaseFirestore.instance
+            .collection('payments')
+            .doc(widget.paymentId)
+            .get();
+          
+          if (paymentDoc.exists) {
+            final data = paymentDoc.data() as Map<String, dynamic>?;
+            final status = data?['status'] as String?;
+            
+            if (status == 'SUCCESS' || status == 'FAILED') {
+              timer.cancel();
+              if (!_paymentCompleted && mounted) {
+                _paymentCompleted = true;
+                _cancelTimers();
+                _handlePaymentCompletion(status ?? 'FAILED');
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('❌ Error polling payment status: $e');
+        }
+      },
+    );
+  }
+  
+  /// ⚠️ CRITICAL FIX: Start payment timeout (10 minutes)
+  void _startPaymentTimeout() {
+    _paymentTimeoutTimer = Timer(
+      const Duration(minutes: 10),
+      () {
+        if (!_paymentCompleted && mounted) {
+          _handlePaymentTimeout();
+        }
+      },
+    );
+  }
+  
+  /// ⚠️ CRITICAL FIX: Handle payment timeout
+  void _handlePaymentTimeout() {
+    if (_paymentCompleted || !mounted) return;
+    
+    _paymentCompleted = true;
+    _cancelTimers();
+    
+    // Navigate to failure screen with timeout reason
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => PaymentFailureScreen(
+          failureReason: 'Payment verification is taking longer than expected. Please check your payment status or contact support.',
+          amount: widget.amount,
+          coins: widget.coins,
+          paymentMethod: 'UPI',
+          paymentId: widget.paymentId,
+          phoneNumber: _auth.currentUser?.phoneNumber ?? '',
+        ),
+      ),
+    );
+  }
+  
+  /// Cancel all timers
+  void _cancelTimers() {
+    _paymentTimeoutTimer?.cancel();
+    _statusPollingTimer?.cancel();
+  }
+  
   /// Handle payment completion (success or failure)
+  /// ⚠️ CRITICAL FIX: Navigate to failure screen instead of SnackBar
   void _handlePaymentCompletion(String status) {
     if (!mounted) return;
     
@@ -85,21 +172,38 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
       // Show success dialog first
       _showSuccessDialog();
     } else {
-      // Show failure message and close
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment failed. Please try again.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+      // ⚠️ CRITICAL FIX: Navigate to PaymentFailureScreen instead of SnackBar
+      final failureReason = _getFailureReason(status);
+      
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => PaymentFailureScreen(
+            failureReason: failureReason,
+            amount: widget.amount,
+            coins: widget.coins,
+            paymentMethod: 'UPI',
+            paymentId: widget.paymentId,
+            phoneNumber: _auth.currentUser?.phoneNumber ?? '',
+            onRetry: () {
+              // Retry payment - go back to wallet
+              Navigator.of(context).pop();
+            },
+          ),
         ),
       );
-      // Close screen after a short delay
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          Navigator.of(context).pop(false);
-        }
-      });
     }
+  }
+  
+  /// Get failure reason message
+  String _getFailureReason(String status) {
+    if (status == 'FAILED') {
+      return 'Payment could not be completed. Please check your balance and try again.';
+    } else if (status == 'CANCELLED') {
+      return 'Payment was cancelled. Please try again if you want to complete the payment.';
+    } else if (status == 'TIMEOUT') {
+      return 'Payment verification is taking longer than expected. Please check your payment status or contact support.';
+    }
+    return 'Payment failed. Please try again.';
   }
 
   /// Show success dialog and then navigate back

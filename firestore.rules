@@ -266,9 +266,13 @@ service cloud.firestore {
         allow read: if true; // Public read for live chat messages
         allow create: if request.auth != null; // Authenticated users can send messages
         allow update: if false; // Messages cannot be updated
-        allow delete: if request.auth != null;
-          // Only host can delete messages - check if stream exists and user is host
-          // Note: Can't easily check in subcollection rules, allowing authenticated users for now
+        // ⚠️ CRITICAL FIX: Only host or admin can delete messages
+        // Check if user is the host of the parent stream or is an admin
+        allow delete: if request.auth != null 
+          && (isAdmin() 
+              || (resource.data != null 
+                  && resource.data.hostId == request.auth.uid)
+              || (get(/databases/$(database)/documents/live_streams/$(streamId)).data.hostId == request.auth.uid));
       }
       
       // Viewers subcollection - track who is watching the stream
@@ -486,8 +490,14 @@ service cloud.firestore {
     
     // Call transactions collection
     match /callTransactions/{transactionId} {
-      // Users can read their own call transactions, admins can read all
-      allow read: if request.auth != null && (isAdmin() || true); // Admin can read all, users can read their own
+      // ⚠️ CRITICAL FIX: Restrict read access to only admins or users involved in the transaction
+      // Users can only read their own call transactions (where they are caller or host)
+      // Admins can read all transactions
+      allow read: if request.auth != null 
+        && (isAdmin() 
+            || (resource.data != null 
+                && (request.auth.uid == resource.data.callerId 
+                    || request.auth.uid == resource.data.hostId)));
       // Users can create call transactions when they make calls (for coin deduction tracking)
       allow create: if request.auth != null 
         && request.resource.data != null

@@ -3,6 +3,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import '../main.dart'; // Import navigatorKey
+import '../screens/wallet_screen.dart';
+import '../screens/chat_list_screen.dart';
 
 // Top-level function to handle background messages
 @pragma('vm:entry-point')
@@ -130,15 +134,15 @@ class NotificationService {
   }
 
   // Handle notification tap
+  // ⚠️ CRITICAL FIX: Implement deep linking navigation
   void _onNotificationTapped(NotificationResponse response) {
     print('🔔 Notification tapped: ${response.payload}');
     
     if (response.payload != null) {
       try {
-        final data = json.decode(response.payload!);
-        // Navigate to chat screen
-        // You can add navigation logic here if needed
-        print('📱 Navigate to chat: ${data['chatId']}');
+        final data = json.decode(response.payload!) as Map<String, dynamic>;
+        // Use the global navigator key to navigate
+        _handleNotificationTap(data);
       } catch (e) {
         print('❌ Error parsing notification payload: $e');
       }
@@ -236,20 +240,69 @@ class NotificationService {
   }
 
   // Handle notification tap navigation
+  // ⚠️ CRITICAL FIX: Implement deep linking to navigate to appropriate screens
   void _handleNotificationTap(Map<String, dynamic> data) {
     print('🔔 Handling notification tap with data: $data');
     
     final notificationType = data['type'] as String?;
+    final navigator = navigatorKey.currentState;
+    
+    if (navigator == null) {
+      print('⚠️ Navigator not available yet, navigation will be handled when app is ready');
+      return;
+    }
     
     // Handle different notification types
-    if (notificationType == 'coin_addition') {
-      print('💰 Coin addition notification tapped');
-      // Navigate to wallet screen
-      // navigatorKey.currentState?.pushNamed('/wallet');
-    } else if (notificationType == 'message') {
+    if (notificationType == 'coin_addition' || notificationType == 'wallet') {
+      print('💰 Coin addition/wallet notification tapped - Navigating to WalletScreen');
+      // Get current user's phone number for WalletScreen
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final phoneNumber = currentUser?.phoneNumber ?? '';
+      if (phoneNumber.isEmpty) {
+        print('⚠️ Cannot navigate to WalletScreen: User phone number not available');
+        return;
+      }
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => WalletScreen(phoneNumber: phoneNumber),
+        ),
+      );
+    } else if (notificationType == 'message' || notificationType == 'chat') {
       print('📩 Message notification tapped');
-      // Navigate to chat screen
-      // navigatorKey.currentState?.pushNamed('/chat', arguments: data);
+      final chatId = data['chatId'] as String?;
+      final userId = data['userId'] as String?;
+      
+      // ⚠️ CRITICAL FIX: ChatScreen requires both chatId and otherUser
+      // For now, navigate to ChatListScreen and let user select the chat
+      // In a future enhancement, we can fetch the UserModel from userId/chatId
+      // and then navigate directly to ChatScreen
+      if (chatId != null && chatId.isNotEmpty || userId != null && userId.isNotEmpty) {
+        print('📱 Navigating to ChatListScreen (will auto-select chat if possible)');
+        // TODO: Enhance this to fetch UserModel and navigate directly to ChatScreen
+        // For now, navigate to chat list where user can see the new message
+        navigator.push(
+          MaterialPageRoute(
+            builder: (context) => const ChatListScreen(),
+          ),
+        );
+      } else {
+        // No specific chat, navigate to chat list
+        print('📱 Navigating to ChatListScreen');
+        navigator.push(
+          MaterialPageRoute(
+            builder: (context) => const ChatListScreen(),
+          ),
+        );
+      }
+    } else if (notificationType == 'live_stream' || notificationType == 'stream') {
+      print('📺 Live stream notification tapped');
+      final streamId = data['streamId'] as String?;
+      // Navigate to live stream screen if streamId is provided
+      // Note: You may need to import AgoraLiveStreamScreen and pass streamId
+      print('📺 Stream ID: $streamId (navigation to be implemented based on your stream screen)');
+    } else {
+      print('ℹ️ Unknown notification type: $notificationType, defaulting to home');
+      // For unknown types, do nothing (stay on current screen)
     }
   }
 

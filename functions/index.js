@@ -893,3 +893,270 @@ exports.reconcilePayments = onSchedule("every 10 minutes", async () => {
     return null;
   }
 });
+
+/**
+ * ⚠️ MANDATORY BACKEND FEATURE: Stream Timeout Auto-Cleanup
+ * Runs every 5 minutes to automatically mark inactive streams as ended
+ * This prevents zombie streams from cluttering the database
+ */
+exports.cleanupInactiveStreams = onSchedule("every 5 minutes", async (event) => {
+  try {
+    console.log("🧹 Starting stream timeout auto-cleanup...");
+    const now = admin.firestore.Timestamp.now();
+    const heartbeatTimeout = 60; // 60 seconds = 1 minute (stream is dead if no heartbeat for 60s)
+    
+    const streamsRef = admin.firestore().collection("live_streams");
+    const activeStreams = await streamsRef
+      .where("isActive", "==", true)
+      .get();
+    
+    if (activeStreams.empty) {
+      console.log("✅ No active streams to check");
+      return null;
+    }
+    
+    const batch = admin.firestore().batch();
+    let cleanedCount = 0;
+    
+    for (const doc of activeStreams.docs) {
+      const data = doc.data();
+      const lastHeartbeat = data.lastHeartbeat;
+      const startedAt = data.startedAt;
+      const hostStatus = data.hostStatus || "live";
+      const endedAt = data.endedAt;
+      
+      let shouldCleanup = false;
+      let cleanupReason = "";
+      
+      // Check 1: If stream already has endedAt, mark as inactive
+      if (endedAt != null) {
+        shouldCleanup = true;
+        cleanupReason = "already_ended";
+      }
+      // Check 2: If hostStatus is 'ended', mark as inactive
+      else if (hostStatus === "ended") {
+        shouldCleanup = true;
+        cleanupReason = "host_status_ended";
+      }
+      // Check 3: If heartbeat is too old (primary check)
+      else if (lastHeartbeat) {
+        const heartbeatAge = (now.toMillis() - lastHeartbeat.toMillis()) / 1000; // Age in seconds
+        
+        if (heartbeatAge > heartbeatTimeout) {
+          shouldCleanup = true;
+          cleanupReason = `heartbeat_timeout_${Math.round(heartbeatAge)}s`;
+        }
+      }
+      // Check 4: If no heartbeat and startedAt is very old (fallback)
+      else if (startedAt) {
+        try {
+          const startedAtTime = typeof startedAt === "string" 
+            ? new Date(startedAt).getTime() 
+            : startedAt.toMillis();
+          const streamAge = (now.toMillis() - startedAtTime) / 1000; // Age in seconds
+          
+          // If stream started more than 5 minutes ago and no heartbeat, it's dead
+          if (streamAge > 300) { // 5 minutes
+            shouldCleanup = true;
+            cleanupReason = `no_heartbeat_old_stream_${Math.round(streamAge)}s`;
+          }
+        } catch (e) {
+          console.error(`⚠️ Error parsing startedAt for stream ${doc.id}: ${e.message}`);
+        }
+      }
+      
+      if (shouldCleanup) {
+        batch.update(doc.ref, {
+          isActive: false,
+          hostStatus: "ended",
+          endedAt: admin.firestore.FieldValue.serverTimestamp(),
+          endReason: cleanupReason,
+        });
+        cleanedCount++;
+        console.log(`   🧹 Marking stream ${doc.id} as inactive (${cleanupReason})`);
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      await batch.commit();
+      console.log(`✅ Cleanup complete: ${cleanedCount} streams marked as inactive`);
+    } else {
+      console.log("✅ No streams needed cleanup");
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("❌ Error in stream cleanup:", error);
+    return null;
+  }
+});
+
+/**
+ * ⚠️ MANDATORY BACKEND FEATURE: Server-Controlled Stream State
+ * Runs every 1 minute to enforce stream state consistency
+ * Server is the source of truth for stream state
+ * Note: Using cron expression for 1-minute interval (Cloud Scheduler minimum is 1 minute)
+ */
+exports.manageStreamState = onSchedule("*/1 * * * *", async (event) => {
+  try {
+    console.log("🖥️ Starting server-controlled stream state management...");
+    const now = admin.firestore.Timestamp.now();
+    const heartbeatTimeout = 60; // 60 seconds
+    
+    const streamsRef = admin.firestore().collection("live_streams");
+    const activeStreams = await streamsRef
+      .where("isActive", "==", true)
+      .get();
+    
+    if (activeStreams.empty) {
+      console.log("✅ No active streams to manage");
+      return null;
+    }
+    
+    const batch = admin.firestore().batch();
+    let managedCount = 0;
+    
+    // Group streams by hostId to detect duplicates
+    const streamsByHost = {};
+    for (const doc of activeStreams.docs) {
+      const data = doc.data();
+      const hostId = data.hostId;
+      
+      if (!streamsByHost[hostId]) {
+        streamsByHost[hostId] = [];
+      }
+      streamsByHost[hostId].push({doc, data});
+    }
+    
+    for (const doc of activeStreams.docs) {
+      const data = doc.data();
+      const lastHeartbeat = data.lastHeartbeat;
+      const hostId = data.hostId;
+      const hostStatus = data.hostStatus || "live";
+      
+      // Check 1: Heartbeat timeout - mark stream as ended
+      if (lastHeartbeat) {
+        const heartbeatAge = (now.toMillis() - lastHeartbeat.toMillis()) / 1000;
+        
+        if (heartbeatAge > heartbeatTimeout) {
+          batch.update(doc.ref, {
+            isActive: false,
+            hostStatus: "ended",
+            endedAt: admin.firestore.FieldValue.serverTimestamp(),
+            endReason: "server_heartbeat_timeout",
+          });
+          managedCount++;
+          console.log(`   ⏱️ Stream ${doc.id} ended due to heartbeat timeout (${Math.round(heartbeatAge)}s)`);
+          continue; // Skip duplicate check for this stream
+        }
+      }
+      
+      // Check 2: Duplicate streams - keep most recent, end others
+      const hostStreams = streamsByHost[hostId] || [];
+      if (hostStreams.length > 1) {
+        // Sort by lastHeartbeat or startedAt (most recent first)
+        hostStreams.sort((a, b) => {
+          const aTime = a.data.lastHeartbeat || a.data.startedAt;
+          const bTime = b.data.lastHeartbeat || b.data.startedAt;
+          
+          const aMillis = aTime ? (typeof aTime === "string" ? new Date(aTime).getTime() : aTime.toMillis()) : 0;
+          const bMillis = bTime ? (typeof bTime === "string" ? new Date(bTime).getTime() : bTime.toMillis()) : 0;
+          
+          return bMillis - aMillis; // Most recent first
+        });
+        
+        // Keep the first (most recent), end the rest
+        for (let i = 1; i < hostStreams.length; i++) {
+          const streamDoc = hostStreams[i].doc;
+          batch.update(streamDoc.ref, {
+            isActive: false,
+            hostStatus: "ended",
+            endedAt: admin.firestore.FieldValue.serverTimestamp(),
+            endReason: "server_duplicate_stream",
+          });
+          managedCount++;
+          console.log(`   🔄 Stream ${streamDoc.id} ended (duplicate, keeping most recent)`);
+        }
+      }
+    }
+    
+    if (managedCount > 0) {
+      await batch.commit();
+      console.log(`✅ Stream state management complete: ${managedCount} streams managed`);
+    } else {
+      console.log("✅ All streams in correct state");
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("❌ Error in stream state management:", error);
+    return null;
+  }
+});
+
+/**
+ * Update viewer count for live streams
+ * Called by viewers when they join/leave a stream
+ * This fixes the Firestore permission issue where viewers cannot update viewer count directly
+ */
+exports.updateViewerCount = onCall({}, async (request) => {
+  // Require authentication
+  if (!request.auth) {
+    throw new Error("User must be authenticated");
+  }
+
+  const { streamId, action } = request.data; // action: 'join' or 'leave'
+  
+  // Validate required parameters
+  if (!streamId || typeof streamId !== "string") {
+    throw new Error("streamId is required and must be a string");
+  }
+  
+  if (!action || (action !== 'join' && action !== 'leave')) {
+    throw new Error("action is required and must be 'join' or 'leave'");
+  }
+
+  try {
+    const streamRef = admin.firestore().collection('live_streams').doc(streamId);
+    
+    // Verify stream exists
+    const streamDoc = await streamRef.get();
+    if (!streamDoc.exists) {
+      throw new Error("Stream not found");
+    }
+    
+    const streamData = streamDoc.data();
+    if (!streamData || streamData.isActive !== true) {
+      throw new Error("Stream is not active");
+    }
+    
+    // Get current viewer count
+    const currentCount = streamData.viewerCount || 0;
+    
+    if (action === 'join') {
+      // Increment viewer count
+      await streamRef.update({
+        'viewerCount': admin.firestore.FieldValue.increment(1),
+      });
+      console.log(`✅ Viewer joined stream ${streamId}, new count: ${currentCount + 1}`);
+      return { 
+        success: true,
+        viewerCount: currentCount + 1
+      };
+    } else if (action === 'leave') {
+      // Decrement viewer count (but don't go below 0)
+      const newCount = Math.max(0, currentCount - 1);
+      await streamRef.update({
+        'viewerCount': newCount,
+      });
+      console.log(`✅ Viewer left stream ${streamId}, new count: ${newCount}`);
+      return { 
+        success: true,
+        viewerCount: newCount
+      };
+    }
+  } catch (error) {
+    console.error("❌ Error updating viewer count:", error);
+    throw new Error(`Failed to update viewer count: ${error.message}`);
+  }
+});

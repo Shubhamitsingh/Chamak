@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/live_stream_model.dart';
 import 'live_chat_service.dart';
 
@@ -613,11 +614,6 @@ class LiveStreamService {
       final currentCount = streamData?['viewerCount'] ?? 0;
       print('   Current viewer count: $currentCount');
       
-      // Increment viewer count atomically
-      await _firestore.collection(_collection).doc(streamId).update({
-        'viewerCount': FieldValue.increment(1),
-      });
-      
       // Track individual viewer if viewerId is provided
       print('   ViewerId provided: ${viewerId != null ? "Yes ($viewerId)" : "No"}');
       if (viewerId != null && viewerId.isNotEmpty) {
@@ -673,7 +669,29 @@ class LiveStreamService {
         print('⚠️ Warning: viewerId is null or empty, skipping individual viewer tracking');
       }
       
-      print('✅ Viewer count incremented (new count: ${currentCount + 1})');
+      // ⚠️ CRITICAL FIX: Use Cloud Function instead of direct Firestore update
+      // This fixes the permission issue where viewers cannot update viewer count
+      try {
+        final callable = FirebaseFunctions.instance.httpsCallable('updateViewerCount');
+        final result = await callable.call({
+          'streamId': streamId,
+          'action': 'join',
+        });
+        
+        final newCount = result.data['viewerCount'] as int? ?? (currentCount + 1);
+        print('✅ Viewer count incremented via Cloud Function (new count: $newCount)');
+      } catch (e) {
+        print('❌ Error calling Cloud Function to update viewer count: $e');
+        // Fallback: Try direct update (may fail due to rules, but worth trying)
+        try {
+          await _firestore.collection(_collection).doc(streamId).update({
+            'viewerCount': FieldValue.increment(1),
+          });
+          print('✅ Fallback: Viewer count incremented directly');
+        } catch (fallbackError) {
+          print('❌ Fallback also failed: $fallbackError');
+        }
+      }
     } catch (e) {
       print('❌ Error joining stream: $e');
       print('   Stack trace: ${StackTrace.current}');
@@ -713,19 +731,35 @@ class LiveStreamService {
         }
       }
       
-      // Decrement viewer count atomically, but ensure it doesn't go below 0
-      if (currentCount > 0) {
-        await _firestore.collection(_collection).doc(streamId).update({
-          'viewerCount': FieldValue.increment(-1),
+      // ⚠️ CRITICAL FIX: Use Cloud Function instead of direct Firestore update
+      // This fixes the permission issue where viewers cannot update viewer count
+      try {
+        final callable = FirebaseFunctions.instance.httpsCallable('updateViewerCount');
+        final result = await callable.call({
+          'streamId': streamId,
+          'action': 'leave',
         });
-        print('✅ Viewer count decremented (new count: ${currentCount - 1})');
-      } else {
-        // If count is already 0 or negative, set it to 0
-        print('⚠️ Viewer count is already 0 or negative, setting to 0');
-        await _firestore.collection(_collection).doc(streamId).update({
-          'viewerCount': 0,
-        });
-        print('✅ Viewer count set to 0');
+        
+        final newCount = result.data['viewerCount'] as int? ?? (currentCount > 0 ? currentCount - 1 : 0);
+        print('✅ Viewer count decremented via Cloud Function (new count: $newCount)');
+      } catch (e) {
+        print('❌ Error calling Cloud Function to update viewer count: $e');
+        // Fallback: Try direct update (may fail due to rules, but worth trying)
+        try {
+          if (currentCount > 0) {
+            await _firestore.collection(_collection).doc(streamId).update({
+              'viewerCount': FieldValue.increment(-1),
+            });
+            print('✅ Fallback: Viewer count decremented directly');
+          } else {
+            await _firestore.collection(_collection).doc(streamId).update({
+              'viewerCount': 0,
+            });
+            print('✅ Fallback: Viewer count set to 0');
+          }
+        } catch (fallbackError) {
+          print('❌ Fallback also failed: $fallbackError');
+        }
       }
     } on FirebaseException catch (e, st) {
       if (e.code == 'permission-denied') {

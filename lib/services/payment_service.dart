@@ -5,19 +5,32 @@ import 'coin_service.dart';
 class PaymentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final CoinService _coinService = CoinService();
+  // ⚠️ NOTE: _coinService is kept for potential future use if UTR method is re-enabled with admin approval
+  // final CoinService _coinService = CoinService();
 
   // UPI ID - Always use this UPI ID for all payments
   static const String upiId = 'hdfcshubit@axl';
   static const String merchantName = 'Ravindra Bahadur Singh';
 
   /// Submit UTR and automatically add coins
+  /// ⚠️ CRITICAL FIX: This method has been disabled for security reasons
+  /// Manual UTR submission bypasses payment verification and creates a financial vulnerability
+  /// All payments must go through the secure PayPrime gateway
   Future<Map<String, dynamic>> submitUTR({
     required String utrNumber,
     required int coins,
     required int amount,
     required String packageId,
   }) async {
+    // ⚠️ SECURITY FIX: Disable manual UTR payment to prevent financial fraud
+    // This method previously allowed users to manually enter UTR numbers and get coins
+    // without any verification, creating a critical security vulnerability
+    return {
+      'success': false,
+      'message': 'Manual UTR payment is no longer available. Please use the secure payment gateway.',
+    };
+    
+    /* DISABLED CODE - DO NOT USE
     try {
       final currentUser = _auth.currentUser;
       if (currentUser == null) {
@@ -94,6 +107,7 @@ class PaymentService {
     } catch (e) {
       return {'success': false, 'message': 'Error processing payment: ${e.toString()}'};
     }
+    */
   }
 
   /// Get payment history for current user

@@ -2,14 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'payment_failure_screen.dart';
 
 /// PayPrime Payment WebView Screen
 /// 
 /// This screen displays the PayPrime payment page in an in-app WebView.
 /// It listens to Firestore for payment status changes and automatically
 /// closes when payment is completed (success or failure).
+
+// ⚠️ CRITICAL FIX: Payment status enum (must be outside class)
+enum PaymentStatus {
+  initiating,
+  redirecting,
+  verifying,
+  completed,
+  failed,
+  timeout,
+}
+
 class PayPrimePaymentWebViewScreen extends StatefulWidget {
   final String paymentUrl;
   final String paymentId;
@@ -37,12 +50,29 @@ class _PayPrimePaymentWebViewScreenState extends State<PayPrimePaymentWebViewScr
   String? _errorMessage;
   bool _paymentCompleted = false;
   bool _isUpiUrl = false;
+  
+  // ⚠️ CRITICAL FIX: Payment status tracking
+  Timer? _paymentTimeoutTimer; // Timeout after 10 minutes
+  Timer? _statusPollingTimer; // Poll status every 5 seconds (fallback)
+  PaymentStatus _currentStatus = PaymentStatus.initiating;
+  
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  @override
+  void dispose() {
+    _paymentSubscription?.cancel();
+    _paymentTimeoutTimer?.cancel(); // ⚠️ CRITICAL FIX: Cancel timeout
+    _statusPollingTimer?.cancel(); // ⚠️ CRITICAL FIX: Cancel polling
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     _initializeWebView();
     _setupPaymentListener();
+    _startStatusPolling(); // ⚠️ CRITICAL FIX: Start polling fallback
+    _startPaymentTimeout(); // ⚠️ CRITICAL FIX: Start timeout timer
   }
 
   void _initializeWebView() {
@@ -269,39 +299,258 @@ class _PayPrimePaymentWebViewScreenState extends State<PayPrimePaymentWebViewScr
         if (status != null && (status == 'SUCCESS' || status == 'FAILED')) {
           if (!_paymentCompleted) {
             _paymentCompleted = true;
+            _cancelTimers(); // Cancel timeout and polling
             _handlePaymentCompletion(status);
+          }
+        } else if (status == 'PROCESSING' || status == 'PENDING') {
+          // Update status to verifying
+          if (mounted && _currentStatus != PaymentStatus.verifying) {
+            setState(() {
+              _currentStatus = PaymentStatus.verifying;
+            });
           }
         }
       },
       onError: (error) {
         debugPrint('❌ Error listening to payment status: $error');
+        // If listener fails, polling will handle it
       },
     );
   }
+  
+  /// ⚠️ CRITICAL FIX: Start status polling as fallback
+  /// Polls payment status every 5 seconds if real-time listener fails
+  void _startStatusPolling() {
+    _statusPollingTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (timer) async {
+        if (_paymentCompleted || !mounted) {
+          timer.cancel();
+          return;
+        }
+        
+        try {
+          debugPrint('🔄 Polling payment status...');
+          
+          // Manually check payment status
+          final paymentDoc = await FirebaseFirestore.instance
+            .collection('payments')
+            .doc(widget.paymentId)
+            .get();
+          
+          if (paymentDoc.exists) {
+            final data = paymentDoc.data() as Map<String, dynamic>?;
+            final status = data?['status'] as String?;
+            
+            if (status == 'SUCCESS' || status == 'FAILED') {
+              timer.cancel();
+              if (!_paymentCompleted && mounted) {
+                _paymentCompleted = true;
+                _cancelTimers();
+                _handlePaymentCompletion(status ?? 'FAILED');
+              }
+            } else if (status == 'PROCESSING' || status == 'PENDING') {
+              // Update status to verifying
+              if (mounted && _currentStatus != PaymentStatus.verifying) {
+                setState(() {
+                  _currentStatus = PaymentStatus.verifying;
+                });
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('❌ Error polling payment status: $e');
+          // Continue polling even on error
+        }
+      },
+    );
+  }
+  
+  /// ⚠️ CRITICAL FIX: Start payment timeout (10 minutes)
+  void _startPaymentTimeout() {
+    _paymentTimeoutTimer = Timer(
+      const Duration(minutes: 10),
+      () {
+        if (!_paymentCompleted && mounted) {
+          debugPrint('⏱️ Payment timeout - 10 minutes elapsed');
+          _handlePaymentTimeout();
+        }
+      },
+    );
+  }
+  
+  /// ⚠️ CRITICAL FIX: Handle payment timeout
+  void _handlePaymentTimeout() {
+    if (_paymentCompleted || !mounted) return;
+    
+    _paymentCompleted = true;
+    _cancelTimers();
+    
+    setState(() {
+      _currentStatus = PaymentStatus.timeout;
+    });
+    
+    // Navigate to failure screen with timeout reason
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => PaymentFailureScreen(
+          failureReason: 'Payment verification is taking longer than expected. Please check your payment status or contact support.',
+          amount: widget.amount,
+          coins: widget.coins,
+          paymentMethod: 'UPI',
+          paymentId: widget.paymentId,
+          phoneNumber: _auth.currentUser?.phoneNumber ?? '',
+        ),
+      ),
+    );
+  }
+  
+  /// Cancel all timers
+  void _cancelTimers() {
+    _paymentTimeoutTimer?.cancel();
+    _statusPollingTimer?.cancel();
+  }
+  
+  /// ⚠️ CRITICAL FIX: Manual status check
+  Future<void> _checkPaymentStatusManually() async {
+    if (!mounted) return;
+    
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+      
+      // Check payment status
+      final paymentDoc = await FirebaseFirestore.instance
+        .collection('payments')
+        .doc(widget.paymentId)
+        .get();
+      
+      // Close loading
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      if (paymentDoc.exists) {
+        final data = paymentDoc.data() as Map<String, dynamic>?;
+        final status = data?['status'] as String?;
+        
+        if (status == 'SUCCESS' || status == 'FAILED') {
+          if (!_paymentCompleted && mounted) {
+            _paymentCompleted = true;
+            _cancelTimers();
+            _handlePaymentCompletion(status ?? 'FAILED');
+          }
+        } else {
+          // Still processing
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Payment is still being processed. Please wait...'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      } else {
+        // Payment not found
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment not found. Please contact support.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking payment status: $e');
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading if still open
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error checking status: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+  
+  /// Get status message for current status
+  String _getStatusMessage() {
+    switch (_currentStatus) {
+      case PaymentStatus.initiating:
+        return 'Initiating Payment...';
+      case PaymentStatus.redirecting:
+        return 'Redirecting to Payment App...';
+      case PaymentStatus.verifying:
+        return 'Verifying Payment Status...';
+      case PaymentStatus.completed:
+        return 'Payment Successful!';
+      case PaymentStatus.failed:
+        return 'Payment Failed';
+      case PaymentStatus.timeout:
+        return 'Payment Timeout';
+    }
+  }
 
   /// Handle payment completion (success or failure)
+  /// ⚠️ CRITICAL FIX: Navigate to failure screen instead of SnackBar
   void _handlePaymentCompletion(String status) {
     if (!mounted) return;
     
     if (status == 'SUCCESS') {
+      setState(() {
+        _currentStatus = PaymentStatus.completed;
+      });
       // Show success dialog first
       _showSuccessDialog();
     } else {
-      // Show failure message and close
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment failed. Please try again.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+      setState(() {
+        _currentStatus = PaymentStatus.failed;
+      });
+      
+      // ⚠️ CRITICAL FIX: Navigate to PaymentFailureScreen instead of SnackBar
+      final failureReason = _getFailureReason(status);
+      
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => PaymentFailureScreen(
+            failureReason: failureReason,
+            amount: widget.amount,
+            coins: widget.coins,
+            paymentMethod: 'UPI',
+            paymentId: widget.paymentId,
+            phoneNumber: _auth.currentUser?.phoneNumber ?? '',
+            onRetry: () {
+              // Retry payment - go back to wallet
+              Navigator.of(context).pop();
+            },
+          ),
         ),
       );
-      // Close screen after a short delay
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          Navigator.of(context).pop(false);
-        }
-      });
     }
+  }
+  
+  /// Get failure reason message
+  String _getFailureReason(String status) {
+    // You can enhance this based on actual failure reasons from payment gateway
+    if (status == 'FAILED') {
+      return 'Payment could not be completed. Please check your balance and try again.';
+    } else if (status == 'CANCELLED') {
+      return 'Payment was cancelled. Please try again if you want to complete the payment.';
+    } else if (status == 'TIMEOUT') {
+      return 'Payment verification is taking longer than expected. Please check your payment status or contact support.';
+    }
+    return 'Payment failed. Please try again.';
   }
 
   /// Show success dialog and then navigate back
@@ -380,15 +629,18 @@ class _PayPrimePaymentWebViewScreenState extends State<PayPrimePaymentWebViewScr
   }
 
   @override
-  void dispose() {
-    _paymentSubscription?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        // ⚠️ CRITICAL FIX: Add manual status check button
+        actions: [
+          if (!_paymentCompleted && _currentStatus != PaymentStatus.completed && _currentStatus != PaymentStatus.failed)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Check Payment Status',
+              onPressed: _checkPaymentStatusManually,
+            ),
+        ],
         title: const Text(
           'Complete Payment',
           style: TextStyle(
@@ -422,11 +674,20 @@ class _PayPrimePaymentWebViewScreenState extends State<PayPrimePaymentWebViewScr
                     color: Color(0xFFFF1B7C),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Opening payment app...',
-                    style: TextStyle(
+                  // ⚠️ CRITICAL FIX: Show status progression
+                  Text(
+                    _getStatusMessage(),
+                    style: const TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please complete payment in the app',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
                     ),
                   ),
                 ],
@@ -441,25 +702,53 @@ class _PayPrimePaymentWebViewScreenState extends State<PayPrimePaymentWebViewScr
               ),
             ),
 
-          // Loading overlay
-          if (_isLoading && _errorMessage == null)
+          // ⚠️ CRITICAL FIX: Loading overlay with status progression
+          if ((_isLoading || _currentStatus == PaymentStatus.verifying) && _errorMessage == null && !_paymentCompleted)
             Container(
               color: Colors.white,
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(
+                    const CircularProgressIndicator(
                       color: Color(0xFFFF1B7C),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 24),
+                    // ⚠️ CRITICAL FIX: Show status progression
                     Text(
-                      'Loading payment page...',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
+                      _getStatusMessage(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _currentStatus == PaymentStatus.verifying
+                          ? 'This may take a few seconds'
+                          : 'Please wait...',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // ⚠️ CRITICAL FIX: Manual status check button
+                    if (_currentStatus == PaymentStatus.verifying)
+                      ElevatedButton.icon(
+                        onPressed: _checkPaymentStatusManually,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Check Status'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF1B7C),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

@@ -14,6 +14,9 @@ import 'services/notification_service.dart';
 import 'services/update_service.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 
+// ⚠️ CRITICAL FIX: Global navigator key for deep linking from notifications
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -82,6 +85,7 @@ class LiveVibeApp extends StatelessWidget {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
         return MaterialApp(
+          navigatorKey: navigatorKey, // ⚠️ CRITICAL FIX: Enable deep linking
           title: 'Chamak',
           debugShowCheckedModeBanner: false,
           theme: _buildTheme(),

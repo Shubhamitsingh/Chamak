@@ -199,7 +199,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
       flexibleSpace: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+            colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -281,7 +281,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         appBar: _buildAppBar(showActions: false),
         body: const Center(
           child: CircularProgressIndicator(
-            color: Color(0xFFFF1B7C),
+            color: Color(0xFF4CAF50),
           ),
         ),
       );
@@ -292,7 +292,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
       appBar: _buildAppBar(),
       body: RefreshIndicator(
         onRefresh: _loadEarningsData,
-        color: const Color(0xFFFF1B7C),
+        color: const Color(0xFF4CAF50),
           child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 40),
           child: Column(
@@ -336,14 +336,14 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
       constraints: const BoxConstraints(minHeight: 140),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+          colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF1B7C).withOpacity(0.3),
+            color: const Color(0xFF2E7D32).withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -631,7 +631,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                 title: 'Today',
                 value: periodEarnings['today'] ?? 0,
                 icon: Icons.today,
-                color: const Color(0xFFFF69B4),
+                color: const Color(0xFF66BB6A),
               ),
             ),
             const SizedBox(width: 12),
@@ -640,7 +640,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                 title: 'This Week',
                 value: periodEarnings['week'] ?? 0,
                 icon: Icons.date_range,
-                color: const Color(0xFFFF1B7C),
+                color: const Color(0xFF4CAF50),
                 previousValue: previousWeekEarnings,
               ),
             ),
@@ -650,7 +650,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                 title: 'This Month',
                 value: periodEarnings['month'] ?? 0,
                 icon: Icons.calendar_month,
-                color: const Color(0xFFE91E63),
+                color: const Color(0xFF2E7D32),
                 previousValue: previousMonthEarnings,
               ),
             ),
@@ -835,13 +835,13 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF1B7C).withOpacity(0.1),
+                      color: const Color(0xFF4CAF50).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
                       Icons.history,
                       size: 16,
-                      color: Color(0xFFFF1B7C),
+                      color: Color(0xFF4CAF50),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -861,7 +861,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                   'View All',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFFFF1B7C),
+                    color: Color(0xFF4CAF50),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -876,7 +876,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                 return const Center(
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(color: Color(0xFFFF1B7C)),
+                    child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
                   ),
                 );
               }
@@ -889,13 +889,13 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF1B7C).withOpacity(0.05),
+                          color: const Color(0xFF4CAF50).withOpacity(0.05),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.inbox_outlined,
                           size: 48,
-                          color: const Color(0xFFFF1B7C).withOpacity(0.5),
+                          color: const Color(0xFF4CAF50).withOpacity(0.5),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -970,8 +970,8 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        const Color(0xFFFF1B7C).withOpacity(0.15),
-                        const Color(0xFFFF69B4).withOpacity(0.1),
+                        const Color(0xFF4CAF50).withOpacity(0.15),
+                        const Color(0xFF66BB6A).withOpacity(0.1),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(10),
@@ -979,7 +979,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                   child: const Icon(
                     Icons.monetization_on,
                     size: 18,
-                    color: Color(0xFFFF1B7C),
+                    color: Color(0xFF4CAF50),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1021,7 +1021,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF1B7C).withOpacity(0.1),
+                    color: const Color(0xFF4CAF50).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -1033,7 +1033,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                         height: 14,
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.monetization_on, size: 14, color: const Color(0xFFFF1B7C));
+                          return Icon(Icons.monetization_on, size: 14, color: const Color(0xFF4CAF50));
                         },
                       ),
                       const SizedBox(width: 4),
@@ -1042,7 +1042,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFFF1B7C),
+                          color: Color(0xFF4CAF50),
                         ),
                       ),
                     ],
@@ -1077,8 +1077,8 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFFFF1B7C).withOpacity(0.15),
-                      const Color(0xFFFF69B4).withOpacity(0.1),
+                      const Color(0xFF4CAF50).withOpacity(0.15),
+                      const Color(0xFF66BB6A).withOpacity(0.1),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(10),
@@ -1089,7 +1089,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                   height: 20,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.monetization_on, size: 20, color: Color(0xFFFF1B7C));
+                    return const Icon(Icons.monetization_on, size: 20, color: Color(0xFF4CAF50));
                   },
                 ),
               ),
@@ -1133,7 +1133,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     child: DropdownButton<String>(
                       value: _selectedMethod,
                       isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFFF1B7C)),
+                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF4CAF50)),
                       style: const TextStyle(
                         fontSize: 13,
                         color: Colors.black87,
@@ -1151,7 +1151,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                                         ? Icons.currency_bitcoin
                                         : Icons.account_balance_outlined,
                                 size: 18,
-                                color: const Color(0xFFFF1B7C),
+                                color: const Color(0xFF4CAF50),
                               ),
                               const SizedBox(width: 8),
                               Text(method),
@@ -1212,7 +1212,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
+                      borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
                     ),
                   ),
                   validator: (value) {
@@ -1258,7 +1258,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                       gradient: _isProcessing
                           ? null
                           : const LinearGradient(
-                              colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
                             ),
                       borderRadius: BorderRadius.circular(10),
                       color: _isProcessing ? Colors.grey[400] : null,
@@ -1266,7 +1266,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                           ? null
                           : [
                               BoxShadow(
-                                color: const Color(0xFFFF1B7C).withOpacity(0.3),
+                                color: const Color(0xFF2E7D32).withOpacity(0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -1326,7 +1326,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 2.0),
-                  child: Icon(Icons.info_outline, size: 16, color: const Color(0xFFFF1B7C).withOpacity(0.8)),
+                  child: Icon(Icons.info_outline, size: 16, color: const Color(0xFF4CAF50).withOpacity(0.8)),
                 ),
                 const SizedBox(width: 6),
                 Flexible(
@@ -1335,7 +1335,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFFFF1B7C).withOpacity(0.9),
+                      color: const Color(0xFF2E7D32).withOpacity(0.9),
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
@@ -1459,7 +1459,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
           ),
         ),
         validator: (value) {
@@ -1508,7 +1508,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
           ),
         ),
         validator: (value) {
@@ -1551,7 +1551,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
           ),
         ),
         validator: (value) {
@@ -1597,7 +1597,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
           ),
         ),
         validator: (value) {
@@ -1645,7 +1645,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
           ),
         ),
         validator: (value) {
@@ -1746,7 +1746,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     ),
                   ],
                 ),
-                backgroundColor: const Color(0xFFFF1B7C),
+                backgroundColor: const Color(0xFF4CAF50),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

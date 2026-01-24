@@ -119,6 +119,9 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   String? _currentAdminMessage;
   // Removed unused _adminMessageShown - was set but never read
   Timer? _adminMessageTimer;
+  
+  // ⚠️ MANDATORY BACKEND FEATURE: Heartbeat timer (every 20 seconds)
+  Timer? _heartbeatTimer;
   StreamSubscription<QuerySnapshot>? _viewersSubscription; // Listen for new viewers
   
   // Chat state
@@ -170,6 +173,10 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     // Track stream start time for host
     if (widget.isHost && widget.streamId != null) {
       _fetchStreamStartTime();
+      
+      // ⚠️ MANDATORY BACKEND FEATURE: Start heartbeat timer (every 20 seconds)
+      // This keeps the stream alive and visible to viewers
+      _startHeartbeatTimer();
     }
     
     // Setup call request listeners
@@ -261,6 +268,29 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     }
   }
 
+  // ⚠️ MANDATORY BACKEND FEATURE: Start heartbeat timer
+  // Sends heartbeat every 20 seconds to keep stream alive
+  void _startHeartbeatTimer() {
+    if (!widget.isHost || widget.streamId == null) return;
+    
+    debugPrint('💓 Starting heartbeat timer for stream: ${widget.streamId}');
+    
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+      if (!mounted || widget.streamId == null) {
+        timer.cancel();
+        return;
+      }
+      
+      // Send heartbeat to keep stream alive
+      _liveStreamService.keepStreamAlive(widget.streamId!).catchError((error) {
+        debugPrint('❌ Error sending heartbeat: $error');
+        // Don't cancel timer on error - keep trying
+      });
+      
+      debugPrint('💓 Heartbeat sent for stream: ${widget.streamId}');
+    });
+  }
+  
   // Start promotional timer
   void _startPromoTimer() {
     _promoTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -367,7 +397,6 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   }
 
   @override
-  @override
   void dispose() {
     // 🛡️ Disable screen protection when leaving the screen
     ScreenProtectionService().disableProtection();
@@ -389,6 +418,9 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     // Cancel admin message timer and subscription
     _adminMessageTimer?.cancel();
     _viewersSubscription?.cancel();
+    
+    // ⚠️ MANDATORY BACKEND FEATURE: Cancel heartbeat timer
+    _heartbeatTimer?.cancel();
     
     _callRequestStatusSubscription?.cancel();
     _hostStatusSubscription?.cancel();
