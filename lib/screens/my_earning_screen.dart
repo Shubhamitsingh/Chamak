@@ -294,34 +294,29 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         onRefresh: _loadEarningsData,
         color: const Color(0xFF4CAF50),
           child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 40),
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 60),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Earning Overview Card (Enhanced)
               _buildEarningOverview(),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               
               // Quick Stats Cards
               _buildQuickStatsCards(),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               
               // Withdrawal Section
               _buildWithdrawalSection(),
               
-              const SizedBox(height: 20),
-              
-              // Recent Transactions Preview
-              _buildRecentTransactions(),
-              
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               
               // Trust Badges Section
               _buildTrustBadges(),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -413,7 +408,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           
           // Content
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -674,7 +669,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -707,7 +702,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                 _buildTrendBadge(percentageChange),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             title,
             style: TextStyle(
@@ -716,7 +711,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -816,256 +811,11 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     );
   }
 
-  // ========== RECENT TRANSACTIONS PREVIEW ==========
-  Widget _buildRecentTransactions() {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _getWhiteContainerDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.history,
-                      size: 16,
-                      color: Color(0xFF4CAF50),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Recent Earnings',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-              TextButton(
-                onPressed: _navigateToTransactionHistory,
-                child: const Text(
-                  'View All',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF4CAF50),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          StreamBuilder<List<GiftModel>>(
-            stream: _giftService.getHostReceivedGifts(currentUser.uid),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
-                  ),
-                );
-              }
-
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32.0),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50).withOpacity(0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.inbox_outlined,
-                          size: 48,
-                          color: const Color(0xFF4CAF50).withOpacity(0.5),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No recent earnings',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Your earnings will appear here',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              final recentGifts = snapshot.data!.take(5).toList();
-
-              return Column(
-                children: recentGifts.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final gift = entry.value;
-                  final isLast = index == recentGifts.length - 1;
-
-                  return _buildTransactionPreviewItem(gift, isLast);
-                }).toList(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransactionPreviewItem(GiftModel gift, bool isLast) {
-    final cCoins = gift.cCoinsEarned ?? 0;
-    final timestamp = gift.timestamp;
-    final senderName = gift.senderName ?? 'Anonymous';
-
-    String timeAgo = 'Just now';
-    if (timestamp != null) {
-      final now = DateTime.now();
-      final diff = now.difference(timestamp);
-      if (diff.inDays > 0) {
-        timeAgo = '${diff.inDays}d ago';
-      } else if (diff.inHours > 0) {
-        timeAgo = '${diff.inHours}h ago';
-      } else if (diff.inMinutes > 0) {
-        timeAgo = '${diff.inMinutes}m ago';
-      }
-    }
-
-    return Column(
-      children: [
-        InkWell(
-          onTap: () => _navigateToTransactionHistory(),
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF4CAF50).withOpacity(0.15),
-                        const Color(0xFF66BB6A).withOpacity(0.1),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.monetization_on,
-                    size: 18,
-                    color: Color(0xFF4CAF50),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        senderName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 12,
-                            color: Colors.grey[500],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            timeAgo,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        'assets/images/coin3.png',
-                        width: 14,
-                        height: 14,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.monetization_on, size: 14, color: const Color(0xFF4CAF50));
-                        },
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '+$cCoins',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF4CAF50),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (!isLast) ...[
-          const SizedBox(height: 12),
-          Divider(height: 1, color: Colors.grey[200]),
-          const SizedBox(height: 12),
-        ],
-      ],
-    );
-  }
-
   // ========== WITHDRAWAL SECTION ==========
   Widget _buildWithdrawalSection() {
     return Container(
       key: _withdrawalSectionKey,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: _getWhiteContainerDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1105,7 +855,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
             ],
           ),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           
           Form(
             key: _formKey,
@@ -1121,9 +871,9 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     color: Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 5),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.grey[50],
                     borderRadius: BorderRadius.circular(10),
@@ -1170,7 +920,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                   ),
                 ),
                 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 
                 // Amount Field
                 Text(
@@ -1181,7 +931,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     color: Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 5),
                 TextFormField(
                   controller: _amountController,
                   keyboardType: TextInputType.number,
@@ -1190,7 +940,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     hintText: AppLocalizations.of(context)!.enterAmount,
                     hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
                     prefixIcon: Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: const EdgeInsets.all(10.0),
                       child: Image.asset(
                         'assets/images/money.png',
                         width: 18,
@@ -1201,7 +951,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                     suffixText: '₹',
                     filled: true,
                     fillColor: Colors.grey[50],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(color: Colors.grey[300]!),
@@ -1247,7 +997,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                 if (_selectedMethod == AppLocalizations.of(context)!.bankTransfer) ..._buildBankFields(),
                 if (_selectedMethod == AppLocalizations.of(context)!.crypto) ..._buildCryptoFields(),
                 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 
                 // Withdraw Button
                 SizedBox(
@@ -1313,7 +1063,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   // ========== TRUST BADGES SECTION ==========
   Widget _buildTrustBadges() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
       decoration: _getWhiteContainerDecoration(),
       child: Column(
         children: [
@@ -1346,7 +1096,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
             ),
           ),
           
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           
           // Trust badges row
           Row(
@@ -1394,7 +1144,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Colors.grey[100],
             shape: BoxShape.circle,
@@ -1405,11 +1155,11 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           ),
           child: Icon(
             icon,
-            size: 24,
+            size: 20,
             color: Colors.grey[600],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(
           text,
           textAlign: TextAlign.center,
@@ -1437,7 +1187,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           color: Colors.black87,
         ),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: 5),
       TextFormField(
         controller: _upiController,
         keyboardType: TextInputType.emailAddress,
@@ -1448,7 +1198,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           prefixIcon: const Icon(Icons.account_balance, size: 18),
           filled: true,
           fillColor: Colors.grey[50],
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -1487,7 +1237,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           color: Colors.black87,
         ),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: 5),
       TextFormField(
         controller: _accountHolderController,
         style: const TextStyle(fontSize: 13),
@@ -1497,7 +1247,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           prefixIcon: const Icon(Icons.person_outline, size: 18),
           filled: true,
           fillColor: Colors.grey[50],
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -1518,7 +1268,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           return null;
         },
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 10),
       
       // Account Number
       Text(
@@ -1529,7 +1279,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           color: Colors.black87,
         ),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: 5),
       TextFormField(
         controller: _accountNumberController,
         keyboardType: TextInputType.number,
@@ -1540,7 +1290,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           prefixIcon: const Icon(Icons.credit_card, size: 18),
           filled: true,
           fillColor: Colors.grey[50],
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -1564,7 +1314,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           return null;
         },
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 10),
       
       // IFSC Code
       Text(
@@ -1575,7 +1325,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           color: Colors.black87,
         ),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: 5),
       TextFormField(
         controller: _ifscController,
         style: const TextStyle(fontSize: 13),
@@ -1586,7 +1336,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           prefixIcon: const Icon(Icons.business, size: 18),
           filled: true,
           fillColor: Colors.grey[50],
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.grey[300]!),
@@ -1624,7 +1374,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           color: Colors.black87,
         ),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: 5),
       TextFormField(
         controller: _cryptoAddressController,
         style: const TextStyle(fontSize: 13),
@@ -1634,7 +1384,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           prefixIcon: const Icon(Icons.currency_bitcoin, size: 18),
           filled: true,
           fillColor: Colors.grey[50],
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.grey[300]!),

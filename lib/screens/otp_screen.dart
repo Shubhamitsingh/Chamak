@@ -8,6 +8,7 @@ import 'dart:async';
 import 'home_screen.dart';
 import 'set_profile_screen.dart';
 import '../services/database_service.dart';
+import '../services/crashlytics_service.dart';
 import '../generated/l10n/app_localizations.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -195,6 +196,15 @@ class _OtpScreenState extends State<OtpScreen> {
       }
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ Firebase OTP verification failed: ${e.code} - ${e.message}');
+      
+      // Log to Crashlytics
+      CrashlyticsService.logError(
+        e,
+        StackTrace.current,
+        context: 'OTP verification failed: ${e.code}',
+        fatal: false,
+      );
+      
       if (!mounted) return;
       
       String errorMessage = 'Invalid OTP';
@@ -215,11 +225,29 @@ class _OtpScreenState extends State<OtpScreen> {
     } on Exception catch (e) {
       debugPrint('❌ Database or other error: $e');
       debugPrint('❌ Error type: ${e.runtimeType}');
+      
+      // Log to Crashlytics
+      CrashlyticsService.logError(
+        e,
+        StackTrace.current,
+        context: 'Database error during OTP verification',
+        fatal: false,
+      );
+      
       if (!mounted) return;
       _showErrorSnackBar('Database error: ${e.toString()}');
     } catch (e, stackTrace) {
       debugPrint('❌ Unexpected error during OTP verification: $e');
       debugPrint('❌ Stack trace: $stackTrace');
+      
+      // Log to Crashlytics
+      CrashlyticsService.logError(
+        e,
+        stackTrace,
+        context: 'Unexpected error during OTP verification',
+        fatal: false,
+      );
+      
       if (!mounted) return;
       _showErrorSnackBar('Error: ${e.toString()}');
     } finally {

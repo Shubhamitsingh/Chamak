@@ -1,17 +1,22 @@
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'firebase_options.dart';
 import 'screens/intro_logo_screen.dart';
 import 'screens/login_screen.dart';
 import 'providers/language_provider.dart';
 import 'services/notification_service.dart';
 import 'services/update_service.dart';
+import 'services/crashlytics_service.dart';
+import 'services/in_app_update_service.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 
 // ⚠️ CRITICAL FIX: Global navigator key for deep linking from notifications
@@ -25,13 +30,47 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
+  // Initialize Crashlytics Error Handlers
+  // Pass all uncaught "fatal" errors from the framework to Crashlytics
+  FlutterError.onError = (errorDetails) {
+    // Log to console in debug mode
+    FlutterError.presentError(errorDetails);
+    
+    // Send to Crashlytics
+    FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+  };
+  
+  // Pass all uncaught asynchronous errors to Crashlytics
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+  
+  // Set app version info in Crashlytics
+  try {
+    final packageInfo = await PackageInfo.fromPlatform();
+    await CrashlyticsService.setCustomKeys({
+      'app_version': packageInfo.version,
+      'build_number': packageInfo.buildNumber,
+      'package_name': packageInfo.packageName,
+    });
+  } catch (e) {
+    debugPrint('⚠️ Failed to set app version in Crashlytics: $e');
+  }
+  
   // Initialize Firebase Cloud Messaging - Background handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   
   // Initialize Update Service (for checking app updates)
   UpdateService().initialize().catchError((error) {
     debugPrint('⚠️ Update service initialization error: $error');
-    // Don't block app startup if update service fails
+    // Log to Crashlytics
+    CrashlyticsService.logError(
+      error,
+      StackTrace.current,
+      context: 'Update service initialization failed',
+      fatal: false,
+    );
   });
   
   // Set system UI overlay style (non-blocking)
@@ -64,8 +103,12 @@ void main() async {
     if (user == null) {
       // User logged out - this will be handled by navigation in screens
       debugPrint('🔐 Auth state changed: User logged out');
+      // Clear user ID in Crashlytics
+      CrashlyticsService.clearUserId();
     } else {
       debugPrint('🔐 Auth state changed: User logged in - ${user.uid}');
+      // Set user ID in Crashlytics
+      CrashlyticsService.setUserId(user.uid);
     }
   });
   
@@ -73,7 +116,35 @@ void main() async {
   // This allows the app to show UI immediately while notifications initialize
   NotificationService().initialize().catchError((error) {
     debugPrint('⚠️ Notification service initialization error: $error');
-    // Don't block app startup if notifications fail
+    // Log to Crashlytics
+    CrashlyticsService.logError(
+      error,
+      StackTrace.current,
+      context: 'Notification service initialization failed',
+      fatal: false,
+    );
+  });
+  
+  // Check for app updates after app starts (non-blocking)
+  _checkForInAppUpdates();
+}
+
+/// Check for Google Play In-App Updates (non-blocking)
+/// This runs after app startup to check for available updates
+void _checkForInAppUpdates() {
+  // Wait a bit for app to fully load before checking for updates
+  Future.delayed(const Duration(seconds: 3), () async {
+    try {
+      final updateService = InAppUpdateService();
+      await updateService.checkForUpdate(
+        showFlexible: true,
+        showImmediate: true,
+      );
+    } catch (e) {
+      debugPrint('⚠️ In-app update check failed: $e');
+      // Don't log to Crashlytics - this is expected to fail in debug mode
+      // (In-app updates only work with Play Store builds)
+    }
   });
 }
 

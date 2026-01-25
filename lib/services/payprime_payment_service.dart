@@ -1,6 +1,7 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'crashlytics_service.dart';
 
 /// PayPrime Payment Service
 /// Handles payment initiation through Firebase Cloud Functions
@@ -85,12 +86,43 @@ class PayPrimePaymentService {
       }
     } on FirebaseFunctionsException catch (e) {
       debugPrint('❌ Firebase Functions Error: ${e.code} - ${e.message}');
+      
+      // Log to Crashlytics
+      CrashlyticsService.logError(
+        e,
+        StackTrace.current,
+        context: 'Payment initiation failed: ${e.code}',
+        fatal: false,
+      );
+      
+      // Log custom event
+      CrashlyticsService.logEvent('payment_failed', {
+        'error_code': e.code,
+        'error_message': e.message ?? 'Unknown error',
+        'payment_method': 'payprime',
+      });
+      
       return {
         'success': false,
         'message': _getErrorMessage(e.code, e.message ?? 'Unknown error'),
       };
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Error initiating payment: $e');
+      
+      // Log to Crashlytics
+      CrashlyticsService.logError(
+        e,
+        stackTrace,
+        context: 'Payment processing failed',
+        fatal: false,
+      );
+      
+      // Log custom event
+      CrashlyticsService.logEvent('payment_failed', {
+        'error': e.toString(),
+        'payment_method': 'payprime',
+      });
+      
       return {
         'success': false,
         'message': 'Failed to initiate payment: ${e.toString()}',

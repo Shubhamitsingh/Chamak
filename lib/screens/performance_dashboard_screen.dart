@@ -130,25 +130,21 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
                   color: const Color(0xFFFF1B7C),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Period Filters
                         _buildPeriodFilters(),
-                        const SizedBox(height: 20),
-
-                        // Status Card
-                        _buildStatusCard(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
 
                         // Metrics Grid
                         _buildMetricsGrid(),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
 
                         // Statistics Section
                         _buildStatisticsSection(),
-                        const SizedBox(height: 60),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -158,19 +154,19 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
 
   Widget _buildPeriodFilters() {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           Expanded(child: _buildPeriodButton('Today', TimePeriod.today)),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Expanded(child: _buildPeriodButton('Week', TimePeriod.thisWeek)),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Expanded(child: _buildPeriodButton('Month', TimePeriod.thisMonth)),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Expanded(child: _buildPeriodButton('All', TimePeriod.allTime)),
         ],
       ),
@@ -182,67 +178,20 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
     return GestureDetector(
       onTap: () => _onPeriodChanged(period),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFFFF1B7C) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             color: isSelected ? Colors.white : Colors.black87,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatusCard() {
-    final isLive = _metrics?.isLive ?? false;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isLive ? const Color(0xFFFF1B7C).withOpacity(0.1) : Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isLive ? const Color(0xFFFF1B7C) : Colors.grey[300]!,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isLive ? const Color(0xFFFF1B7C) : Colors.grey[600],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            isLive ? 'LIVE' : 'OFFLINE',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isLive ? const Color(0xFFFF1B7C) : Colors.grey[700],
-            ),
-          ),
-          if (isLive && _metrics?.currentViewers != null) ...[
-            const SizedBox(width: 12),
-            Text(
-              '${_metrics!.currentViewers} viewers',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -252,9 +201,9 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.4,
       children: [
         _buildMetricCard(
           title: 'Total Streams',
@@ -294,17 +243,17 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
     String? subtitle,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: color, size: 28),
+          Icon(icon, color: color, size: 22),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -314,19 +263,19 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
                   Text(
                     value,
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: color,
                     ),
                   ),
                   if (subtitle != null) ...[
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 3),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Colors.grey[600],
                         ),
                       ),
@@ -334,11 +283,11 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
                   ],
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Colors.grey[600],
                 ),
               ),
@@ -351,10 +300,10 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
 
   Widget _buildStatisticsSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
@@ -363,18 +312,18 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
           const Text(
             'Statistics',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildStatRow('Average Duration', '${_metrics!.averageStreamDuration.toStringAsFixed(1)} hrs'),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _buildStatRow('Average Viewers', '${_metrics!.averageViewers}'),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _buildStatRow('Total Gifts', '${_metrics!.totalGiftsReceived}'),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _buildStatRow('Last Updated', _formatDateTime(_metrics!.lastUpdated)),
         ],
       ),
@@ -388,14 +337,14 @@ class _PerformanceDashboardScreenState extends State<PerformanceDashboardScreen>
         Text(
           label,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             color: Colors.grey[700],
           ),
         ),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),

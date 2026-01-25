@@ -173,7 +173,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -181,12 +181,12 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
               Text(
                 AppLocalizations.of(context)!.category,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -209,8 +209,8 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                      horizontal: 12,
+                      vertical: 10,
                     ),
                   ),
                   icon: const Icon(
@@ -241,18 +241,18 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                 ),
               ),
               
-              const SizedBox(height: 25),
+              const SizedBox(height: 16),
               
               // Description Box
               Text(
                 AppLocalizations.of(context)!.writeYourConcernHere,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -267,10 +267,10 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                 ),
                 child: TextFormField(
                   controller: _concernController,
-                  maxLines: 8,
+                  maxLines: 6,
                   maxLength: 500,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: Colors.black87,
                     height: 1.5,
                   ),
@@ -278,7 +278,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                     hintText: AppLocalizations.of(context)!.describeYourIssue,
                     hintStyle: TextStyle(
                       color: Colors.grey[400],
-                      fontSize: 14,
+                      fontSize: 13,
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -286,7 +286,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.all(16),
+                    contentPadding: const EdgeInsets.all(12),
                     counterStyle: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 12,
@@ -304,62 +304,64 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                 ),
               ),
               
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
               
               // Submit Button
-              Center(
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _handleSubmit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00BCD4),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey[400],
-                      elevation: 2,
-                      shadowColor: const Color(0xFF00BCD4).withValues(alpha:0.3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _handleSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00BCD4),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[400],
+                    disabledForegroundColor: Colors.white,
+                    elevation: 2,
+                    shadowColor: const Color(0xFF00BCD4).withValues(alpha:0.3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: _isSubmitting
-                        ? Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                AppLocalizations.of(context)!.submitting,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          )
-                        : Text(
-                            AppLocalizations.of(context)!.submit,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
+                  child: _isSubmitting
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              AppLocalizations.of(context)!.submitting,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          AppLocalizations.of(context)!.submit,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                 ),
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               
               // OR Divider
               Row(
@@ -390,12 +392,12 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                 ],
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               
               // Chat with Support Button - Compact Version
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -415,7 +417,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                   children: [
                     // Icon
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [
@@ -429,7 +431,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                         boxShadow: [
                           BoxShadow(
                             color: const Color(0xFF00BCD4).withValues(alpha:0.3),
-                            blurRadius: 8,
+                            blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -437,11 +439,11 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                       child: const Icon(
                         Icons.support_agent_rounded,
                         color: Colors.white,
-                        size: 22,
+                        size: 18,
                       ),
                     ),
                     
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     
                     // Text Content
                     Expanded(
@@ -451,7 +453,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                           Text(
                             AppLocalizations.of(context)!.needHelp,
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
                             ),
@@ -460,7 +462,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                           Text(
                             AppLocalizations.of(context)!.chatWithSupportTeam,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               color: Colors.grey[600],
                             ),
                           ),
@@ -483,11 +485,11 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                           debugPrint('Error navigating to chat screen: $e');
                         }
                       },
-                      icon: Image.asset('assets/images/chat.png', width: 16, height: 16, color: const Color(0xFF00BCD4)),
+                      icon: Image.asset('assets/images/chat.png', width: 14, height: 14, color: const Color(0xFF00BCD4)),
                       label: Text(
                         AppLocalizations.of(context)!.chat,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -501,7 +503,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         backgroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         minimumSize: Size.zero,
                       ),
                     ),
@@ -509,7 +511,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                 ),
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
             ],
           ),
         ),

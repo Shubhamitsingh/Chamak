@@ -35,6 +35,7 @@ import '../widgets/end_stream_confirmation_sheet.dart';
 import 'live_stream_summary_screen.dart';
 import 'package:country_picker/country_picker.dart';
 import '../services/screen_protection_service.dart';
+import '../services/crashlytics_service.dart';
 
 // Agora App ID
 const String appId = '43bb5e13c835444595c8cf087a0ccaa4';
@@ -595,6 +596,23 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
           debugPrint('❌ Agora Error: $err');
           debugPrint('   Error message: $msg');
           debugPrint('   User-friendly: $errorMsg');
+          
+          // Log to Crashlytics
+          CrashlyticsService.logError(
+            'Agora RTC Error: $err - $msg',
+            StackTrace.current,
+            context: 'Agora SDK error in live stream',
+            fatal: false,
+          );
+          
+          // Log event for tracking
+          CrashlyticsService.logEvent('agora_error', {
+            'error_code': err.toString(),
+            'error_message': msg,
+            'user_friendly': errorMsg,
+            'is_host': widget.isHost.toString(),
+          });
+          
           if (mounted) {
             setState(() {
               _errorMessage = errorMsg;

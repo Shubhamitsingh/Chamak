@@ -82,7 +82,7 @@ class _WarningScreenState extends State<WarningScreen> {
             Text(
               'Warning for',
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -92,7 +92,7 @@ class _WarningScreenState extends State<WarningScreen> {
             Text(
               'permanent block',
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -178,6 +178,16 @@ class _WarningScreenState extends State<WarningScreen> {
     final progress = currentWarnings / maxWarnings;
     final currentWarningsStr = currentWarnings.toString().padLeft(2, '0');
     final maxWarningsStr = maxWarnings.toString().padLeft(2, '0');
+    
+    // Determine color based on warning level
+    Color indicatorColor;
+    if (currentWarnings <= 1) {
+      indicatorColor = Colors.green; // Light green for 0-1 warnings
+    } else if (currentWarnings <= 3) {
+      indicatorColor = Colors.amber; // Yellow for 2-3 warnings
+    } else {
+      indicatorColor = Colors.red; // Red for 4-5 warnings
+    }
 
     return SizedBox(
       width: 280,
@@ -185,13 +195,12 @@ class _WarningScreenState extends State<WarningScreen> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Semi-circular arc background
+          // Semi-circular arc with 3 color zones
           CustomPaint(
             size: const Size(280, 140),
             painter: _SemiCirclePainter(
               progress: progress,
               trackColor: Colors.grey[300]!,
-              progressColor: const Color(0xFFFF1B7C), // Pink/Red
               strokeWidth: 12,
             ),
           ),
@@ -207,10 +216,10 @@ class _WarningScreenState extends State<WarningScreen> {
                 children: [
                   Text(
                     currentWarningsStr,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 42,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF1B7C), // Pink/Red
+                      color: indicatorColor,
                       height: 1.0,
                     ),
                   ),
@@ -242,49 +251,80 @@ class _WarningScreenState extends State<WarningScreen> {
   }
 }
 
-// Custom painter for semi-circular progress
+// Custom painter for semi-circular progress with 3 color zones
 class _SemiCirclePainter extends CustomPainter {
   final double progress;
   final Color trackColor;
-  final Color progressColor;
   final double strokeWidth;
 
   _SemiCirclePainter({
     required this.progress,
     required this.trackColor,
-    required this.progressColor,
     required this.strokeWidth,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = trackColor
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final center = Offset(size.width / 2, size.height);
     final radius = size.width / 2 - strokeWidth / 2;
+    final totalSweep = math.pi; // 180 degrees
 
-    // Draw background arc (full semi-circle)
-    final backgroundPath = Path()
+    // Draw 3 color zones
+    // Zone 1: Light Green (0-33% or 0-1.65 warnings)
+    paint.color = Colors.green[300]!;
+    final greenPath = Path()
       ..arcTo(
         Rect.fromCircle(center: center, radius: radius),
         math.pi, // Start at 180 degrees (left)
-        math.pi, // Sweep 180 degrees (to right)
+        totalSweep / 3, // 60 degrees (33% of semicircle)
         false,
       );
-    canvas.drawPath(backgroundPath, paint);
+    canvas.drawPath(greenPath, paint);
 
-    // Draw progress arc (filled portion)
+    // Zone 2: Yellow (33-66% or 1.65-3.3 warnings)
+    paint.color = Colors.amber[400]!;
+    final yellowPath = Path()
+      ..arcTo(
+        Rect.fromCircle(center: center, radius: radius),
+        math.pi + (totalSweep / 3), // Start after green zone
+        totalSweep / 3, // 60 degrees (33% of semicircle)
+        false,
+      );
+    canvas.drawPath(yellowPath, paint);
+
+    // Zone 3: Red (66-100% or 3.3-5 warnings)
+    paint.color = Colors.red[400]!;
+    final redPath = Path()
+      ..arcTo(
+        Rect.fromCircle(center: center, radius: radius),
+        math.pi + (2 * totalSweep / 3), // Start after yellow zone
+        totalSweep / 3, // 60 degrees (33% of semicircle)
+        false,
+      );
+    canvas.drawPath(redPath, paint);
+
+    // Draw progress indicator based on current warnings
     if (progress > 0) {
+      Color progressColor;
+      if (progress <= 0.33) {
+        progressColor = Colors.green; // Light green
+      } else if (progress <= 0.66) {
+        progressColor = Colors.amber; // Yellow
+      } else {
+        progressColor = Colors.red; // Red
+      }
+      
       paint.color = progressColor;
       final progressPath = Path()
         ..arcTo(
           Rect.fromCircle(center: center, radius: radius),
           math.pi, // Start at 180 degrees (left)
-          math.pi * progress, // Sweep based on progress
+          totalSweep * progress, // Sweep based on progress
           false,
         );
       canvas.drawPath(progressPath, paint);
@@ -295,7 +335,6 @@ class _SemiCirclePainter extends CustomPainter {
   bool shouldRepaint(_SemiCirclePainter oldDelegate) {
     return oldDelegate.progress != progress ||
         oldDelegate.trackColor != trackColor ||
-        oldDelegate.progressColor != progressColor ||
         oldDelegate.strokeWidth != strokeWidth;
   }
 }

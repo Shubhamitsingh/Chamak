@@ -23,17 +23,38 @@ class PerformanceService {
   /// Get total stream count for a user
   Future<int> getTotalStreamCount(String userId, {TimePeriod? period}) async {
     try {
-      Query query = _firestore
+      // Query only by hostId to avoid composite index requirement
+      final snapshot = await _firestore
           .collection('live_streams')
-          .where('hostId', isEqualTo: userId);
+          .where('hostId', isEqualTo: userId)
+          .get();
 
+      // Filter by date client-side if period is specified
       if (period != null && period != TimePeriod.allTime) {
         final startDate = _getStartDate(period);
-        query = query.where('startedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+        int count = 0;
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final startedAtField = data['startedAt'];
+          if (startedAtField == null) continue;
+          
+          DateTime startedAt;
+          if (startedAtField is Timestamp) {
+            startedAt = startedAtField.toDate();
+          } else if (startedAtField is String) {
+            startedAt = DateTime.parse(startedAtField);
+          } else {
+            continue;
+          }
+          
+          if (startedAt.isAfter(startDate) || startedAt.isAtSameMomentAs(startDate)) {
+            count++;
+          }
+        }
+        return count;
       }
 
-      final snapshot = await query.count().get();
-      return snapshot.count ?? 0;
+      return snapshot.docs.length;
     } catch (e) {
       print('❌ Error getting stream count: $e');
       return 0;
@@ -43,17 +64,16 @@ class PerformanceService {
   /// Get total streaming hours for a user
   Future<double> getTotalStreamingHours(String userId, {TimePeriod? period}) async {
     try {
-      Query query = _firestore
+      // Query only by hostId to avoid composite index requirement
+      final snapshot = await _firestore
           .collection('live_streams')
-          .where('hostId', isEqualTo: userId);
+          .where('hostId', isEqualTo: userId)
+          .get();
 
-      if (period != null && period != TimePeriod.allTime) {
-        final startDate = _getStartDate(period);
-        query = query.where('startedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
-      }
-
-      final snapshot = await query.get();
       final now = DateTime.now();
+      final startDate = period != null && period != TimePeriod.allTime 
+          ? _getStartDate(period) 
+          : DateTime(1970);
       double totalHours = 0.0;
 
       for (var doc in snapshot.docs) {
@@ -72,6 +92,11 @@ class PerformanceService {
           startedAt = DateTime.parse(startedAtField);
         } else {
           continue;
+        }
+
+        // Filter by date client-side if period is specified
+        if (period != null && period != TimePeriod.allTime) {
+          if (startedAt.isBefore(startDate)) continue;
         }
 
         DateTime endedAt;
@@ -115,18 +140,33 @@ class PerformanceService {
         return 0;
       }
 
-      // For time-filtered earnings, query gifts collection
+      // For time-filtered earnings, query gifts collection (filter client-side)
       final startDate = _getStartDate(period);
       final giftsSnapshot = await _firestore
           .collection('gifts')
           .where('receiverId', isEqualTo: userId)
-          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
           .get();
 
       int totalEarnings = 0;
       for (var doc in giftsSnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>?;
         if (data == null) continue;
+        
+        // Filter by date client-side
+        final timestampField = data['timestamp'];
+        if (timestampField != null) {
+          DateTime timestamp;
+          if (timestampField is Timestamp) {
+            timestamp = timestampField.toDate();
+          } else if (timestampField is String) {
+            timestamp = DateTime.parse(timestampField);
+          } else {
+            continue;
+          }
+          
+          if (timestamp.isBefore(startDate)) continue;
+        }
+        
         final cCoins = data['cCoinsToGive'];
         if (cCoins is int) {
           totalEarnings += cCoins;
@@ -183,21 +223,38 @@ class PerformanceService {
   /// Get peak viewers across all streams
   Future<int> getPeakViewers(String userId, {TimePeriod? period}) async {
     try {
-      Query query = _firestore
+      // Query only by hostId to avoid composite index requirement
+      final snapshot = await _firestore
           .collection('live_streams')
-          .where('hostId', isEqualTo: userId);
+          .where('hostId', isEqualTo: userId)
+          .get();
 
-      if (period != null && period != TimePeriod.allTime) {
-        final startDate = _getStartDate(period);
-        query = query.where('startedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
-      }
-
-      final snapshot = await query.get();
+      final startDate = period != null && period != TimePeriod.allTime 
+          ? _getStartDate(period) 
+          : DateTime(1970);
       int peakViewers = 0;
 
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>?;
         if (data == null) continue;
+        
+        // Filter by date client-side if period is specified
+        if (period != null && period != TimePeriod.allTime) {
+          final startedAtField = data['startedAt'];
+          if (startedAtField != null) {
+            DateTime startedAt;
+            if (startedAtField is Timestamp) {
+              startedAt = startedAtField.toDate();
+            } else if (startedAtField is String) {
+              startedAt = DateTime.parse(startedAtField);
+            } else {
+              continue;
+            }
+            
+            if (startedAt.isBefore(startDate)) continue;
+          }
+        }
+        
         final viewerCount = (data['viewerCount'] as int?) ?? 0;
         if (viewerCount > peakViewers) {
           peakViewers = viewerCount;
@@ -214,27 +271,47 @@ class PerformanceService {
   /// Get average viewers across all streams
   Future<int> getAverageViewers(String userId, {TimePeriod? period}) async {
     try {
-      Query query = _firestore
+      // Query only by hostId to avoid composite index requirement
+      final snapshot = await _firestore
           .collection('live_streams')
-          .where('hostId', isEqualTo: userId);
+          .where('hostId', isEqualTo: userId)
+          .get();
 
-      if (period != null && period != TimePeriod.allTime) {
-        final startDate = _getStartDate(period);
-        query = query.where('startedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
-      }
-
-      final snapshot = await query.get();
-      if (snapshot.docs.isEmpty) return 0;
-
+      final startDate = period != null && period != TimePeriod.allTime 
+          ? _getStartDate(period) 
+          : DateTime(1970);
+      
       int totalViewers = 0;
+      int validStreams = 0;
+      
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>?;
         if (data == null) continue;
+        
+        // Filter by date client-side if period is specified
+        if (period != null && period != TimePeriod.allTime) {
+          final startedAtField = data['startedAt'];
+          if (startedAtField != null) {
+            DateTime startedAt;
+            if (startedAtField is Timestamp) {
+              startedAt = startedAtField.toDate();
+            } else if (startedAtField is String) {
+              startedAt = DateTime.parse(startedAtField);
+            } else {
+              continue;
+            }
+            
+            if (startedAt.isBefore(startDate)) continue;
+          }
+        }
+        
         final viewerCount = (data['viewerCount'] as int?) ?? 0;
         totalViewers += viewerCount;
+        validStreams++;
       }
 
-      return (totalViewers / snapshot.docs.length).round();
+      if (validStreams == 0) return 0;
+      return (totalViewers / validStreams).round();
     } catch (e) {
       print('❌ Error getting average viewers: $e');
       return 0;
@@ -244,17 +321,38 @@ class PerformanceService {
   /// Get total gifts received
   Future<int> getTotalGiftsReceived(String userId, {TimePeriod? period}) async {
     try {
-      Query query = _firestore
+      // Query only by receiverId to avoid composite index requirement
+      final snapshot = await _firestore
           .collection('gifts')
-          .where('receiverId', isEqualTo: userId);
+          .where('receiverId', isEqualTo: userId)
+          .get();
 
+      // Filter by date client-side if period is specified
       if (period != null && period != TimePeriod.allTime) {
         final startDate = _getStartDate(period);
-        query = query.where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+        int count = 0;
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final timestampField = data['timestamp'];
+          if (timestampField == null) continue;
+          
+          DateTime timestamp;
+          if (timestampField is Timestamp) {
+            timestamp = timestampField.toDate();
+          } else if (timestampField is String) {
+            timestamp = DateTime.parse(timestampField);
+          } else {
+            continue;
+          }
+          
+          if (timestamp.isAfter(startDate) || timestamp.isAtSameMomentAs(startDate)) {
+            count++;
+          }
+        }
+        return count;
       }
 
-      final snapshot = await query.count().get();
-      return snapshot.count ?? 0;
+      return snapshot.docs.length;
     } catch (e) {
       print('❌ Error getting gifts received: $e');
       return 0;

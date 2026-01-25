@@ -49,10 +49,14 @@ dependencies:
   firebase_storage: ^13.0.3
   firebase_messaging: ^16.0.3
   firebase_remote_config: ^6.1.2
+  firebase_crashlytics: ^5.0.5
   flutter_local_notifications: ^18.0.1
   
   # App Info & Version
   package_info_plus: ^8.0.0
+  
+  # Google Play In-App Updates
+  in_app_update: ^4.1.2
   
   # Image Picker
   image_picker: ^1.2.0

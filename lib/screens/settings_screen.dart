@@ -11,6 +11,7 @@ import 'update_details_screen.dart';
 import 'general_screen.dart';
 import '../providers/language_provider.dart';
 import '../services/update_service.dart';
+import '../services/in_app_update_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -96,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSettingItem(
                   title: Localizations.localeOf(context).languageCode == 'hi' 
                       ? 'अपडेट' 
-                      : 'Update', // App Update menu - Translated
+                      : 'Check for Updates', // App Update menu - Translated
                   onTap: () async {
                     try {
                       // Show loading dialog
@@ -108,25 +109,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       );
 
-                      // Check for updates
-                      final updateService = UpdateService();
-                      final updateModel = await updateService.checkForUpdates();
+                      // First, try Google Play In-App Update (native dialog)
+                      final inAppUpdateService = InAppUpdateService();
+                      final hasUpdate = await inAppUpdateService.checkForUpdate(
+                        forceCheck: true,
+                        showFlexible: true,
+                        showImmediate: true,
+                      );
 
                       // Close loading dialog
                       if (mounted) {
                         Navigator.pop(context);
                       }
 
-                      // Navigate to update details screen
-                      if (mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => UpdateDetailsScreen(
-                              updateModel: updateModel,
+                      // If no update from Play Store, check Remote Config and show details
+                      if (!hasUpdate && mounted) {
+                        final updateService = UpdateService();
+                        final updateModel = await updateService.checkForUpdates();
+                        
+                        if (updateModel.updateAvailable) {
+                          // Show update details screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UpdateDetailsScreen(
+                                updateModel: updateModel,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          // No update available
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('You are using the latest version!'),
+                              backgroundColor: Colors.green,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
                       }
                     } catch (e) {
                       // Close loading dialog if still open
