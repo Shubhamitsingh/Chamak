@@ -63,7 +63,9 @@ class GeneralScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      dense: true,
+      minVerticalPadding: 0,
       title: Text(
         title,
         style: const TextStyle(

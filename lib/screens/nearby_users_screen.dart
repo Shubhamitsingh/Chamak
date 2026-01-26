@@ -570,7 +570,7 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(17),
                         ),
-                        minimumSize: Size.zero,
+                        minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Text(

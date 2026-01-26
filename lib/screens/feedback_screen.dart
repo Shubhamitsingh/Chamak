@@ -233,315 +233,347 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Section
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFF9C27B0), // Purple
-                      Color(0xFFE91E63), // Pink
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF9C27B0).withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.feedback,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Share Your Thoughts',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            AppLocalizations.of(context)!.valueFeedbackMessage,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 12,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Category Selection
-              Text(
-                'Category',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _categories.map((category) {
-                  final isSelected = _selectedCategory == category['value'];
-                  return InkWell(
-                    onTap: () {
-                      setState(() {
-                        _selectedCategory = category['value'];
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF9C27B0).withValues(alpha: 0.1)
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF9C27B0)
-                              : Colors.grey[300]!,
-                          width: isSelected ? 2 : 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isSelected ? Icons.check_circle : Icons.circle_outlined,
-                            color: isSelected
-                                ? const Color(0xFF9C27B0)
-                                : Colors.grey[600],
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            category['label']!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? const Color(0xFF9C27B0)
-                                  : Colors.grey[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Rating Section
-              Text(
-                'Rate Your Experience',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  final rating = index + 1;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedRating = rating;
-                      });
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Icon(
-                        rating <= _selectedRating
-                            ? Icons.star
-                            : Icons.star_border,
-                        color: rating <= _selectedRating
-                            ? Colors.amber
-                            : Colors.grey[400],
-                        size: 36,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              if (_selectedRating > 0) ...[
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    _getRatingText(_selectedRating),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 20),
-
-              // Feedback Input
-              Text(
-                'Your Feedback',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.grey[300]!,
-                    width: 1.5,
-                  ),
-                ),
-                child: TextFormField(
-                  controller: _feedbackController,
-                  maxLines: 6,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your feedback';
-                    }
-                    if (value.trim().length < 10) {
-                      return 'Please provide more details (at least 10 characters)';
-                    }
-                    return null;
-                  },
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Colors.black87,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: AppLocalizations.of(context)!.writeFeedbackHere,
-                    hintStyle: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 15,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.all(16),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Submit Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: Container(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Section (Compact)
+                Container(
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [
                         Color(0xFF9C27B0), // Purple
                         Color(0xFFE91E63), // Pink
                       ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF9C27B0).withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
+                        color: const Color(0xFF9C27B0).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _submitFeedback,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.feedback,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.send,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Share Your Thoughts',
+                              style: TextStyle(
                                 color: Colors.white,
-                                size: 20,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(width: 8),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              AppLocalizations.of(context)!.valueFeedbackMessage,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 11,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Category Selection (Compact)
+                Text(
+                  'Category',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _categories.map((category) {
+                    final isSelected = _selectedCategory == category['value'];
+                    return Semantics(
+                      label: '${category['label']} category${isSelected ? ", selected" : ""}',
+                      button: true,
+                      selected: isSelected,
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = category['value'];
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF9C27B0).withValues(alpha: 0.1)
+                                : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF9C27B0)
+                                  : Colors.grey[300]!,
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isSelected ? Icons.check_circle : Icons.circle_outlined,
+                                color: isSelected
+                                    ? const Color(0xFF9C27B0)
+                                    : Colors.grey[600],
+                                size: 14,
+                              ),
+                              const SizedBox(width: 5),
                               Text(
-                                AppLocalizations.of(context)!.send,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                category['label']!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? const Color(0xFF9C27B0)
+                                      : Colors.grey[700],
                                 ),
                               ),
                             ],
                           ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Rating Section (Compact)
+                Text(
+                  'Rate Your Experience',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
                   ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final rating = index + 1;
+                    return Semantics(
+                      label: 'Rate ${rating} star${rating > 1 ? "s" : ""}${rating == _selectedRating ? ", selected" : ""}',
+                      button: true,
+                      selected: rating == _selectedRating,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedRating = rating;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Icon(
+                            rating <= _selectedRating
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: rating <= _selectedRating
+                                ? Colors.amber
+                                : Colors.grey[400],
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                if (_selectedRating > 0) ...[
+                  const SizedBox(height: 6),
+                  Center(
+                    child: Text(
+                      _getRatingText(_selectedRating),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                ],
 
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 16),
+
+                // Feedback Input (Compact)
+                Text(
+                  'Your Feedback',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Colors.grey[300]!,
+                      width: 1,
+                    ),
+                  ),
+                  child: TextFormField(
+                    controller: _feedbackController,
+                    maxLines: 5,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your feedback';
+                      }
+                      if (value.trim().length < 10) {
+                        return 'Please provide more details (at least 10 characters)';
+                      }
+                      return null;
+                    },
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(context)!.writeFeedbackHere,
+                      hintStyle: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 14,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Submit Button (Compact with reduced width)
+                Center(
+                  child: Semantics(
+                    label: 'Submit feedback',
+                    button: true,
+                    enabled: !_isSubmitting,
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.75, // 75% of screen width
+                      height: 44, // Fixed: Meets 44px minimum touch target
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF9C27B0), // Purple
+                            Color(0xFFE91E63), // Pink
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF9C27B0).withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _submitFeedback,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          minimumSize: const Size(0, 44), // Fixed: Meets accessibility standard
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.send,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      AppLocalizations.of(context)!.send,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black26,
+                                            blurRadius: 2,
+                                            offset: Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                      overflow: TextOverflow.visible,
+                                      softWrap: false,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ),
       ),

@@ -504,7 +504,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                         ),
                         backgroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        minimumSize: Size.zero,
+                        minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
                       ),
                     ),
                   ],

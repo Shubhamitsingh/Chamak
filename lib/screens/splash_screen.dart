@@ -213,19 +213,22 @@ class _SplashScreenState extends State<SplashScreen> {
                   child: SizedBox(
                     width: double.infinity,
                     height: 52,
-                    child: ElevatedButton(
-                      onPressed: _navigateToLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF1B7C),
-                        foregroundColor: Colors.white,
-                        elevation: 8,
-                        shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
+                    child: Semantics(
+                      label: 'Continue with Phone Number',
+                      button: true,
+                      child: ElevatedButton(
+                        onPressed: _navigateToLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF1B7C),
+                          foregroundColor: Colors.white,
+                          elevation: 8,
+                          shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: EdgeInsets.zero,
                         ),
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: Stack(
+                        child: Stack(
                         children: [
                           // Centered text in entire container
                           const Center(
@@ -252,6 +255,7 @@ class _SplashScreenState extends State<SplashScreen> {
                           ),
                         ],
                       ),
+                    ),
                     ),
                   ),
                 ),

@@ -278,7 +278,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      dense: true,
+      minVerticalPadding: 0,
       title: Text(
         title,
         style: const TextStyle(
@@ -287,11 +289,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       subtitle: subtitle != null
-          ? Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
+          ? Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
               ),
             )
           : null,

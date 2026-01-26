@@ -385,13 +385,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Row(
                       children: [
                         // Country Selector
-                        InkWell(
-                          onTap: _showCountryPicker,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(10),
-                            bottomLeft: Radius.circular(10),
-                          ),
-                          child: Container(
+                        Semantics(
+                          label: 'Select country code. Currently selected: ${_selectedCountry.name}',
+                          button: true,
+                          child: InkWell(
+                            onTap: _showCountryPicker,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(10),
+                              bottomLeft: Radius.circular(10),
+                            ),
+                            child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Row(
                               children: [
@@ -423,6 +426,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                           ),
+                        ),
                         ),
                         
                         // Phone Number Input
@@ -510,19 +514,23 @@ class _LoginScreenState extends State<LoginScreen> {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _sendOTP,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF1B7C), // Pink
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey[300],
-                elevation: 8,
-                shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4), // Pink shadow
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+            child: Semantics(
+              label: 'Send OTP to phone number',
+              button: true,
+              enabled: !_isLoading,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _sendOTP,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF1B7C), // Pink
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey[300],
+                  elevation: 8,
+                  shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4), // Pink shadow
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
                 ),
-              ),
-              child: _isLoading
+                child: _isLoading
                   ? const SizedBox(
                       height: 24,
                       width: 24,
@@ -538,6 +546,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+            ),
             ),
           ),
           

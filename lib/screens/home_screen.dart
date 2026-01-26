@@ -916,15 +916,19 @@ class _HomeScreenState extends State<HomeScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Explore Button
-                    GestureDetector(
-                      onTap: () {
-                        _pageController.animateToPage(
-                          0,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      child: Column(
+                    Semantics(
+                      label: 'Explore tab. ${_topTabIndex == 0 ? "Currently selected" : "Tap to switch to explore"}',
+                      button: true,
+                      selected: _topTabIndex == 0,
+                      child: GestureDetector(
+                        onTap: () {
+                          _pageController.animateToPage(
+                            0,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        },
+                        child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
@@ -948,24 +952,29 @@ class _HomeScreenState extends State<HomeScreen>
                                 color:
                                     const Color(0xFFFF1B7C), // pink underline
                                 borderRadius: BorderRadius.circular(2),
-                              ),
                             ),
+                          ),
                         ],
                       ),
+                    ),
                     ),
 
                     const SizedBox(width: 15),
 
                     // Live Button
-                    GestureDetector(
-                      onTap: () {
-                        _pageController.animateToPage(
-                          1,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      child: Column(
+                    Semantics(
+                      label: 'Live streams tab. ${_topTabIndex == 1 ? "Currently selected" : "Tap to switch to live streams"}',
+                      button: true,
+                      selected: _topTabIndex == 1,
+                      child: GestureDetector(
+                        onTap: () {
+                          _pageController.animateToPage(
+                            1,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        },
+                        child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Row(
@@ -1004,6 +1013,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                         ],
                       ),
+                    ),
                     ),
 
                     const SizedBox(width: 15),
@@ -1307,20 +1317,23 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(width: 1),
 
             // User Search Icon (Search People by ID)
-            GestureDetector(
-              onTap: () {
-                if (!mounted) return;
-                try {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const UserSearchScreen(),
-                    ),
-                  );
-                } catch (e) {
-                  debugPrint('Navigation error: $e');
-                }
-              },
-              child: Padding(
+            Semantics(
+              label: 'Search users by ID',
+              button: true,
+              child: GestureDetector(
+                onTap: () {
+                  if (!mounted) return;
+                  try {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const UserSearchScreen(),
+                      ),
+                    );
+                  } catch (e) {
+                    debugPrint('Navigation error: $e');
+                  }
+                },
+                child: Padding(
                 padding: const EdgeInsets.all(4.0),
                 child: Icon(
                   Icons.search_rounded,
@@ -1328,6 +1341,7 @@ class _HomeScreenState extends State<HomeScreen>
                   size: 26,
                 ),
               ),
+            ),
             ),
           ],
         ),
@@ -3744,7 +3758,7 @@ class _HomeScreenState extends State<HomeScreen>
             padding: const EdgeInsets.only(top: 5),
             child: Container(
               width: 44,
-              height: 32,
+              height: 44, // Fixed: Increased from 32 to 44 for accessibility (minimum touch target)
               decoration: BoxDecoration(
                 color: Colors.grey[300], // Gray background
                 borderRadius: BorderRadius.circular(8),

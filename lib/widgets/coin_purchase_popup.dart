@@ -432,7 +432,7 @@ class _StarburstPopupState extends State<_StarburstPopup> with TickerProviderSta
     return TextButton(
       onPressed: () => Navigator.pop(context),
       style: TextButton.styleFrom(
-        minimumSize: Size.zero,
+        minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
@@ -768,7 +768,7 @@ class _PremiumCardPopupState extends State<_PremiumCardPopup> with TickerProvide
     return TextButton(
       onPressed: () => Navigator.pop(context),
       style: TextButton.styleFrom(
-        minimumSize: Size.zero,
+        minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
@@ -1104,7 +1104,7 @@ class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderSta
     return TextButton(
       onPressed: () => Navigator.pop(context),
       style: TextButton.styleFrom(
-        minimumSize: Size.zero,
+        minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
@@ -1440,7 +1440,7 @@ class _MinimalistPopupState extends State<_MinimalistPopup> with TickerProviderS
     return TextButton(
       onPressed: () => Navigator.pop(context),
       style: TextButton.styleFrom(
-        minimumSize: Size.zero,
+        minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),

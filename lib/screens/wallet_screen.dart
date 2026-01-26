@@ -503,10 +503,11 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
-          : SingleChildScrollView(
-              child: Column(
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
+            : SingleChildScrollView(
+                child: Column(
                 children: [
                   // Coin Balance Card
                   _buildBalanceCard(),
@@ -594,6 +595,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           ],
         ),
       ),
+        ),
     );
   }
 

@@ -450,7 +450,7 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(18),
                           ),
-                          minimumSize: Size.zero,
+                          minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(

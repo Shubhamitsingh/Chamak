@@ -404,7 +404,7 @@ class _LowCoinBottomSheetState extends State<_LowCoinBottomSheet>
     return TextButton(
       onPressed: () => Navigator.pop(context),
       style: TextButton.styleFrom(
-        minimumSize: Size.zero,
+        minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),

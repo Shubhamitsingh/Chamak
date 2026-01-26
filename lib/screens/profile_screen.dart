@@ -292,6 +292,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFFF1B7C), // Pink border color
+                      width: 2,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha:0.15),
