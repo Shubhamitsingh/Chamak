@@ -319,7 +319,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
               minimumSize: Size(buttonWidth, buttonHeight),
             ),
             child: Text(
-              AppLocalizations.of(context)!.saveQRCode,
+              AppLocalizations.of(context)!.shareQRCode,
               style: TextStyle(
                 fontSize: buttonFontSize,
                 fontWeight: FontWeight.w600,
@@ -338,6 +338,8 @@ class _PromotionScreenState extends State<PromotionScreen> {
       return;
     }
 
+    bool shareSuccess = false;
+    
     try {
       // Copy to clipboard
       await Clipboard.setData(ClipboardData(text: _appLink!));
@@ -366,26 +368,45 @@ class _PromotionScreenState extends State<PromotionScreen> {
           subject: AppLocalizations.of(context)!.chamakzApp,
         );
       }
-
-      // Calculate and award reward
-      final reward = await _rewardService.calculateReward(
-        userId: userId,
-        shareType: 'url',
-      );
-      await _rewardService.awardReward(
-        userId: userId,
-        rewardAmount: reward,
-        shareType: 'url',
-        appLink: _appLink!,
-      );
-
+      
+      shareSuccess = true; // ✅ Share completed successfully
+      
+      // Show success immediately (don't wait for reward)
       if (mounted) {
-        _showSuccess(AppLocalizations.of(context)!.appLinkCopiedAndShared(reward));
+        _showSuccess(AppLocalizations.of(context)!.appLinkCopiedAndShared(0));
       }
+      
     } catch (e) {
       debugPrint('Error sharing URL: $e');
-      if (mounted) {
+      if (mounted && !shareSuccess) {
+        // Only show error if share itself failed
         _showError(AppLocalizations.of(context)!.failedToShareURL);
+      }
+      return; // Exit if share failed
+    }
+
+    // ✅ Award reward separately (don't block on this, don't show error if it fails)
+    if (shareSuccess) {
+      try {
+        final reward = await _rewardService.calculateReward(
+          userId: userId,
+          shareType: 'url',
+        );
+        await _rewardService.awardReward(
+          userId: userId,
+          rewardAmount: reward,
+          shareType: 'url',
+          appLink: _appLink!,
+        );
+        
+        // Update success message with reward
+        if (mounted) {
+          _showSuccess(AppLocalizations.of(context)!.appLinkCopiedAndShared(reward));
+        }
+      } catch (rewardError) {
+        debugPrint('⚠️ Error awarding reward (share was successful): $rewardError');
+        // Don't show error - share was successful!
+        // Just log the error for debugging
       }
     }
   }
@@ -396,6 +417,8 @@ class _PromotionScreenState extends State<PromotionScreen> {
       _showError(AppLocalizations.of(context)!.unableToGenerateQRCode);
       return;
     }
+
+    bool shareSuccess = false;
 
     try {
       // Generate QR code image
@@ -416,25 +439,44 @@ class _PromotionScreenState extends State<PromotionScreen> {
         text: AppLocalizations.of(context)!.chamakzQRCode,
       );
 
-      // Calculate and award reward
-      final reward = await _rewardService.calculateReward(
-        userId: userId,
-        shareType: 'qr_code',
-      );
-      await _rewardService.awardReward(
-        userId: userId,
-        rewardAmount: reward,
-        shareType: 'qr_code',
-        appLink: _qrCodeData!,
-      );
-
+      shareSuccess = true; // ✅ Share completed successfully
+      
+      // Show success immediately (don't wait for reward)
       if (mounted) {
-        _showSuccess(AppLocalizations.of(context)!.qrCodeSavedYouEarned(reward));
+        _showSuccess(AppLocalizations.of(context)!.qrCodeSavedYouEarned(0));
       }
+      
     } catch (e) {
-      debugPrint('Error saving QR code: $e');
-      if (mounted) {
+      debugPrint('Error sharing QR code: $e');
+      if (mounted && !shareSuccess) {
+        // Only show error if share itself failed
         _showError(AppLocalizations.of(context)!.failedToSaveQRCode);
+      }
+      return; // Exit if share failed
+    }
+
+    // ✅ Award reward separately (don't block on this, don't show error if it fails)
+    if (shareSuccess) {
+      try {
+        final reward = await _rewardService.calculateReward(
+          userId: userId,
+          shareType: 'qr_code',
+        );
+        await _rewardService.awardReward(
+          userId: userId,
+          rewardAmount: reward,
+          shareType: 'qr_code',
+          appLink: _qrCodeData!,
+        );
+        
+        // Update success message with reward
+        if (mounted) {
+          _showSuccess(AppLocalizations.of(context)!.qrCodeSavedYouEarned(reward));
+        }
+      } catch (rewardError) {
+        debugPrint('⚠️ Error awarding reward (share was successful): $rewardError');
+        // Don't show error - share was successful!
+        // Just log the error for debugging
       }
     }
   }

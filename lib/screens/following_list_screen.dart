@@ -7,6 +7,7 @@ import '../models/user_model.dart';
 import '../services/follow_service.dart';
 import 'user_profile_view_screen.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
+import '../widgets/cached_avatar_widget.dart';
 
 class FollowingListScreen extends StatefulWidget {
   final String userId;
@@ -511,24 +512,11 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
   }
 
   Widget _buildDefaultAvatar(String numericId) {
-    return CircleAvatar(
+    return CachedAvatarWidget(
+      userId: numericId,
       radius: 22,
+      style: 'avataaars',
       backgroundColor: const Color(0xFFF5F5F5),
-      backgroundImage: NetworkImage(
-        'https://api.dicebear.com/7.x/avataaars/png?seed=$numericId&backgroundColor=b6e3f4,c0aede,d1d4f9&size=44&randomizeIds=true',
-      ),
-      onBackgroundImageError: (_, __) {},
-      child: Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFF9C27B0),
-        ),
-        child: const Icon(
-          Icons.person,
-          size: 22,
-          color: Colors.white,
-        ),
-      ),
     );
   }
 

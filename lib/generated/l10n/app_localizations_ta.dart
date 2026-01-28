@@ -1191,6 +1191,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get shareURL => 'URL பகிரவும்';
 
   @override
+  String get shareQRCode => 'Share QR Code';
+
+  @override
   String get saveQRCode => 'QR குறியீட்டை சேமிக்கவும்';
 
   @override

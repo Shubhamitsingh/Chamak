@@ -7,6 +7,7 @@ import '../services/follow_service.dart';
 import '../services/chat_service.dart';
 import 'user_profile_view_screen.dart';
 import 'chat_screen.dart';
+import '../widgets/cached_avatar_widget.dart';
 
 class NearbyUsersScreen extends StatefulWidget {
   const NearbyUsersScreen({super.key});
@@ -603,24 +604,11 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
   }
 
   Widget _buildDefaultAvatar(String numericId) {
-    return CircleAvatar(
+    return CachedAvatarWidget(
+      userId: numericId,
       radius: 26,
+      style: 'avataaars',
       backgroundColor: const Color(0xFFF5F5F5),
-      backgroundImage: NetworkImage(
-        'https://api.dicebear.com/7.x/avataaars/png?seed=$numericId&backgroundColor=b6e3f4,c0aede,d1d4f9&size=52&randomizeIds=true',
-      ),
-      onBackgroundImageError: (_, __) {},
-      child: Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFFFF1B7C),
-        ),
-        child: const Icon(
-          Icons.person,
-          size: 26,
-          color: Colors.white,
-        ),
-      ),
     );
   }
 }

@@ -105,11 +105,15 @@ class _LowCoinBottomSheetState extends State<_LowCoinBottomSheet>
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenHeight < 700; // Detect small screens
 
     return SlideInUp(
       duration: const Duration(milliseconds: 400),
       child: Container(
-        height: screenHeight * 0.40,
+        constraints: BoxConstraints(
+          maxHeight: isSmallScreen ? screenHeight * 0.85 : screenHeight * 0.40,
+          minHeight: 300,
+        ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -127,71 +131,73 @@ class _LowCoinBottomSheetState extends State<_LowCoinBottomSheet>
         ),
         child: SafeArea(
           top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 32,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Title
-              Text(
-                'Low Balance Alert',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 0.5,
-                ),
-              ),
-
-              const SizedBox(height: 5),
-
-              // Subtitle
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  'You don\'t have enough coins to continue',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.8),
-                    height: 1.2,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  width: 32,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
-              // Balance Display
-              _buildBalanceDisplay(),
+                // Title
+                Text(
+                  'Low Balance Alert',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 5),
 
-              // Progress Bar
-              _buildProgressBar(),
+                // Subtitle
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'You don\'t have enough coins to continue',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.8),
+                      height: 1.2,
+                    ),
+                  ),
+                ),
 
-              const Spacer(),
+                const SizedBox(height: 16),
 
-              // Add Coins Button
-              _buildAddCoinsButton(),
+                // Balance Display
+                _buildBalanceDisplay(),
 
-              const SizedBox(height: 5),
+                const SizedBox(height: 12),
 
-              // Later Button
-              _buildLaterButton(),
+                // Progress Bar
+                _buildProgressBar(),
 
-              const SizedBox(height: 14),
-            ],
+                SizedBox(height: isSmallScreen ? 16 : 24),
+
+                // Add Coins Button
+                _buildAddCoinsButton(),
+
+                const SizedBox(height: 5),
+
+                // Later Button
+                _buildLaterButton(),
+
+                const SizedBox(height: 14),
+              ],
+            ),
           ),
         ),
       ),

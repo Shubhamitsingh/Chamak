@@ -2310,6 +2310,12 @@ abstract class AppLocalizations {
   /// **'Share URL'**
   String get shareURL;
 
+  /// No description provided for @shareQRCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Share QR Code'**
+  String get shareQRCode;
+
   /// No description provided for @saveQRCode.
   ///
   /// In en, this message translates to:

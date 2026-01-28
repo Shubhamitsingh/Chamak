@@ -155,16 +155,6 @@ service cloud.firestore {
       }
       
       // ============================================
-      // FEEDBACK SUBCOLLECTION (Admin Panel)
-      // ============================================
-      match /feedback/{feedbackId} {
-        // Admins can read/update/delete all feedback (for admin panel)
-        allow read: if request.auth != null && isAdmin();
-        allow update: if request.auth != null && isAdmin();
-        allow delete: if request.auth != null && isAdmin();
-      }
-      
-      // ============================================
       // TICKETS SUBCOLLECTION (Admin Panel)
       // ============================================
       match /tickets/{ticketId} {
@@ -184,6 +174,27 @@ service cloud.firestore {
         // Write permissions handled by specific subcollection rules above
         allow write: if false;
       }
+    }
+    
+    // ============================================
+    // FEEDBACK COLLECTION (Top-Level)
+    // ============================================
+    match /feedback/{feedbackId} {
+      // ✅ FIX: Authenticated users can create feedback
+      // Users must include their userId in the document (must match auth.uid)
+      allow create: if request.auth != null 
+        && request.resource.data != null
+        && request.resource.data.userId == request.auth.uid;
+      
+      // ✅ FIX: Users can read their own feedback
+      // Admins can read all feedback (for admin panel)
+      allow read: if request.auth != null 
+        && (isAdmin() 
+            || (resource.data != null && resource.data.userId == request.auth.uid));
+      
+      // Admins can update/delete all feedback (for admin panel)
+      allow update: if request.auth != null && isAdmin();
+      allow delete: if request.auth != null && isAdmin();
     }
     
     // ============================================
@@ -630,6 +641,58 @@ service cloud.firestore {
       
       // Only admins can delete applications
       allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // ============================================
+    // SHARE TRACKING COLLECTION
+    // ============================================
+    match /share_tracking/{trackingId} {
+      // Users can read their own share tracking records
+      // Admins can read all records
+      allow read: if request.auth != null 
+        && (isAdmin() 
+            || (resource.data != null && request.auth.uid == resource.data.userId));
+      
+      // Authenticated users can create their own share tracking records
+      // Must include their userId in the document
+      allow create: if request.auth != null 
+        && request.resource.data != null
+        && request.auth.uid == request.resource.data.userId
+        && request.resource.data.shareType in ['url', 'qr_code']
+        && request.resource.data.appLink != null;
+      
+      // Users can update their own share tracking records (for reward tracking)
+      // Admins can update all records
+      allow update: if request.auth != null 
+        && resource.data != null
+        && (isAdmin() 
+            || (request.auth.uid == resource.data.userId
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rewardGiven'])));
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // REWARD TRANSACTIONS COLLECTION
+    // ============================================
+    match /reward_transactions/{transactionId} {
+      // Users can read their own reward transactions
+      // Admins can read all transactions
+      allow read: if request.auth != null 
+        && (isAdmin() 
+            || (resource.data != null && request.auth.uid == resource.data.userId));
+      
+      // Only server/Cloud Functions can create reward transactions
+      // Users cannot create directly (created by reward service)
+      // For now, allow authenticated users to create (will be restricted later)
+      allow create: if request.auth != null 
+        && request.resource.data != null
+        && request.auth.uid == request.resource.data.userId;
+      
+      // Only admins can update/delete
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     // Default: Deny all other collections

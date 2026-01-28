@@ -164,6 +164,7 @@ class _StarburstPopupState extends State<_StarburstPopup> with TickerProviderSta
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final badgeSize = 110.0;
+    final isSmallScreen = screenHeight < 700; // Detect small screens
     
     return SlideInUp(
       duration: const Duration(milliseconds: 400),
@@ -172,7 +173,10 @@ class _StarburstPopupState extends State<_StarburstPopup> with TickerProviderSta
         alignment: Alignment.topCenter,
         children: [
           Container(
-            height: screenHeight * 0.50,
+            constraints: BoxConstraints(
+              maxHeight: isSmallScreen ? screenHeight * 0.85 : screenHeight * 0.50,
+              minHeight: 400,
+            ),
             margin: EdgeInsets.only(top: badgeSize * 0.5),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -191,51 +195,53 @@ class _StarburstPopupState extends State<_StarburstPopup> with TickerProviderSta
             ),
             child: SafeArea(
               top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    width: 32,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  SizedBox(height: badgeSize * 0.55),
-                  const Text(
-                    'Exclusive Offer!',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      'Make a new purchase and take advantage of this insane offer!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
-                        height: 1.2,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      width: 32,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildCoinDisplay(),
-                  const SizedBox(height: 18),
-                  _buildPriceDisplay(),
-                  const Spacer(),
-                  _buildPurchaseButton(),
-                  const SizedBox(height: 8),
-                  _buildLaterButton(),
-                  const SizedBox(height: 16),
-                ],
+                    SizedBox(height: badgeSize * 0.55),
+                    const Text(
+                      'Exclusive Offer!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'Make a new purchase and take advantage of this insane offer!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildCoinDisplay(),
+                    const SizedBox(height: 18),
+                    _buildPriceDisplay(),
+                    SizedBox(height: isSmallScreen ? 16 : 24),
+                    _buildPurchaseButton(),
+                    const SizedBox(height: 8),
+                    _buildLaterButton(),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
           ),
@@ -502,6 +508,7 @@ class _PremiumCardPopupState extends State<_PremiumCardPopup> with TickerProvide
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final badgeSize = 110.0;
+    final isSmallScreen = screenHeight < 700; // Detect small screens
     
     return SlideInUp(
       duration: const Duration(milliseconds: 400),
@@ -510,7 +517,10 @@ class _PremiumCardPopupState extends State<_PremiumCardPopup> with TickerProvide
         alignment: Alignment.topCenter,
         children: [
           Container(
-            height: screenHeight * 0.50,
+            constraints: BoxConstraints(
+              maxHeight: isSmallScreen ? screenHeight * 0.85 : screenHeight * 0.50,
+              minHeight: 400,
+            ),
             margin: EdgeInsets.only(top: badgeSize * 0.5),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -529,51 +539,53 @@ class _PremiumCardPopupState extends State<_PremiumCardPopup> with TickerProvide
             ),
             child: SafeArea(
               top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    width: 32,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  SizedBox(height: badgeSize * 0.55),
-                  const Text(
-                    'Exclusive Offer!',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      'Make a new purchase and take advantage of this insane offer!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
-                        height: 1.2,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      width: 32,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildCoinDisplay(),
-                  const SizedBox(height: 18),
-                  _buildPriceDisplay(),
-                  const Spacer(),
-                  _buildPurchaseButton(),
-                  const SizedBox(height: 8),
-                  _buildLaterButton(),
-                  const SizedBox(height: 16),
-                ],
+                    SizedBox(height: badgeSize * 0.55),
+                    const Text(
+                      'Exclusive Offer!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'Make a new purchase and take advantage of this insane offer!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildCoinDisplay(),
+                    const SizedBox(height: 18),
+                    _buildPriceDisplay(),
+                    SizedBox(height: isSmallScreen ? 16 : 24),
+                    _buildPurchaseButton(),
+                    const SizedBox(height: 8),
+                    _buildLaterButton(),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
           ),
@@ -838,6 +850,7 @@ class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderSta
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final badgeSize = 110.0;
+    final isSmallScreen = screenHeight < 700; // Detect small screens
     
     return SlideInUp(
       duration: const Duration(milliseconds: 400),
@@ -846,7 +859,10 @@ class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderSta
         alignment: Alignment.topCenter,
         children: [
           Container(
-            height: screenHeight * 0.50,
+            constraints: BoxConstraints(
+              maxHeight: isSmallScreen ? screenHeight * 0.85 : screenHeight * 0.50,
+              minHeight: 400,
+            ),
             margin: EdgeInsets.only(top: badgeSize * 0.5),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -865,51 +881,53 @@ class _FlashDealPopupState extends State<_FlashDealPopup> with TickerProviderSta
             ),
             child: SafeArea(
               top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    width: 32,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  SizedBox(height: badgeSize * 0.55),
-                  const Text(
-                    'Exclusive Offer!',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      'Make a new purchase and take advantage of this insane offer!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
-                        height: 1.2,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      width: 32,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildCoinDisplay(),
-                  const SizedBox(height: 18),
-                  _buildPriceDisplay(),
-                  const Spacer(),
-                  _buildPurchaseButton(),
-                  const SizedBox(height: 8),
-                  _buildLaterButton(),
-                  const SizedBox(height: 16),
-                ],
+                    SizedBox(height: badgeSize * 0.55),
+                    const Text(
+                      'Exclusive Offer!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'Make a new purchase and take advantage of this insane offer!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildCoinDisplay(),
+                    const SizedBox(height: 18),
+                    _buildPriceDisplay(),
+                    SizedBox(height: isSmallScreen ? 16 : 24),
+                    _buildPurchaseButton(),
+                    const SizedBox(height: 8),
+                    _buildLaterButton(),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1174,6 +1192,7 @@ class _MinimalistPopupState extends State<_MinimalistPopup> with TickerProviderS
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final badgeSize = 110.0;
+    final isSmallScreen = screenHeight < 700; // Detect small screens
     
     return SlideInUp(
       duration: const Duration(milliseconds: 400),
@@ -1182,7 +1201,10 @@ class _MinimalistPopupState extends State<_MinimalistPopup> with TickerProviderS
         alignment: Alignment.topCenter,
         children: [
           Container(
-            height: screenHeight * 0.50,
+            constraints: BoxConstraints(
+              maxHeight: isSmallScreen ? screenHeight * 0.85 : screenHeight * 0.50,
+              minHeight: 400,
+            ),
             margin: EdgeInsets.only(top: badgeSize * 0.5),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -1201,51 +1223,53 @@ class _MinimalistPopupState extends State<_MinimalistPopup> with TickerProviderS
             ),
             child: SafeArea(
               top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    width: 32,
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  SizedBox(height: badgeSize * 0.55),
-                  const Text(
-                    'Exclusive Offer!',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      'Make a new purchase and take advantage of this insane offer!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
-                        height: 1.2,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      width: 32,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildCoinDisplay(),
-                  const SizedBox(height: 18),
-                  _buildPriceDisplay(),
-                  const Spacer(),
-                  _buildPurchaseButton(),
-                  const SizedBox(height: 8),
-                  _buildLaterButton(),
-                  const SizedBox(height: 16),
-                ],
+                    SizedBox(height: badgeSize * 0.55),
+                    const Text(
+                      'Exclusive Offer!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'Make a new purchase and take advantage of this insane offer!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildCoinDisplay(),
+                    const SizedBox(height: 18),
+                    _buildPriceDisplay(),
+                    SizedBox(height: isSmallScreen ? 16 : 24),
+                    _buildPurchaseButton(),
+                    const SizedBox(height: 8),
+                    _buildLaterButton(),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
           ),

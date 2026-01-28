@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../main.dart'; // Import navigatorKey
 import '../screens/wallet_screen.dart';
 import '../screens/chat_list_screen.dart';
+import '../screens/team_messages_screen.dart';
 
 // Top-level function to handle background messages
 @pragma('vm:entry-point')
@@ -265,6 +266,14 @@ class NotificationService {
       navigator.push(
         MaterialPageRoute(
           builder: (context) => WalletScreen(phoneNumber: phoneNumber),
+        ),
+      );
+    } else if (notificationType == 'team_message') {
+      print('📢 Team message notification tapped - Navigating to TeamMessagesScreen');
+      // Navigate to Team Messages Screen when team message notification is tapped
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => const TeamMessagesScreen(),
         ),
       );
     } else if (notificationType == 'message' || notificationType == 'chat') {

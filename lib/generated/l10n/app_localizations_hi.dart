@@ -1178,6 +1178,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get shareURL => 'URL साझा करें';
 
   @override
+  String get shareQRCode => 'Share QR Code';
+
+  @override
   String get saveQRCode => 'QR कोड सहेजें';
 
   @override

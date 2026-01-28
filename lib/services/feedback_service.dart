@@ -23,7 +23,15 @@ class FeedbackService {
     String? userPhone,
   }) async {
     try {
-      final userIdToUse = userId ?? currentUserId ?? 'anonymous';
+      // ✅ FIX: Ensure we use authenticated user's ID, not 'anonymous'
+      // Only use 'anonymous' if user is truly not authenticated
+      final userIdToUse = userId ?? currentUserId;
+      
+      // If no user ID available, user must be authenticated
+      if (userIdToUse == null) {
+        debugPrint('❌ Cannot submit feedback: User not authenticated');
+        throw Exception('User must be authenticated to submit feedback');
+      }
       
       // Get user info if available
       String? finalUserName = userName;
@@ -42,8 +50,23 @@ class FeedbackService {
         }
       }
 
+      // ✅ DEBUG: Log user info before creating document
+      debugPrint('🔍 DEBUG: Preparing to create feedback document');
+      debugPrint('   userIdToUse: $userIdToUse');
+      debugPrint('   currentUserId: $currentUserId');
+      debugPrint('   request.auth.uid: ${_auth.currentUser?.uid}');
+      debugPrint('   userId matches auth.uid: ${userIdToUse == _auth.currentUser?.uid}');
+      
+      // Verify userId matches authenticated user
+      if (userIdToUse != _auth.currentUser?.uid) {
+        debugPrint('❌ CRITICAL: userId mismatch!');
+        debugPrint('   userIdToUse: $userIdToUse');
+        debugPrint('   auth.uid: ${_auth.currentUser?.uid}');
+        throw Exception('User ID mismatch: userId must match authenticated user ID');
+      }
+
       // Create feedback document
-      await _feedbackCollection.add({
+      final feedbackData = {
         'userId': userIdToUse,
         'userName': finalUserName ?? 'Anonymous',
         'userPhone': finalUserPhone ?? 'N/A',
@@ -53,7 +76,14 @@ class FeedbackService {
         'timestamp': FieldValue.serverTimestamp(),
         'status': 'new', // new, reviewed, resolved
         'adminNotes': null,
-      });
+      };
+      
+      debugPrint('🔍 DEBUG: Feedback data prepared:');
+      debugPrint('   userId: ${feedbackData['userId']}');
+      debugPrint('   category: ${feedbackData['category']}');
+      debugPrint('   rating: ${feedbackData['rating']}');
+      
+      await _feedbackCollection.add(feedbackData);
 
       debugPrint('✅ Feedback submitted successfully');
       return true;

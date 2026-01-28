@@ -30,6 +30,7 @@ import '../models/announcement_model.dart';
 import '../models/event_model.dart';
 import '../models/banner_model.dart';
 import 'become_creator_screen.dart';
+import '../widgets/cached_avatar_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String phoneNumber;
@@ -304,88 +305,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
-                  child: user.photoURL != null && user.photoURL!.isNotEmpty
-                      ? CircleAvatar(
-                          radius: 42,
-                          backgroundColor: Colors.white,
-                          child: ClipOval(
-                            child: Image.network(
-                              user.photoURL!,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              cacheWidth: 160,
-                              cacheHeight: 160,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFFFF69B4),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                debugPrint('Error loading profile image: $error');
-                                debugPrint('Failed URL: ${user.photoURL}');
-                                return Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Color(0xFF9C27B0),
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 40,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        )
-                      : CircleAvatar(
-                          radius: 42,
-                          backgroundColor: Colors.white,
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundColor: const Color(0xFFF5F5F5),
-                            child: Image.network(
-                              'https://api.dicebear.com/7.x/avataaars/png?seed=${user.numericUserId}&backgroundColor=b6e3f4,c0aede,d1d4f9&size=80&randomizeIds=true',
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              cacheWidth: 80,
-                              cacheHeight: 80,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFFFF69B4),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                debugPrint('Error loading default avatar: $error');
-                                return Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Color(0xFF9C27B0), // purple fallback
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 45,
-                                    color: Colors.white,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
+                  child: CachedAvatarWidget(
+                    photoURL: user.photoURL,
+                    userId: user.numericUserId.isNotEmpty 
+                        ? user.numericUserId 
+                        : user.userId,
+                    radius: 42,
+                    style: 'avataaars',
+                  ),
                 ),
                 
                 const SizedBox(width: 18),

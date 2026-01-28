@@ -103,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen>
   int _currentBottomIndex = 0;
   int _topTabIndex = 0; // 0 = Explore, 1 = Live, 2 = Following, 3 = New, 4 = Nearby
   late final PageController _pageController;
+  DateTime? _lastBackPressTime; // Track last back button press for double-tap-to-exit
   final ScrollController _topMenuScrollController = ScrollController(); // For scrolling menu to active tab
   final ChatService _chatService = ChatService();
   final EventService _eventService = EventService();
@@ -698,12 +699,177 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
-      body: _buildBody(),
-      bottomNavigationBar:
-          _isLiveReelsFullScreen ? null : _buildBottomNavigationBar(),
+    return PopScope(
+      canPop: false, // Always prevent default pop - we handle navigation manually
+      onPopInvoked: (didPop) {
+        if (didPop) return; // Already popped, nothing to do
+        
+        // Handle back button based on current bottom tab
+        // Bottom tab indices: 0 = Home, 1 = Wallet, 2 = Go Live, 3 = Message, 4 = Profile/Me
+        if (_currentBottomIndex == 0) {
+          // Home tab - handle top tabs (Explore, Live, Following, New, Nearby)
+          _handleHomeTabBackButton();
+        } else if (_currentBottomIndex == 1 || _currentBottomIndex == 3 || _currentBottomIndex == 4) {
+          // Wallet, Message, or Profile tabs - implement double-tap-to-exit pattern
+          _handleBottomTabBackButton();
+        } else if (_currentBottomIndex == 2) {
+          // Go Live tab - navigate to Home tab
+          debugPrint('🔙 Android back button pressed while in Go Live tab - navigating to Home');
+          setState(() {
+            _currentBottomIndex = 0;
+          });
+        } else {
+          // Fallback - navigate to Home tab
+          debugPrint('🔙 Android back button pressed while in tab $_currentBottomIndex - navigating to Home');
+          setState(() {
+            _currentBottomIndex = 0;
+          });
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFFFF),
+        body: _buildBody(),
+        bottomNavigationBar:
+            _isLiveReelsFullScreen ? null : _buildBottomNavigationBar(),
+      ),
     );
+  }
+  
+  // Handle back button for Home tab (with top tabs)
+  void _handleHomeTabBackButton() {
+    // Handle back button based on current top tab
+    // Tab indices: 0 = Explore, 1 = Live, 2 = Following, 3 = New, 4 = Nearby
+    if (_topTabIndex == 1) {
+      // In Live tab - navigate to Explore
+      debugPrint('🔙 Android back button pressed while in Live tab');
+      _navigateToExploreTab();
+    } else if (_topTabIndex == 0 || _topTabIndex == 2 || _topTabIndex == 3 || _topTabIndex == 4) {
+      // In Explore, Following, New, or Nearby tabs - implement double-tap-to-exit pattern
+      // These are all home feature tabs, so same behavior
+      final now = DateTime.now();
+      
+      if (_lastBackPressTime == null || 
+          now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+        // First press (or press after 2+ seconds) - show exit confirmation
+        _lastBackPressTime = now;
+        final tabName = _topTabIndex == 0 ? 'Explore' 
+                      : _topTabIndex == 2 ? 'Following' 
+                      : _topTabIndex == 3 ? 'New' 
+                      : 'Nearby';
+        debugPrint('🔙 Android back button pressed while in $tabName tab - showing exit confirmation');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Container(
+              width: 180,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image(
+                    image: const AssetImage('assets/images/logopink.png'),
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 12),
+                  const Flexible(
+                    child: Text(
+                      'Press back again to exit',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            backgroundColor: Colors.black87,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+            margin: const EdgeInsets.only(bottom: 50, left: 16, right: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: EdgeInsets.zero,
+          ),
+        );
+      } else {
+        // Second press within 2 seconds - exit app
+        debugPrint('🔙 Android back button pressed again within 2 seconds - exiting app');
+        SystemNavigator.pop(); // Exit app
+      }
+    } else {
+      // Fallback for any other tabs - navigate to Explore
+      debugPrint('🔙 Android back button pressed while in tab $_topTabIndex - navigating to Explore');
+      _navigateToExploreTab();
+    }
+  }
+  
+  // Handle back button for bottom tabs (Wallet, Message, Profile)
+  void _handleBottomTabBackButton() {
+    final now = DateTime.now();
+    
+    if (_lastBackPressTime == null || 
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      // First press (or press after 2+ seconds) - show exit confirmation
+      _lastBackPressTime = now;
+      final tabName = _currentBottomIndex == 1 ? 'Wallet' 
+                    : _currentBottomIndex == 3 ? 'Message' 
+                    : 'Profile';
+      debugPrint('🔙 Android back button pressed while in $tabName tab - showing exit confirmation');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Container(
+            width: 180,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image(
+                  image: const AssetImage('assets/images/logopink.png'),
+                  width: 20,
+                  height: 20,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(width: 12),
+                const Flexible(
+                  child: Text(
+                    'Press back again to exit',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          backgroundColor: Colors.black87,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          margin: const EdgeInsets.only(bottom: 50, left: 16, right: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: EdgeInsets.zero,
+        ),
+      );
+    } else {
+      // Second press within 2 seconds - exit app
+      debugPrint('🔙 Android back button pressed again within 2 seconds - exiting app');
+      SystemNavigator.pop(); // Exit app
+    }
   }
 
   Widget _buildBody() {
@@ -761,27 +927,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
-      child: PopScope(
-        canPop: false, // Always prevent default pop - we handle navigation manually
-        onPopInvoked: (didPop) {
-          if (didPop) return; // Already popped, nothing to do
-          
-          // Handle back button based on current tab
-          if (_topTabIndex == 1) {
-            // In Live tab - navigate to Explore
-            debugPrint('🔙 Android back button pressed while in Live tab');
-            _navigateToExploreTab();
-          } else if (_topTabIndex == 0) {
-            // In Explore tab - do nothing (prevent app closure)
-            debugPrint('🔙 Android back button pressed while in Explore tab - ignoring to prevent app closure');
-          } else {
-            // In other tabs - navigate to Explore
-            debugPrint('🔙 Android back button pressed while in tab $_topTabIndex - navigating to Explore');
-            _navigateToExploreTab();
-          }
-        },
-        child: SafeArea(
-          child: Stack(
+      child: SafeArea(
+        child: Stack(
             children: [
               Column(
                 children: [
@@ -852,8 +999,7 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   // Navigate to Explore tab (used by back button and Android back button)
@@ -1517,6 +1663,26 @@ class _HomeScreenState extends State<HomeScreen>
   // ========== EXPLORE CONTENT ==========
   Widget _buildExploreContent() {
     debugPrint('🚀 [EXPLORE] _buildExploreContent() called');
+    
+    // ✅ FIX: Check authentication before setting up streams
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      debugPrint('⚠️ [EXPLORE] User not authenticated - showing empty state');
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Please login to view content',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+    
     final liveStreamService = LiveStreamService();
 
     // Combine two streams: All hosts + Live streams status
@@ -1546,9 +1712,32 @@ class _HomeScreenState extends State<HomeScreen>
               );
             }
 
-            // Error state
+            // Error state - Handle permission-denied specifically
             if (hostsSnapshot.hasError || liveStreamsSnapshot.hasError) {
               if (!mounted) return const SizedBox.shrink();
+              
+              // ✅ FIX: Check for permission-denied error
+              final error = hostsSnapshot.hasError 
+                  ? hostsSnapshot.error.toString() 
+                  : liveStreamsSnapshot.error.toString();
+              
+              if (error.contains('permission-denied')) {
+                debugPrint('⚠️ [EXPLORE] Permission denied - user may have logged out');
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline, size: 60, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Access denied. Please login again.',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1972,11 +2161,28 @@ class _HomeScreenState extends State<HomeScreen>
       borderRadius: const BorderRadius.all(Radius.circular(10)),
       child: hostId != null
           ? StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(hostId)
-                  .snapshots(),
+              // ✅ FIX: Only create stream if user is authenticated
+              stream: _auth.currentUser != null
+                  ? FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(hostId)
+                      .snapshots()
+                  : null,
               builder: (context, userSnapshot) {
+                // ✅ FIX: Handle permission-denied error
+                if (userSnapshot.hasError) {
+                  final error = userSnapshot.error.toString();
+                  if (error.contains('permission-denied')) {
+                    debugPrint('⚠️ Permission denied loading host profile');
+                    // Return placeholder or empty
+                    return Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(Icons.person, size: 40, color: Colors.grey),
+                      ),
+                    );
+                  }
+                }
                 String? coverImageUrl;
 
                 if (userSnapshot.hasData && userSnapshot.data!.exists) {
@@ -2495,6 +2701,24 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== FOLLOWING CONTENT ==========
   Widget _buildFollowingContent() {
+    // ✅ FIX: Check authentication before setting up streams
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Please login to view content',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+    
     final liveStreamService = LiveStreamService();
 
     // Combine two streams: All hosts + Live streams status
@@ -2509,6 +2733,26 @@ class _HomeScreenState extends State<HomeScreen>
               .limit(100) // Increased to ensure live hosts are included
               .snapshots(),
           builder: (context, hostsSnapshot) {
+            // ✅ FIX: Handle permission-denied error
+            if (hostsSnapshot.hasError) {
+              final error = hostsSnapshot.error.toString();
+              if (error.contains('permission-denied')) {
+                debugPrint('⚠️ [FOLLOWING] Permission denied');
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline, size: 60, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Access denied. Please login again.',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            }
             // Loading state - wait only for hosts data
             if (hostsSnapshot.connectionState == ConnectionState.waiting &&
                 !hostsSnapshot.hasData) {
@@ -2519,9 +2763,32 @@ class _HomeScreenState extends State<HomeScreen>
               );
             }
 
-            // Error state
+            // Error state - Handle permission-denied specifically
             if (hostsSnapshot.hasError || liveStreamsSnapshot.hasError) {
               if (!mounted) return const SizedBox.shrink();
+              
+              // ✅ FIX: Check for permission-denied error
+              final error = hostsSnapshot.hasError 
+                  ? hostsSnapshot.error.toString() 
+                  : liveStreamsSnapshot.error.toString();
+              
+              if (error.contains('permission-denied')) {
+                debugPrint('⚠️ Permission denied - user may have logged out');
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline, size: 60, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Access denied. Please login again.',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2826,6 +3093,24 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== NEW HOSTS CONTENT ==========
   Widget _buildNewHostsContent() {
+    // ✅ FIX: Check authentication before setting up streams
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Please login to view content',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+    
     final liveStreamService = LiveStreamService();
 
     // Combine two streams: All hosts + Live streams status
@@ -2850,8 +3135,29 @@ class _HomeScreenState extends State<HomeScreen>
               );
             }
 
-            // Error state
+            // Error state - Handle permission-denied specifically
             if (hostsSnapshot.hasError || liveStreamsSnapshot.hasError) {
+              // ✅ FIX: Check for permission-denied error
+              final error = hostsSnapshot.hasError 
+                  ? hostsSnapshot.error.toString() 
+                  : liveStreamsSnapshot.error.toString();
+              
+              if (error.contains('permission-denied')) {
+                debugPrint('⚠️ [NEW] Permission denied');
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline, size: 60, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Access denied. Please login again.',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
+              }
               if (!mounted) return const SizedBox.shrink();
               return Center(
                 child: Column(

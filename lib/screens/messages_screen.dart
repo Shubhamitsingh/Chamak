@@ -8,7 +8,9 @@ import 'package:Chamak/generated/l10n/app_localizations.dart';
 import '../models/chat_model.dart';
 import '../services/chat_service.dart';
 import '../services/database_service.dart';
+import '../services/team_message_service.dart';
 import 'chat_screen.dart';
+import 'team_messages_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
   final bool hideSearchBar;
@@ -30,6 +32,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ChatService _chatService = ChatService();
   final DatabaseService _databaseService = DatabaseService();
+  final TeamMessageService _teamMessageService = TeamMessageService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _currentUserId;
@@ -123,7 +126,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           // Search Bar (only if not hidden)
           if (!widget.hideSearchBar) _buildSearchBar(),
           
-          // Messages List
+          // Messages List (includes Chamakz Team container as first item)
           Expanded(
             child: _buildMessagesList(),
           ),
@@ -142,6 +145,143 @@ class _MessagesScreenState extends State<MessagesScreen> {
               backgroundColor: const Color(0xFF9C27B0),
               child: const Icon(Icons.edit),
             ),
+    );
+  }
+
+  // ========== CHAMAKZ TEAM CHAT ITEM ==========
+  Widget _buildChamakzTeamChatItem() {
+    // Same structure as chat list items with unread count badge
+    return StreamBuilder<int>(
+      stream: _teamMessageService.getUnreadTeamMessagesCount(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+        final hasUnread = unreadCount > 0;
+
+        return Material(
+          color: Colors.transparent,
+          elevation: 0,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TeamMessagesScreen(),
+                ),
+              );
+            },
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  // Avatar - Increased size
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(0xFFFF1B7C).withValues(alpha: 0.1),
+                        backgroundImage: const AssetImage('assets/images/logopink.png'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  // Name and Message - Increased size
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                'Chamakz Team',
+                                style: TextStyle(
+                                  fontWeight: hasUnread ? FontWeight.bold : FontWeight.bold,
+                                  fontSize: 16,
+                                  color: const Color(0xFFFF1B7C),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Official messages from team',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: hasUnread ? Colors.black87 : Colors.grey[600],
+                                  fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            // Unread Badge
+                            if (hasUnread) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFF1B7C), Color(0xFFE0166C)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Time - Empty (same structure as chat items)
+                  Text(
+                    '',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -234,39 +374,53 @@ class _MessagesScreenState extends State<MessagesScreen> {
                        lastMessage.contains(_searchQuery);
               }).toList();
 
-        // Empty state
-        if (filteredChats.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset(
-                  'assets/images/chat.png',
-                  width: 64,
-                  height: 64,
-                  color: Colors.grey[400],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _searchQuery.isEmpty
-                      ? 'No messages yet'
-                      : 'No messages found',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Build list
+        // Build list with Chamakz Team as first chat item (always scrollable)
+        // Calculate total items: Chamakz Team (1) + chats + empty state if needed
+        final hasChats = filteredChats.isNotEmpty;
+        final totalItems = hasChats 
+            ? filteredChats.length + 1  // Chamakz Team + chats
+            : (_searchQuery.isEmpty ? 1 : 2); // Chamakz Team only, or + empty message if searching
+        
         return ListView.builder(
           padding: EdgeInsets.zero,
-          itemCount: filteredChats.length,
+          physics: const AlwaysScrollableScrollPhysics(), // ✅ Ensure scrolling is always enabled
+          itemCount: totalItems,
           itemBuilder: (context, index) {
-            final chat = filteredChats[index];
+            // First item (index 0) is always Chamakz Team chat item
+            if (index == 0) {
+              return _buildChamakzTeamChatItem();
+            }
+            
+            // If no chats and searching, show empty message at index 1
+            if (!hasChats && _searchQuery.isNotEmpty && index == 1) {
+              return Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/chat.png',
+                        width: 64,
+                        height: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No messages found',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            
+            // Other items are regular chat messages (adjust index by -1)
+            final chat = filteredChats[index - 1];
             return _buildMessageTileFromChat(chat);
           },
         );

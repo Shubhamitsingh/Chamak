@@ -1193,6 +1193,9 @@ class AppLocalizationsKn extends AppLocalizations {
   String get shareURL => 'URL ಹಂಚಿಕೊಳ್ಳಿ';
 
   @override
+  String get shareQRCode => 'Share QR Code';
+
+  @override
   String get saveQRCode => 'QR ಕೋಡ್ ಉಳಿಸಿ';
 
   @override

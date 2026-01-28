@@ -313,6 +313,16 @@ class _PayPrimePaymentWebViewScreenState extends State<PayPrimePaymentWebViewScr
       },
       onError: (error) {
         debugPrint('❌ Error listening to payment status: $error');
+        
+        // ✅ FIX: Handle permission-denied gracefully
+        final errorString = error.toString();
+        if (errorString.contains('permission-denied')) {
+          debugPrint('⚠️ Permission denied - user may have logged out');
+          // Cancel listener to prevent crashes
+          _paymentSubscription?.cancel();
+          return;
+        }
+        
         // If listener fails, polling will handle it
       },
     );

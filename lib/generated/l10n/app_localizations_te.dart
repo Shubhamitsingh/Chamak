@@ -1189,6 +1189,9 @@ class AppLocalizationsTe extends AppLocalizations {
   String get shareURL => 'URL షేర్ చేయండి';
 
   @override
+  String get shareQRCode => 'Share QR Code';
+
+  @override
   String get saveQRCode => 'QR కోడ్‌ను సేవ్ చేయండి';
 
   @override

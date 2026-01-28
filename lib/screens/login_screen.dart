@@ -318,13 +318,15 @@ class _LoginScreenState extends State<LoginScreen> {
               try {
                 // If there's a route to pop back to, use pop
                 // Otherwise, navigate to splash screen (initial route scenario)
+                // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
                 } else {
-                  Navigator.of(context).pushReplacement(
+                  Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (context) => const SplashScreen(),
                     ),
+                    (route) => false, // Clear all previous routes
                   );
                 }
               } catch (e) {

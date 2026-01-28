@@ -19,6 +19,113 @@ admin.initializeApp();
 setGlobalOptions({maxInstances: 10});
 
 /**
+ * Send notification when a new team message is created (broadcast to all users)
+ */
+exports.sendTeamMessageNotification = onDocumentCreated(
+    "team_messages/{messageId}",
+    async (event) => {
+      try {
+        const messageData = event.data.data();
+        const messageId = event.params.messageId;
+
+        console.log(`📢 New team message created: ${messageId}`);
+
+        // Get all users with FCM tokens
+        const usersSnapshot = await admin.firestore()
+            .collection("users")
+            .where("fcmToken", "!=", null)
+            .get();
+
+        if (usersSnapshot.empty) {
+          console.log("No users with FCM tokens found");
+          return null;
+        }
+
+        console.log(`📤 Sending team message notification to ${usersSnapshot.size} users`);
+
+        const senderName = messageData.senderName || "Chamakz Team";
+        const messageText = messageData.message || "";
+        const truncatedMessage = messageText.length > 100 
+            ? messageText.substring(0, 100) + "..." 
+            : messageText;
+
+        // Prepare notification message
+        const notification = {
+          title: senderName,
+          body: truncatedMessage,
+        };
+
+        const data = {
+          type: "team_message",
+          messageId: messageId,
+          senderName: senderName,
+        };
+
+        // Send notifications to all users in batches
+        const batchSize = 500; // FCM allows up to 500 tokens per batch
+        const tokens = usersSnapshot.docs
+            .map(doc => doc.data().fcmToken)
+            .filter(token => token && token.length > 0);
+
+        let successCount = 0;
+        let failureCount = 0;
+
+        // Process in batches
+        for (let i = 0; i < tokens.length; i += batchSize) {
+          const batch = tokens.slice(i, i + batchSize);
+          
+          try {
+            const message = {
+              notification: notification,
+              data: data,
+              tokens: batch, // Send to multiple tokens
+              android: {
+                priority: "high",
+                notification: {
+                  channelId: "chamak_messages",
+                  sound: "default",
+                  priority: "high",
+                  defaultVibrateTimings: true,
+                  defaultSound: true,
+                },
+              },
+              apns: {
+                headers: {
+                  "apns-priority": "10",
+                },
+                payload: {
+                  aps: {
+                    alert: notification,
+                    sound: "default",
+                    badge: 1,
+                  },
+                },
+              },
+            };
+
+            const response = await admin.messaging().sendEachForMulticast(message);
+            successCount += response.successCount;
+            failureCount += response.failureCount;
+
+            if (response.failureCount > 0) {
+              console.log(`⚠️ ${response.failureCount} notifications failed in batch`);
+            }
+          } catch (error) {
+            console.error(`❌ Error sending batch notifications:`, error);
+            failureCount += batch.length;
+          }
+        }
+
+        console.log(`✅ Team message notifications sent: ${successCount} success, ${failureCount} failed`);
+        return {success: successCount, failures: failureCount};
+      } catch (error) {
+        console.error("❌ Error sending team message notifications:", error);
+        return null;
+      }
+    }
+);
+
+/**
  * Send notification when a new message notification request is created
  */
 exports.sendMessageNotification = onDocumentCreated(
@@ -33,10 +140,111 @@ exports.sendMessageNotification = onDocumentCreated(
           return null;
         }
 
+        // Handle broadcast type differently
+        if (data.type === "broadcast") {
+          console.log("📢 Broadcast notification request detected");
+          // For broadcast, get all users with FCM tokens
+          const usersSnapshot = await admin.firestore()
+              .collection("users")
+              .where("fcmToken", "!=", null)
+              .get();
+
+          if (usersSnapshot.empty) {
+            console.log("No users with FCM tokens found for broadcast");
+            await event.data.ref.update({
+              processed: true,
+              processedAt: admin.firestore.FieldValue.serverTimestamp(),
+              error: "No users with FCM tokens",
+            });
+            return null;
+          }
+
+          const tokens = usersSnapshot.docs
+              .map(doc => doc.data().fcmToken)
+              .filter(token => token && token.length > 0);
+
+          const notification = data.notification || {};
+          const messageData = data.data || {};
+
+          // Determine notification channel
+          const notificationType = messageData.type || "message";
+          const channelId = notificationType === "coin_addition" 
+              ? "chamak_wallet" 
+              : "chamak_messages";
+
+          // Send to all users in batches
+          const batchSize = 500;
+          let successCount = 0;
+          let failureCount = 0;
+
+          for (let i = 0; i < tokens.length; i += batchSize) {
+            const batch = tokens.slice(i, i + batchSize);
+            
+            try {
+              const message = {
+                notification: {
+                  title: notification.title || "Chamakz Team",
+                  body: notification.body || "You have a new message",
+                },
+                data: messageData,
+                tokens: batch,
+                android: {
+                  priority: "high",
+                  notification: {
+                    channelId: channelId,
+                    sound: "default",
+                    priority: "high",
+                    defaultVibrateTimings: true,
+                    defaultSound: true,
+                  },
+                },
+                apns: {
+                  headers: {
+                    "apns-priority": "10",
+                  },
+                  payload: {
+                    aps: {
+                      alert: {
+                        title: notification.title || "Chamakz Team",
+                        body: notification.body || "You have a new message",
+                      },
+                      sound: "default",
+                      badge: 1,
+                    },
+                  },
+                },
+              };
+
+              const response = await admin.messaging().sendEachForMulticast(message);
+              successCount += response.successCount;
+              failureCount += response.failureCount;
+            } catch (error) {
+              console.error(`❌ Error sending broadcast batch:`, error);
+              failureCount += batch.length;
+            }
+          }
+
+          await event.data.ref.update({
+            processed: true,
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            successCount: successCount,
+            failureCount: failureCount,
+          });
+
+          console.log(`✅ Broadcast notification sent: ${successCount} success, ${failureCount} failed`);
+          return {success: successCount, failures: failureCount};
+        }
+
+        // Regular single-user notification
         const {token, notification, data: messageData} = data;
 
         if (!token) {
           console.error("No FCM token provided");
+          await event.data.ref.update({
+            processed: true,
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            error: "No FCM token provided",
+          });
           return null;
         }
 

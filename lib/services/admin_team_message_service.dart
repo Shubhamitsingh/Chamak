@@ -32,24 +32,26 @@ class AdminTeamMessageService {
         'imageUrl': imageUrl,
       });
 
-      // Send push notifications to all users via Firestore trigger
-      // This will be handled by Cloud Functions listening to team_messages collection
-      // For now, we'll create a notification request document
+      // Send push notifications to all users via Cloud Function trigger
+      // Create a broadcast notification request that will be handled by Cloud Functions
       try {
         await _firestore.collection('notificationRequests').add({
-          'type': 'broadcast',
+          'type': 'broadcast', // Special type for broadcast messages
           'notification': {
             'title': senderName,
-            'body': message,
+            'body': message.length > 100 ? '${message.substring(0, 100)}...' : message, // Truncate long messages
           },
           'data': {
             'type': 'team_message',
             'messageId': messageRef.id,
+            'senderName': senderName,
           },
           'createdAt': FieldValue.serverTimestamp(),
+          'processed': false,
         });
+        debugPrint('✅ Broadcast notification request created for team message');
       } catch (e) {
-        debugPrint('Warning: Failed to create notification request: $e');
+        debugPrint('⚠️ Warning: Failed to create notification request: $e');
         // Don't fail the message sending if notification fails
       }
 

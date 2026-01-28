@@ -147,22 +147,26 @@ class _OtpScreenState extends State<OtpScreen> {
           
           if (profileCompleted) {
             // Profile already completed → Go to Home
-            Navigator.of(context).pushReplacement(
+            // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => HomeScreen(
                   phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
                 ),
               ),
+              (route) => false, // Clear all previous routes - prevent back navigation to auth screens
             );
           } else {
             // Profile not completed → Go to Set Profile
-            Navigator.of(context).pushReplacement(
+            // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => SetProfileScreen(
                   phoneNumber: widget.phoneNumber,
                   countryCode: widget.countryCode,
                 ),
               ),
+              (route) => false, // Clear all previous routes - prevent back navigation to auth screens
             );
           }
         } else {

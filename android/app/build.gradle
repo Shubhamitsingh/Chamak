@@ -36,18 +36,25 @@ android {
         applicationId = "com.chamakz.app"
         minSdkVersion = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.0.8"
+        versionCode = 21
+        versionName = "1.0.9"
         
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
     }
     
+    // ✅ FIX: Ensure native libraries are properly packaged
+    // This prevents libflutter.so from being excluded
     packagingOptions {
         resources {
             excludes += ['META-INF/DEPENDENCIES', 'META-INF/NOTICE', 'META-INF/LICENSE', '/META-INF/{AL2.0,LGPL2.1}']
             pickFirsts += ['lib/**/libc++_shared.so']
+            // CRITICAL: Do NOT exclude native libraries
+            // Do NOT add: excludes += ['lib/**/libflutter.so']
+        }
+        jniLibs {
+            useLegacyPackaging = false  // Use new packaging system
         }
     }
     

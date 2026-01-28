@@ -1176,6 +1176,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareURL => 'Share URL';
 
   @override
+  String get shareQRCode => 'Share QR Code';
+
+  @override
   String get saveQRCode => 'Save QR Code';
 
   @override

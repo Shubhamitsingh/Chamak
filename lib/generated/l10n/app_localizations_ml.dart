@@ -1182,6 +1182,9 @@ class AppLocalizationsMl extends AppLocalizations {
   String get shareURL => 'URL പങ്കിടുക';
 
   @override
+  String get shareQRCode => 'Share QR Code';
+
+  @override
   String get saveQRCode => 'QR കോഡ് സേവ് ചെയ്യുക';
 
   @override

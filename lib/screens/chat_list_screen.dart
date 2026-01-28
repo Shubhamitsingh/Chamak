@@ -12,11 +12,13 @@ import '../services/chat_service.dart';
 import '../services/online_status_service.dart';
 import '../services/call_request_service.dart';
 import '../services/agora_token_service.dart';
+import '../services/team_message_service.dart';
 import '../widgets/call_request_dialog.dart';
 import 'chat_screen.dart';
 import 'user_search_screen.dart';
 import 'private_call_screen.dart';
 import '../services/search_service.dart';
+import 'team_messages_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -31,6 +33,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final OnlineStatusService _onlineStatusService = OnlineStatusService();
   final CallRequestService _callRequestService = CallRequestService();
   final AgoraTokenService _tokenService = AgoraTokenService();
+  final TeamMessageService _teamMessageService = TeamMessageService();
   String? _currentUserId;
   
   // Incoming call state
@@ -52,6 +55,143 @@ class _ChatListScreenState extends State<ChatListScreen> {
   void dispose() {
     _incomingCallSubscription?.cancel();
     super.dispose();
+  }
+
+  // ========== CHAMAKZ TEAM CHAT ITEM ==========
+  Widget _buildChamakzTeamChatItem() {
+    // Same structure as chat list items with unread count badge
+    return StreamBuilder<int>(
+      stream: _teamMessageService.getUnreadTeamMessagesCount(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+        final hasUnread = unreadCount > 0;
+
+        return Material(
+          color: Colors.transparent,
+          elevation: 0,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TeamMessagesScreen(),
+                ),
+              );
+            },
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  // Avatar - Increased size
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(0xFFFF1B7C).withValues(alpha: 0.1),
+                        backgroundImage: const AssetImage('assets/images/logopink.png'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  // Name and Message - Increased size
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                'Chamakz Team',
+                                style: TextStyle(
+                                  fontWeight: hasUnread ? FontWeight.bold : FontWeight.bold,
+                                  fontSize: 16,
+                                  color: const Color(0xFFFF1B7C),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Official messages from team',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: hasUnread ? Colors.black87 : Colors.grey[600],
+                                  fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            // Unread Badge
+                            if (hasUnread) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFF1B7C), Color(0xFFE0166C)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Time - Empty (same structure as chat items)
+                  Text(
+                    '',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   String _formatTimestamp(DateTime timestamp) {
@@ -267,7 +407,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       body: Column(
         children: [
-          // Chat List
+          // Chat List (includes Chamakz Team as first item)
           Expanded(
             child: StreamBuilder<List<ChatModel>>(
               stream: _chatService.getUserChats(_currentUserId!),
@@ -391,11 +531,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
             );
           }
 
-          // Chat List
+          // Chat List with Chamakz Team as first item (scrollable)
           return ListView.builder(
-            itemCount: chats.length,
+            physics: const AlwaysScrollableScrollPhysics(), // ✅ Ensure scrolling is always enabled
+            itemCount: chats.length + 1, // +1 for Chamakz Team item
             itemBuilder: (context, index) {
-              final chat = chats[index];
+              // First item (index 0) is always Chamakz Team chat item
+              if (index == 0) {
+                return _buildChamakzTeamChatItem();
+              }
+              // Other items are regular chat messages (adjust index by -1)
+              final chat = chats[index - 1];
               return _buildChatItem(chat);
             },
           );
@@ -610,7 +756,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: hasUnread 
-                                ? const Color(0xFF04B104).withValues(alpha:0.15)
+                                ? const Color(0xFFFF1B7C).withValues(alpha:0.15)
                                 : Colors.grey[100],
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -618,7 +764,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             _formatTimestamp(chat.lastMessageTime),
                             style: TextStyle(
                               fontSize: 11,
-                              color: hasUnread ? const Color(0xFF04B104) : Colors.grey[600],
+                              color: hasUnread ? const Color(0xFFFF1B7C) : Colors.grey[600],
                               fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
                             ),
                           ),
@@ -659,14 +805,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF04B104), Color(0xFF038C03)],
+                                colors: [Color(0xFFFF1B7C), Color(0xFFE0166C)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(10),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF04B104).withValues(alpha:0.3),
+                                  color: const Color(0xFFFF1B7C).withValues(alpha:0.3),
                                   blurRadius: 4,
                                   offset: const Offset(0, 1),
                                 ),

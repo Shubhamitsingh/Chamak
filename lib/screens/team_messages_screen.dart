@@ -59,52 +59,18 @@ class _TeamMessagesScreenState extends State<TeamMessagesScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // App Logo
-            Image.asset(
-              'assets/images/logopink.png',
-              width: 28,
-              height: 28,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Chamakz Team',
-              style: TextStyle(
-                color: Colors.black87,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        title: const Text(
+          'Chamakz Team',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          // Read-only indicator
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: const Color(0xFFFF1B7C).withOpacity(0.1),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.info_outline, size: 16, color: Color(0xFFFF1B7C)),
-                SizedBox(width: 8),
-                Text(
-                  'Official messages from Chamakz Team - Read only',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFFFF1B7C),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
           // Messages List
           Expanded(
             child: StreamBuilder<List<TeamMessageModel>>(
@@ -191,7 +157,12 @@ class _TeamMessagesScreenState extends State<TeamMessagesScreen> {
 
                 // Messages List
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 12,
+                    bottom: 80, // Maximum space at bottom for better visibility
+                  ),
                   reverse: false, // Show newest at top
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
@@ -209,8 +180,8 @@ class _TeamMessagesScreenState extends State<TeamMessagesScreen> {
 
   Widget _buildMessageItem(TeamMessageModel message) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
@@ -228,16 +199,16 @@ class _TeamMessagesScreenState extends State<TeamMessagesScreen> {
               // App Logo
               Image.asset(
                 'assets/images/logopink.png',
-                width: 24,
-                height: 24,
+                width: 20,
+                height: 20,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               // Team Name
               Text(
                 message.senderName,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFFF1B7C),
                 ),
@@ -247,13 +218,13 @@ class _TeamMessagesScreenState extends State<TeamMessagesScreen> {
               Text(
                 _formatTimestamp(message.timestamp),
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Colors.grey[600],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           // Message Text
           if (message.imageUrl != null) ...[
             // Image
@@ -265,25 +236,25 @@ class _TeamMessagesScreenState extends State<TeamMessagesScreen> {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    height: 200,
+                    height: 150,
                     color: Colors.grey[300],
                     child: const Icon(
                       Icons.image_not_supported,
                       color: Colors.grey,
-                      size: 48,
+                      size: 40,
                     ),
                   );
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
           ],
           Text(
             message.message,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 14,
               color: Colors.grey[800],
-              height: 1.5,
+              height: 1.4,
             ),
           ),
         ],

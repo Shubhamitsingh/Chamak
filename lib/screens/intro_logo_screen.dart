@@ -88,10 +88,12 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
       } catch (e) {
         debugPrint('Error getting current user: $e');
         // Fallback: navigate to splash screen
+        // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
         if (mounted) {
           try {
-            Navigator.of(context).pushReplacement(
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const SplashScreen()),
+              (route) => false, // Clear all previous routes
             );
           } catch (navError) {
             debugPrint('Navigation error: $navError');
@@ -127,31 +129,37 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
             
             if (profileCompleted) {
               // Profile completed → Go to Home
-              Navigator.of(context).pushReplacement(
+              // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
+              Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (_) => HomeScreen(
                     phoneNumber: phoneNumber,
                   ),
                 ),
+                (route) => false, // Clear all previous routes - prevent back navigation to auth screens
               );
             } else {
               // Profile not completed → Go to Set Profile
-              Navigator.of(context).pushReplacement(
+              // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
+              Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (_) => SetProfileScreen(
                     phoneNumber: phoneOnly,
                     countryCode: countryCode,
                   ),
                 ),
+                (route) => false, // Clear all previous routes - prevent back navigation to auth screens
               );
             }
           } catch (e) {
             debugPrint('Navigation error: $e');
             // Fallback: navigate to splash screen
+            // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
             if (mounted) {
               try {
-                Navigator.of(context).pushReplacement(
+                Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const SplashScreen()),
+                  (route) => false, // Clear all previous routes
                 );
               } catch (navError) {
                 debugPrint('Fallback navigation error: $navError');
@@ -161,10 +169,12 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
         }
       } else {
         // Not logged in → go to Splash (then user taps Continue to Login)
+        // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
         if (mounted) {
           try {
-            Navigator.of(context).pushReplacement(
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const SplashScreen()),
+              (route) => false, // Clear all previous routes
             );
           } catch (e) {
             debugPrint('Navigation error: $e');
@@ -174,10 +184,12 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
     } catch (e) {
       debugPrint('Error in _decideNext: $e');
       // Fallback navigation
+      // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
       if (mounted) {
         try {
-          Navigator.of(context).pushReplacement(
+          Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const SplashScreen()),
+            (route) => false, // Clear all previous routes
           );
         } catch (navError) {
           debugPrint('Fallback navigation error: $navError');

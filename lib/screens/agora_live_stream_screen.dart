@@ -2339,6 +2339,16 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       }
     }, onError: (error) {
       debugPrint('❌ Error in host status listener: $error');
+      
+      // ✅ FIX: Handle permission-denied gracefully
+      final errorString = error.toString();
+      if (errorString.contains('permission-denied')) {
+        debugPrint('⚠️ Permission denied - user may have logged out');
+        // Cancel listener to prevent crashes
+        _hostStatusSubscription?.cancel();
+        return;
+      }
+      
       // On error, assume host is available (fail open)
       if (mounted && _isHostInCall != false) {
         setState(() {
@@ -2531,6 +2541,15 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       },
       onError: (error) {
         debugPrint('❌ AgoraLiveStream: Error in balance listener: $error');
+        
+        // ✅ FIX: Handle permission-denied gracefully
+        final errorString = error.toString();
+        if (errorString.contains('permission-denied')) {
+          debugPrint('⚠️ Permission denied - user may have logged out');
+          // Cancel listener to prevent crashes
+          _balanceSubscription?.cancel();
+          return;
+        }
       },
     );
   }

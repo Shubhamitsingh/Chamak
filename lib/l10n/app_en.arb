@@ -441,6 +441,7 @@
   },
   "downlineRateWarning": "When rate is 0%, the downline have no earnings.",
   "shareURL": "Share URL",
+  "shareQRCode": "Share QR Code",
   "saveQRCode": "Save QR Code",
   "appLinkCopied": "App link copied to clipboard!",
   "qrCodeSaved": "QR code saved to gallery!",

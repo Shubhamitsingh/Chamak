@@ -62,22 +62,26 @@ class _SplashScreenState extends State<SplashScreen> {
             
             if (profileCompleted) {
               // Profile completed → Go to Home
-              Navigator.of(context).pushReplacement(
+              // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
+              Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) => HomeScreen(
                     phoneNumber: phoneNumber,
                   ),
                 ),
+                (route) => false, // Clear all previous routes - prevent back navigation to auth screens
               );
             } else {
               // Profile not completed → Go to Set Profile
-              Navigator.of(context).pushReplacement(
+              // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
+              Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) => SetProfileScreen(
                     phoneNumber: phoneOnly,
                     countryCode: countryCode,
                   ),
                 ),
+                (route) => false, // Clear all previous routes - prevent back navigation to auth screens
               );
             }
           } catch (e) {
@@ -98,10 +102,12 @@ class _SplashScreenState extends State<SplashScreen> {
     
     try {
       // Navigate to login when user clicks "Continue with Phone" button
-      Navigator.of(context).pushReplacement(
+      // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => const LoginScreen(),
         ),
+        (route) => false, // Clear all previous routes - prevent back navigation to auth screens
       );
     } catch (e) {
       debugPrint('Navigation error in _navigateToLogin: $e');
