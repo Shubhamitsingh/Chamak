@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'notification_settings_screen.dart';
 import 'language_selection_screen.dart';
-import 'privacy_policy_screen.dart';
-import 'terms_conditions_screen.dart';
+import 'policy_screen.dart';
 import 'about_screen.dart';
 import 'feedback_screen.dart';
-import 'update_details_screen.dart';
 import 'general_screen.dart';
+import 'account_security_screen.dart';
 import '../providers/language_provider.dart';
-import '../services/update_service.dart';
-import '../services/in_app_update_service.dart';
+import '../services/database_service.dart';
+import '../services/id_generator_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,6 +21,38 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final DatabaseService _databaseService = DatabaseService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _phoneNumber;
+  String? _userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        return;
+      }
+
+      // Get phone number from Firebase Auth
+      _phoneNumber = currentUser.phoneNumber ?? '';
+
+      // Get user data from Firestore to get numericUserId
+      final userData = await _databaseService.getUserData(currentUser.uid);
+      if (userData != null && mounted) {
+        setState(() {
+          _userId = IdGeneratorService.getDisplayId(userData.numericUserId);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user data in settings: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: ListView(
           children: [
+                // 1. General
                 _buildSettingItem(
                   title: 'General',
                   onTap: () {
@@ -63,6 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
+                // 2. Language
                 _buildSettingItem(
                   title: AppLocalizations.of(context)!.language,
                   subtitle: Provider.of<LanguageProvider>(context).currentLanguageNativeName,
@@ -79,6 +113,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
+                // 3. Account Security (moved up from position 4)
+                _buildSettingItem(
+                  title: AppLocalizations.of(context)!.accountSecurity,
+                  subtitle: AppLocalizations.of(context)!.phonePasswordAccountSettings,
+                  onTap: () {
+                    if (_phoneNumber == null || _userId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)!.errorLoadingProfile),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                      return;
+                    }
+                    try {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AccountSecurityScreen(
+                            phoneNumber: _phoneNumber!,
+                            userId: _userId!,
+                          ),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint('Error navigating to account security: $e');
+                    }
+                  },
+                ),
+                // 4. Notification (moved down from position 3)
                 _buildSettingItem(
                   title: AppLocalizations.of(context)!.notification,
                   onTap: () {
@@ -94,84 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
-                _buildSettingItem(
-                  title: Localizations.localeOf(context).languageCode == 'hi' 
-                      ? 'अपडेट' 
-                      : 'Check for Updates', // App Update menu - Translated
-                  onTap: () async {
-                    try {
-                      // Show loading dialog
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-
-                      // First, try Google Play In-App Update (native dialog)
-                      final inAppUpdateService = InAppUpdateService();
-                      final hasUpdate = await inAppUpdateService.checkForUpdate(
-                        forceCheck: true,
-                        showFlexible: true,
-                        showImmediate: true,
-                      );
-
-                      // Close loading dialog
-                      if (mounted) {
-                        Navigator.pop(context);
-                      }
-
-                      // If no update from Play Store, check Remote Config and show details
-                      if (!hasUpdate && mounted) {
-                        final updateService = UpdateService();
-                        final updateModel = await updateService.checkForUpdates();
-                        
-                        if (updateModel.updateAvailable) {
-                          // Show update details screen
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => UpdateDetailsScreen(
-                                updateModel: updateModel,
-                              ),
-                            ),
-                          );
-                        } else {
-                          // No update available
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('You are using the latest version!'),
-                              backgroundColor: Colors.green,
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                      }
-                    } catch (e) {
-                      // Close loading dialog if still open
-                      if (mounted) {
-                        Navigator.pop(context);
-                      }
-                      
-                      // Show error message
-                      if (mounted) {
-                        final isHindi = Localizations.localeOf(context).languageCode == 'hi';
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isHindi 
-                                  ? 'अपडेट जांचने में त्रुटि हुई'
-                                  : 'Error checking for updates',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                      debugPrint('Error checking for updates: $e');
-                    }
-                  },
-                ),
+                // 5. About Us
                 _buildSettingItem(
                   title: AppLocalizations.of(context)!.aboutUs,
                   onTap: () {
@@ -187,36 +175,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
+                // 6. Policy (consolidated Privacy Policy & Terms & Conditions)
                 _buildSettingItem(
-                  title: AppLocalizations.of(context)!.termsConditions,
+                  title: 'Policy',
                   onTap: () {
                     try {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const TermsConditionsScreen(),
+                          builder: (context) => const PolicyScreen(),
                         ),
                       );
                     } catch (e) {
-                      debugPrint('Error navigating to terms & conditions: $e');
+                      debugPrint('Error navigating to policy screen: $e');
                     }
                   },
                 ),
-                _buildSettingItem(
-                  title: AppLocalizations.of(context)!.privacyPolicy,
-                  onTap: () {
-                    try {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PrivacyPolicyScreen(),
-                        ),
-                      );
-                    } catch (e) {
-                      debugPrint('Error navigating to privacy policy: $e');
-                    }
-                  },
-                ),
+                // 7. Feedback
                 _buildSettingItem(
                   title: AppLocalizations.of(context)!.feedback,
                   onTap: () {
@@ -278,13 +253,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       dense: true,
       minVerticalPadding: 0,
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
           color: Colors.black87,
         ),
       ),
@@ -294,7 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(
                 subtitle,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Colors.grey[600],
                 ),
               ),

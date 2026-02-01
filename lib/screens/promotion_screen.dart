@@ -225,7 +225,6 @@ class _PromotionScreenState extends State<PromotionScreen> {
   Widget _buildAttractiveText(double screenWidth) {
     // Responsive font sizes based on screen width
     final titleFontSize = (screenWidth * 0.045).clamp(16.0, 20.0);
-    final subtitleFontSize = (screenWidth * 0.033).clamp(12.0, 14.0);
     
     // Responsive padding: 4-6% of screen width
     final horizontalPadding = (screenWidth * 0.05).clamp(16.0, 24.0);
@@ -253,7 +252,7 @@ class _PromotionScreenState extends State<PromotionScreen> {
             AppLocalizations.of(context)!.shareReferralLinkDescription,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: subtitleFontSize,
+              fontSize: 11,
               color: Colors.grey[600],
               height: 1.4,
             ),

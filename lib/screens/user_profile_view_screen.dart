@@ -766,7 +766,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                     style: const TextStyle(
                                         color: Colors.black54,
                                     fontSize: 32,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   )
                                 : null,
@@ -789,7 +789,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                 widget.user.name,
                                 style: const TextStyle(
                                         fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.black,
                                 ),
                                       overflow: TextOverflow.ellipsis,
@@ -865,7 +865,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                       Text(
                                         statusText,
                                         style: TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 12,
                                           color: statusColor,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -884,7 +884,8 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                         : widget.user.bio!,
                                     style: const TextStyle(
                                       fontSize: 12,
-                                    color: Colors.black54,
+                                      color: Colors.black54,
+                                      fontWeight: FontWeight.w400,
                                     ),
                                   maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
@@ -1025,8 +1026,8 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                 'Start Video Chat',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
@@ -1081,7 +1082,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                           isFollowingRealTime ? 'Followed' : 'Follow',
                                           style: const TextStyle(
                                             fontSize: 14,
-                                                    fontWeight: FontWeight.bold,
+                                                    fontWeight: FontWeight.w700,
                                             color: Colors.white,
                                           ),
                                         ),
@@ -1125,7 +1126,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                       'Message',
                                       style: TextStyle(
                                         fontSize: 14,
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.w700,
                                         color: Colors.black,
                                       ),
                                     ),
@@ -1152,7 +1153,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                           'Clips',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                             color: Colors.black,
                           ),
                         ),
@@ -1207,7 +1208,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                           'Posts',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                             color: Colors.black,
                           ),
                         ),
@@ -1341,7 +1342,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                 'Calling',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1379,7 +1380,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -1464,7 +1465,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                 'User declined call',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1482,7 +1483,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
           number,
           style: const TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
             color: Colors.black,
           ),
         ),
@@ -1513,7 +1514,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 10,
+          fontSize: 12,
           color: Colors.black54,
           fontWeight: FontWeight.w500,
         ),
@@ -1543,14 +1544,14 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
           if (flagEmoji.isNotEmpty)
             Text(
               flagEmoji,
-              style: const TextStyle(fontSize: 10),
+              style: const TextStyle(fontSize: 12),
             ),
           if (flagEmoji.isNotEmpty) const SizedBox(width: 3),
           // Country name
           Text(
             countryName,
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               color: Colors.black54,
               fontWeight: FontWeight.w500,
             ),
@@ -1718,6 +1719,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[500],
+                fontWeight: FontWeight.w400,
               ),
             ),
           );
@@ -1792,6 +1794,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[500],
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
@@ -2388,7 +2391,7 @@ class _ReportUserScreen extends StatelessWidget {
           style: TextStyle(
             color: Colors.black,
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: true,

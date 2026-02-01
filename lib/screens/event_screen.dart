@@ -64,11 +64,11 @@ class _EventScreenState extends State<EventScreen> with SingleTickerProviderStat
               centerTitle: true,
               bottom: TabBar(
                 controller: _tabController,
-                // Use purple for active tab text/icons and a soft grey for inactive
-                labelColor: const Color(0xFF8E24AA),
+                // Use pink for active tab text/icons and a soft grey for inactive
+                labelColor: const Color(0xFFFF1B7C),
                 unselectedLabelColor: Colors.grey[600],
-                // Slightly thicker indicator in matching purple
-                indicatorColor: const Color(0xFF8E24AA),
+                // Slightly thicker indicator in matching pink
+                indicatorColor: const Color(0xFFFF1B7C),
                 indicatorWeight: 3.5,
                 labelStyle: const TextStyle(
                   fontSize: 14,

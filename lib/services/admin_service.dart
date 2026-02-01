@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 /// Admin Service for managing user coins and admin operations
 class AdminService {
@@ -18,26 +19,38 @@ class AdminService {
   Future<bool> isAdmin() async {
     try {
       if (currentUserId == null) {
-        print('❌ No authenticated user');
+        debugPrint('❌ [AdminService.isAdmin] No authenticated user');
         return false;
       }
+
+      debugPrint('🔍 [AdminService.isAdmin] Checking admin status for UID: $currentUserId');
 
       final adminDoc = await _firestore
           .collection('admins')
           .doc(currentUserId)
           .get();
 
+      debugPrint('📄 [AdminService.isAdmin] Admin document exists: ${adminDoc.exists}');
+
       if (adminDoc.exists) {
         final data = adminDoc.data();
-        final isAdmin = data?['isAdmin'] ?? false;
-        print('👤 Admin check: $isAdmin');
-        return isAdmin;
+        debugPrint('📋 [AdminService.isAdmin] Admin document data: $data');
+        
+        final isAdminValue = data?['isAdmin'] ?? false;
+        debugPrint('✅ [AdminService.isAdmin] isAdmin field value: $isAdminValue (type: ${isAdminValue.runtimeType})');
+        
+        // Ensure it's a boolean true
+        final result = isAdminValue == true;
+        debugPrint('🎯 [AdminService.isAdmin] Final result: $result');
+        return result;
       }
 
-      print('👤 User is not an admin');
+      debugPrint('❌ [AdminService.isAdmin] Admin document not found for UID: $currentUserId');
+      debugPrint('💡 [AdminService.isAdmin] Create document at: /admins/$currentUserId with {isAdmin: true}');
       return false;
     } catch (e) {
-      print('❌ Error checking admin status: $e');
+      debugPrint('❌ [AdminService.isAdmin] Error checking admin status: $e');
+      debugPrint('❌ [AdminService.isAdmin] Error details: ${e.toString()}');
       return false;
     }
   }
@@ -84,39 +97,11 @@ class AdminService {
         final currentUCoins = (userData['uCoins'] as int?) ?? 0;
         final newBalance = currentUCoins + coinsToAdd;
 
-        // Update user's U Coins balance in users collection
+        // Update user's U Coins balance in users collection (single source of truth)
         transaction.update(userRef, {
           'uCoins': newBalance,
           'lastUpdated': FieldValue.serverTimestamp(),
         });
-
-        // Also update wallets collection if it exists (for backward compatibility)
-        final walletRef = _firestore.collection('wallets').doc(userId);
-        final walletDoc = await transaction.get(walletRef);
-        
-        if (walletDoc.exists) {
-          // Update existing wallet document
-          transaction.update(walletRef, {
-            'coins': newBalance,
-            'balance': newBalance,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-          print('📝 Transaction: Also updating wallets/$userId/coins = $newBalance');
-        } else {
-          // Create wallet document if it doesn't exist
-          // Note: We'll update userEmail after transaction completes
-          transaction.set(walletRef, {
-            'userId': userId,
-            'userName': userData['displayName'] ?? 'User',
-            'userEmail': 'No email', // Will be updated after transaction
-            'numericUserId': userData['numericUserId'] ?? '',
-            'coins': newBalance,
-            'balance': newBalance,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-          print('📝 Transaction: Created wallets/$userId document with coins = $newBalance');
-        }
 
         print('📝 Transaction: Updating users/$userId/uCoins from $currentUCoins to $newBalance');
 
@@ -158,8 +143,7 @@ class AdminService {
       print('✅ Successfully added $coinsToAdd U Coins to user $userId');
       print('   Previous balance: ${result['currentUCoins']}');
       print('   New balance: ${result['newBalance']}');
-      print('   ✅ Updated in users collection: users/$userId/uCoins');
-      print('   ✅ Updated in wallets collection: wallets/$userId/balance');
+      print('   ✅ Updated in users collection: users/$userId/uCoins (single source of truth)');
       print('   🔔 Real-time listeners should detect this update automatically');
 
       // Send notification to user about coins added

@@ -20,7 +20,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           style: const TextStyle(
             color: Colors.black87,
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: true,
@@ -261,7 +261,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           title,
           style: const TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
             color: Colors.black87,
           ),
         ),
@@ -281,7 +281,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
           ),
@@ -299,6 +299,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
         fontSize: 14,
         height: 1.6,
         color: Colors.grey[800],
+        fontWeight: FontWeight.w400,
       ),
     );
   }
@@ -314,7 +315,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[800],
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
             ),
           ),
           Expanded(
@@ -324,6 +325,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 fontSize: 14,
                 height: 1.6,
                 color: Colors.grey[800],
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),

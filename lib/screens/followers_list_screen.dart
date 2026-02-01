@@ -446,12 +446,12 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
                           }
                         },
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF69B4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(18),
                           ),
-                          minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
+                          minimumSize: const Size(0, 32),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(

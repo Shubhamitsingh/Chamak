@@ -13,9 +13,7 @@ import '../services/chat_service.dart';
 import '../services/call_request_service.dart';
 import '../services/agora_token_service.dart';
 import '../services/database_service.dart';
-import '../services/rating_service.dart';
 import '../widgets/call_request_dialog.dart';
-import '../widgets/rating_popup_dialog.dart';
 import 'user_profile_view_screen.dart';
 import 'private_call_screen.dart';
 
@@ -38,12 +36,10 @@ class _ChatScreenState extends State<ChatScreen> {
   final CallRequestService _callRequestService = CallRequestService();
   final AgoraTokenService _tokenService = AgoraTokenService();
   final DatabaseService _databaseService = DatabaseService();
-  final RatingService _ratingService = RatingService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String? _currentUserId;
   bool _containsDigitsWarning = false;
-  bool _hasShownRatingPopup = false; // Track if popup was shown in this session
   
   // Call request state
   String? _currentCallRequestId;
@@ -75,58 +71,10 @@ class _ChatScreenState extends State<ChatScreen> {
     // Setup incoming call listener
     _setupIncomingCallListener();
 
-    // Check and show rating popup after screen loads
-    _checkAndShowRatingPopup();
+    // ✅ REMOVED: Immediate popup trigger
+    // Review popup will now show after successful actions (calls, etc.)
   }
 
-  /// Check if user has rated and show popup if needed
-  Future<void> _checkAndShowRatingPopup() async {
-    // Small delay to ensure screen is fully loaded
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (!mounted || _hasShownRatingPopup) return;
-
-    // TEMPORARY: Show popup to everyone for testing/demo
-    // TODO: Uncomment the check below when ready for production
-    /*
-    try {
-      final hasRated = await _ratingService.hasUserRated();
-      
-      if (!hasRated && mounted) {
-        _hasShownRatingPopup = true;
-        _showRatingPopup();
-      }
-    } catch (e) {
-      debugPrint('Error checking rating status: $e');
-    }
-    */
-    
-    // Always show popup (for testing/demo)
-    if (mounted) {
-      _hasShownRatingPopup = true;
-      _showRatingPopup();
-    }
-  }
-
-  /// Show rating popup dialog
-  void _showRatingPopup() {
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
-      builder: (context) => RatingPopupDialog(
-        onRated: () async {
-          // Mark user as rated when they click "Rate Now"
-          await _ratingService.markUserAsRated();
-        },
-        onClosed: () {
-          // User closed without rating - will show again next time
-          _hasShownRatingPopup = false;
-        },
-      ),
-    );
-  }
 
   @override
   void dispose() {
@@ -221,21 +169,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  String _formatMessageTime(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inDays == 0) {
-      // Today - show time
-      return DateFormat('HH:mm').format(timestamp);
-    } else if (difference.inDays == 1) {
-      // Yesterday
-      return 'Yesterday ${DateFormat('HH:mm').format(timestamp)}';
-    } else {
-      // Older - show date and time
-      return DateFormat('dd/MM/yy HH:mm').format(timestamp);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -929,148 +862,166 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  String _formatMessageTime(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inDays == 0) {
+      // Today - show time
+      return DateFormat('HH:mm').format(timestamp);
+    } else if (difference.inDays == 1) {
+      // Yesterday
+      return 'Yesterday ${DateFormat('HH:mm').format(timestamp)}';
+    } else {
+      // Older - show date and time
+      return DateFormat('dd/MM/yy HH:mm').format(timestamp);
+    }
+  }
+
   Widget _buildMessageBubble(MessageModel message, bool isSentByMe) {
     // Check if message is a gift
     final isGift = message.type == MessageType.gift;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: isSentByMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: isSentByMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: isGift ? MediaQuery.of(context).size.width * 0.55 : double.infinity,
-              ),
-              margin: EdgeInsets.symmetric(
-                horizontal: isGift ? 8 : 0,
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isGift ? 12 : 16,
-                vertical: isGift ? 12 : 10,
-              ),
-              decoration: BoxDecoration(
-                color: isGift
-                    ? isSentByMe
-                        ? const Color(0xFFFFB800).withValues(alpha: 0.15)
-                        : Colors.white
-                    : isSentByMe
-                        ? const Color(0xFFFF69B4)
-                        : Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isSentByMe ? 16 : 4),
-                  bottomRight: Radius.circular(isSentByMe ? 4 : 16),
-                ),
-                border: isGift
-                    ? Border.all(
-                        color: isSentByMe
-                            ? const Color(0xFFFFB800).withValues(alpha: 0.5)
-                            : const Color(0xFFFFB800).withValues(alpha: 0.3),
-                        width: 1.5,
-                      )
-                    : null,
-                boxShadow: [
-                  BoxShadow(
-                    color: isGift
-                        ? const Color(0xFFFFB800).withValues(alpha: 0.2)
-                        : Colors.black.withValues(alpha: 0.05),
-                    blurRadius: isGift ? 8 : 5,
-                    offset: const Offset(0, 2),
+          // Bubble Container
+          Row(
+            mainAxisAlignment: isSentByMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              Flexible(
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: isGift 
+                        ? MediaQuery.of(context).size.width * 0.55 
+                        : MediaQuery.of(context).size.width * 0.75, // Limited to 75% for regular messages
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isGift) ...[
-                    // Gift Display
-                    Center(
-                      child: Column(
-                        children: [
-                          // Gift Icon/Emoji (compact size)
-                          Text(
-                            message.giftEmoji ?? '🎁',
-                            style: const TextStyle(fontSize: 32),
-                          ),
-                          const SizedBox(height: 6),
-                          // Gift Name
-                          Text(
-                            '${message.giftEmoji ?? ''} ${message.giftName ?? 'Gift'}',
-                            style: TextStyle(
-                              color: isSentByMe ? Colors.black87 : Colors.black87,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (message.giftCost != null) ...[
-                            const SizedBox(height: 3),
-                              Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.asset(
-                                  'assets/images/coin3.png',
-                                  width: 12,
-                                  height: 12,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(Icons.monetization_on, size: 12, color: Color(0xFFFFB800));
-                                  },
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  '${message.giftCost}',
-                                  style: TextStyle(
-                                    color: const Color(0xFFFFB800),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
+                  margin: EdgeInsets.symmetric(
+                    horizontal: isGift ? 8 : 0,
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isGift ? 12 : 12, // Reduced from 16 to 12
+                    vertical: isGift ? 12 : 8,     // Reduced from 10 to 8
+                  ),
+                  decoration: BoxDecoration(
+                    color: isGift
+                        ? isSentByMe
+                            ? const Color(0xFFFFB800).withValues(alpha: 0.15)
+                            : Colors.white
+                        : isSentByMe
+                            ? const Color(0xFFFF69B4)
+                            : Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isSentByMe ? 16 : 4),
+                      bottomRight: Radius.circular(isSentByMe ? 4 : 16),
                     ),
-                  ] else ...[
-                    // Regular Text Message
-                    Text(
-                      message.message,
-                      style: TextStyle(
-                        color: isSentByMe ? Colors.white : Colors.black87,
-                        fontSize: 15,
+                    border: isGift
+                        ? Border.all(
+                            color: isSentByMe
+                                ? const Color(0xFFFFB800).withValues(alpha: 0.5)
+                                : const Color(0xFFFFB800).withValues(alpha: 0.3),
+                            width: 1.5,
+                          )
+                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: isGift
+                            ? const Color(0xFFFFB800).withValues(alpha: 0.2)
+                            : Colors.black.withValues(alpha: 0.05),
+                        blurRadius: isGift ? 8 : 5,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _formatMessageTime(message.timestamp),
-                        style: TextStyle(
-                          color: isGift
-                              ? Colors.grey[600]
-                              : isSentByMe
-                                  ? Colors.white70
-                                  : Colors.grey[500],
-                          fontSize: 11,
-                        ),
-                      ),
-                      if (isSentByMe && !isGift) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          message.isRead ? Icons.done_all : Icons.done,
-                          size: 14,
-                          color: message.isRead ? Colors.white : Colors.white70,
-                        ),
-                      ],
                     ],
                   ),
-                ],
+                  child: isGift
+                      ? Center(
+                          child: Column(
+                            children: [
+                              // Gift Icon/Emoji (compact size)
+                              Text(
+                                message.giftEmoji ?? '🎁',
+                                style: const TextStyle(fontSize: 32),
+                              ),
+                              const SizedBox(height: 6),
+                              // Gift Name
+                              Text(
+                                '${message.giftEmoji ?? ''} ${message.giftName ?? 'Gift'}',
+                                style: TextStyle(
+                                  color: isSentByMe ? Colors.black87 : Colors.black87,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (message.giftCost != null) ...[
+                                const SizedBox(height: 3),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/coin3.png',
+                                      width: 12,
+                                      height: 12,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(Icons.monetization_on, size: 12, color: Color(0xFFFFB800));
+                                      },
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      '${message.giftCost}',
+                                      style: TextStyle(
+                                        color: const Color(0xFFFFB800),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      : Text(
+                          message.message,
+                          style: TextStyle(
+                            color: isSentByMe ? Colors.white : Colors.black87,
+                            fontSize: 15,
+                          ),
+                        ),
+                ),
               ),
+            ],
+          ),
+          // Time/Date OUTSIDE bubble
+          Padding(
+            padding: EdgeInsets.only(
+              top: 4,
+              left: isSentByMe ? 0 : 8,
+              right: isSentByMe ? 8 : 0,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatMessageTime(message.timestamp),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                if (isSentByMe && !isGift) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    message.isRead ? Icons.done_all : Icons.done,
+                    size: 12,
+                    color: Colors.grey[500],
+                  ),
+                ],
+              ],
             ),
           ),
         ],

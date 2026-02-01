@@ -223,7 +223,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                       child: Text(
                         entry.value,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: Colors.black87,
                         ),
@@ -278,7 +278,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                     hintText: AppLocalizations.of(context)!.describeYourIssue,
                     hintStyle: TextStyle(
                       color: Colors.grey[400],
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -462,7 +462,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
                           Text(
                             AppLocalizations.of(context)!.chatWithSupportTeam,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               color: Colors.grey[600],
                             ),
                           ),

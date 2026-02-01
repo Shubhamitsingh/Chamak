@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'payment_failure_screen.dart';
+import '../services/meta_events_service.dart';
 
 /// UPI Payment Selection Screen
 /// 
@@ -218,6 +219,21 @@ class _UpiPaymentSelectionScreenState extends State<UpiPaymentSelectionScreen> {
   /// Show success dialog and then navigate back
   void _showSuccessDialog() {
     if (!mounted) return;
+    
+    // Log Meta purchase event with Dynamic Product Ads parameters
+    MetaEventsService.logPurchase(
+      amount: widget.amount,
+      currency: 'INR',
+      productId: 'coin_package_${widget.coins}', // Product ID for Dynamic Product Ads
+      parameters: {
+        'coins': widget.coins,
+        'payment_id': widget.paymentId,
+        'order_id': widget.orderId,
+        'payment_method': _selectedMethod ?? 'upi',
+      },
+    ).catchError((e) {
+      debugPrint('⚠️ Failed to log Meta purchase event: $e');
+    });
     
     showDialog(
       context: context,

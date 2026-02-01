@@ -1028,6 +1028,91 @@ exports.payprimeWebhook = onRequest(
 );
 
 /**
+ * PHASE 4: Distributed Counters for Follow/Unfollow
+ * 
+ * These functions update follower/following counts asynchronously
+ * to avoid write contention on user documents.
+ */
+
+/**
+ * Update counters when a user follows someone
+ * Triggered when a document is created in users/{userId}/following/{targetId}
+ */
+exports.onFollow = onDocumentCreated(
+  "users/{userId}/following/{targetId}",
+  async (event) => {
+    try {
+      const userId = event.params.userId;
+      const targetId = event.params.targetId;
+
+      console.log(`👥 User ${userId} followed ${targetId}`);
+
+      const db = admin.firestore();
+      const batch = db.batch();
+
+      // Update followingCount for the user who followed
+      const userRef = db.collection("users").doc(userId);
+      batch.update(userRef, {
+        followingCount: admin.firestore.FieldValue.increment(1),
+      });
+
+      // Update followersCount for the user who was followed
+      const targetRef = db.collection("users").doc(targetId);
+      batch.update(targetRef, {
+        followersCount: admin.firestore.FieldValue.increment(1),
+      });
+
+      await batch.commit();
+      console.log(`✅ Updated counters: ${userId} followingCount++, ${targetId} followersCount++`);
+    } catch (error) {
+      console.error(`❌ Error updating follow counters:`, error);
+      // Don't throw - allow follow to succeed even if counter update fails
+    }
+  }
+);
+
+/**
+ * Callable function to update counters on unfollow
+ * Called from client when unfollow happens
+ * Note: We use a callable function because Firestore v2 doesn't support
+ * onDocumentDeleted for subcollections easily
+ */
+exports.updateUnfollowCounters = onCall(async (request) => {
+  try {
+    const { userId, targetId } = request.data;
+
+    if (!userId || !targetId) {
+      throw new Error("userId and targetId are required");
+    }
+
+    console.log(`👥 User ${userId} unfollowed ${targetId}`);
+
+    const db = admin.firestore();
+    const batch = db.batch();
+
+    // Decrement followingCount for the user who unfollowed
+    const userRef = db.collection("users").doc(userId);
+    batch.update(userRef, {
+      followingCount: admin.firestore.FieldValue.increment(-1),
+    });
+
+    // Decrement followersCount for the user who was unfollowed
+    const targetRef = db.collection("users").doc(targetId);
+    batch.update(targetRef, {
+      followersCount: admin.firestore.FieldValue.increment(-1),
+    });
+
+    await batch.commit();
+    console.log(`✅ Updated counters: ${userId} followingCount--, ${targetId} followersCount--`);
+
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ Error updating unfollow counters:`, error);
+    throw new Error(`Failed to update counters: ${error.message}`);
+  }
+});
+
+/**
  * PHASE 7: Reconciliation Job
  * 
  * This scheduled function checks for payments stuck in PENDING or PROCESSING state

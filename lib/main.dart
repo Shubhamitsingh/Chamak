@@ -17,13 +17,48 @@ import 'services/notification_service.dart';
 import 'services/update_service.dart';
 import 'services/crashlytics_service.dart';
 import 'services/in_app_update_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:facebook_app_events/facebook_app_events.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 
 // ⚠️ CRITICAL FIX: Global navigator key for deep linking from notifications
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Track app session count (for review trigger strategy)
+Future<void> _trackAppSession() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final sessionCount = prefs.getInt('app_session_count') ?? 0;
+    await prefs.setInt('app_session_count', sessionCount + 1);
+    
+    // Mark first use date if not set
+    if (prefs.getString('first_use_date') == null) {
+      await prefs.setString('first_use_date', DateTime.now().toIso8601String());
+    }
+    
+    debugPrint('📊 App session tracked: ${sessionCount + 1}');
+  } catch (e) {
+    debugPrint('⚠️ Error tracking app session: $e');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Facebook SDK BEFORE runApp()
+  try {
+    final facebookAppEvents = FacebookAppEvents();
+    await facebookAppEvents.setAutoLogAppEventsEnabled(true);
+    await facebookAppEvents.setAdvertiserTracking(enabled: true);
+    
+    // Log test event to verify SDK is working
+    await facebookAppEvents.logEvent(name: 'app_activate');
+    debugPrint('✅ Facebook SDK initialized successfully');
+    debugPrint('✅ Test event "app_activate" logged');
+  } catch (e) {
+    debugPrint('❌ Facebook SDK initialization error: $e');
+    // Don't block app startup if SDK init fails
+  }
   
   // Initialize Firebase (required before app starts)
   await Firebase.initializeApp(
@@ -89,6 +124,11 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+  
+  // Track app session (for review trigger strategy)
+  _trackAppSession().catchError((e) {
+    debugPrint('⚠️ Error tracking app session: $e');
+  });
   
   // Start the app immediately - don't wait for notification service
   runApp(

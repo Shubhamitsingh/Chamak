@@ -92,35 +92,57 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
         return;
       }
 
       final user = await _databaseService.getUserData(userId);
-      if (user != null && mounted) {
+      
+      // ✅ Check mounted BEFORE setState
+      if (user == null || !mounted) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+
+      // ✅ Calculate values BEFORE setState (using local user variable)
+      final totalCoins = _isHostLevel ? user.totalCoinsReceived : user.totalCoinsPurchased;
+      final currentLevel = _calculateLevelFromCoins(totalCoins);
+      final coinsForNextLevel = _calculateCoinsForNextLevel(currentLevel);
+      final savedLevel = _isHostLevel ? user.hostLevel : user.userLevel;
+
+      // ✅ setState with all values
+      if (mounted) {
         setState(() {
           _user = user;
-          // Use appropriate field based on level type
-          _totalCoins = _isHostLevel ? user.totalCoinsReceived : user.totalCoinsPurchased;
-          // Calculate level from coins (always recalculate to ensure accuracy)
-          _currentLevel = _calculateLevelFromCoins(_totalCoins);
-          _coinsForNextLevel = _calculateCoinsForNextLevel(_currentLevel);
+          _totalCoins = totalCoins;
+          _currentLevel = currentLevel;
+          _coinsForNextLevel = coinsForNextLevel;
           _isLoading = false;
         });
-        
-        // Update saved level if calculated level differs from saved level
-        final savedLevel = _isHostLevel ? _user!.hostLevel : _user!.userLevel;
-        if (_currentLevel != savedLevel) {
-          await _updateUserLevel(_currentLevel);
-        }
-        
-        _progressController.forward();
-      } else {
-        setState(() => _isLoading = false);
       }
+
+      // ✅ Check mounted again before async operations
+      if (!mounted) return;
+
+      // ✅ Update level if needed (using local variables)
+      if (currentLevel != savedLevel) {
+        await _updateUserLevel(currentLevel);
+      }
+
+      // ✅ Check mounted before animation
+      if (!mounted) return;
+      _progressController.forward();
+      
     } catch (e) {
       debugPrint('Error loading user data: $e');
-      setState(() => _isLoading = false);
+      // ✅ Check mounted before setState in catch block
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -404,13 +426,31 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
   }
 
   void _updateLevelCalculation() {
-    if (_user == null) return;
+    // ✅ Store in local variable to avoid multiple null checks
+    final user = _user;
+    if (user == null || !mounted) return;
+    
     // Recalculate based on selected level type
-    _totalCoins = _isHostLevel ? _user!.totalCoinsReceived : _user!.totalCoinsPurchased;
-    _currentLevel = _calculateLevelFromCoins(_totalCoins);
-    _coinsForNextLevel = _calculateCoinsForNextLevel(_currentLevel);
+    final totalCoins = _isHostLevel ? user.totalCoinsReceived : user.totalCoinsPurchased;
+    final currentLevel = _calculateLevelFromCoins(totalCoins);
+    final coinsForNextLevel = _calculateCoinsForNextLevel(currentLevel);
+    
+    if (mounted) {
+      setState(() {
+        _totalCoins = totalCoins;
+        _currentLevel = currentLevel;
+        _coinsForNextLevel = coinsForNextLevel;
+      });
+    }
+    
+    // ✅ Check mounted before async operations
+    if (!mounted) return;
+    
     // Update saved level in Firestore
-    _updateUserLevel(_currentLevel);
+    _updateUserLevel(currentLevel);
+    
+    // ✅ Check mounted before animation
+    if (!mounted) return;
     _progressController.reset();
     _progressController.forward();
   }
@@ -459,15 +499,20 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
                             ),
                           ],
                         ),
-                        child: CircleAvatar(
-                          radius: 22,
-                          backgroundColor: Colors.white.withOpacity(0.15),
-                          backgroundImage: _user?.photoURL != null && _user!.photoURL!.isNotEmpty
-                              ? NetworkImage(_user!.photoURL!)
-                              : null,
-                          child: _user?.photoURL == null || _user!.photoURL!.isEmpty
-                              ? const Icon(Icons.person, color: Colors.white, size: 24)
-                              : null,
+                        child: Builder(
+                          builder: (context) {
+                            final photoUrl = _user?.photoURL;
+                            return CircleAvatar(
+                              radius: 22,
+                              backgroundColor: Colors.white.withOpacity(0.15),
+                              backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                                  ? NetworkImage(photoUrl)
+                                  : null,
+                              child: photoUrl == null || photoUrl.isEmpty
+                                  ? const Icon(Icons.person, color: Colors.white, size: 24)
+                                  : null,
+                            );
+                          },
                         ),
                       ),
                     );

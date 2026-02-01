@@ -674,7 +674,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const Text(
               'Select Gender',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -891,6 +891,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     title: Text(
                       lang,
                       style: TextStyle(
+                        fontSize: 14,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                         color: isSelected ? const Color(0xFFFF1B7C) : Colors.black87,
                       ),
@@ -1252,9 +1253,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 AppLocalizations.of(context)!.takeANewPhoto,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey,
+                                  color: Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -1319,9 +1320,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 AppLocalizations.of(context)!.chooseFromGallery,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey,
+                                  color: Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -1439,9 +1440,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 AppLocalizations.of(context)!.takeANewPhoto,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey,
+                                  color: Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -1510,9 +1511,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 AppLocalizations.of(context)!.chooseFromGallery,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey,
+                                  color: Colors.grey[600],
                                 ),
                               ),
                             ],

@@ -2,20 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Centralized service for all coin operations
-/// Ensures atomic updates to both users and wallets collections
+/// SINGLE SOURCE OF TRUTH: users collection uCoins field
+/// Wallets collection is deprecated and will be removed
 class CoinService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// Get current user's coin balance (U Coins)
-  /// PRIMARY SOURCE: users collection uCoins field
-  /// FALLBACK: wallets collection balance field
+  /// SINGLE SOURCE OF TRUTH: users collection uCoins field
   Future<int> getCurrentUserBalance() async {
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) return 0;
 
-      // PRIMARY: Read from users collection (source of truth)
+      // Read from users collection (single source of truth)
       final userDoc = await _firestore.collection('users').doc(userId).get(
         const GetOptions(source: Source.serverAndCache),
       );
@@ -25,21 +25,8 @@ class CoinService {
         final uCoins = (userData?['uCoins'] as int?) ?? 0;
         final coins = (userData?['coins'] as int?) ?? 0;
 
-        // ALWAYS use uCoins as primary (it's always updated during deductions)
-        // Only use coins if uCoins is 0 and coins has value (legacy data)
-        final balance = uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
-
-        if (balance > 0) {
-          return balance;
-        }
-      }
-
-      // FALLBACK: Read from wallets collection if users collection doesn't have balance
-      final walletDoc = await _firestore.collection('wallets').doc(userId).get();
-      if (walletDoc.exists) {
-        final walletData = walletDoc.data();
-        return (walletData?['balance'] as int?) ?? 
-               (walletData?['coins'] as int?) ?? 0;
+        // Use uCoins as primary, fallback to coins for legacy data migration
+        return uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
       }
 
       return 0;
@@ -50,14 +37,14 @@ class CoinService {
   }
 
   /// Stream current user's coin balance (real-time updates)
-  /// PRIMARY SOURCE: users collection uCoins field
+  /// SINGLE SOURCE OF TRUTH: users collection uCoins field
   Stream<int> streamCurrentUserBalance() {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
       return Stream.value(0);
     }
 
-    // Listen to users collection (PRIMARY SOURCE OF TRUTH)
+    // Listen to users collection (single source of truth)
     return _firestore
         .collection('users')
         .doc(userId)
@@ -68,15 +55,15 @@ class CoinService {
         final uCoins = (userData?['uCoins'] as int?) ?? 0;
         final coins = (userData?['coins'] as int?) ?? 0;
 
-        // ALWAYS use uCoins as primary
-        // Only use coins if uCoins is 0 and coins has value (legacy data)
+        // Use uCoins as primary, fallback to coins for legacy data
         return uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
       }
       return 0;
     });
   }
 
-  /// Add coins to user (atomic update to both collections)
+  /// Add coins to user
+  /// SINGLE SOURCE OF TRUTH: users collection uCoins field
   /// Used for: Purchases, rewards, bonuses
   Future<bool> addCoins({
     required String userId,
@@ -85,21 +72,10 @@ class CoinService {
     String? description,
   }) async {
     try {
-      // Get user data to check current balance and create wallet if needed
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final userData = userDoc.data();
-      final currentUCoins = (userData?['uCoins'] as int?) ?? 0;
-      final userName = userData?['displayName'] as String? ?? '';
-      final newUCoinsBalance = currentUCoins + coins;
-
-      // Check if wallet document exists
-      final walletRef = _firestore.collection('wallets').doc(userId);
-      final walletDoc = await walletRef.get();
-
       // Use batch write for atomic operations
       final batch = _firestore.batch();
 
-      // 1. Update users collection (PRIMARY SOURCE OF TRUTH)
+      // Update users collection (single source of truth)
       batch.update(
         _firestore.collection('users').doc(userId),
         {
@@ -107,33 +83,7 @@ class CoinService {
         },
       );
 
-      // 2. Update or create wallets collection (SYNC WITH USERS COLLECTION)
-      if (walletDoc.exists) {
-        // Update existing wallet using atomic increment
-        batch.update(
-          walletRef,
-          {
-            'balance': FieldValue.increment(coins),
-            'coins': FieldValue.increment(coins),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
-      } else {
-        // Create wallet document if it doesn't exist
-        batch.set(
-          walletRef,
-          {
-            'userId': userId,
-            'userName': userName,
-            'balance': newUCoinsBalance,
-            'coins': newUCoinsBalance,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
-      }
-
-      // 3. Record transaction if transactionId provided
+      // Record transaction if transactionId provided
       if (transactionId != null) {
         batch.set(
           _firestore
@@ -153,7 +103,7 @@ class CoinService {
       // Commit all changes atomically
       await batch.commit();
 
-      print('✅ CoinService: Added $coins coins atomically. New balance: $newUCoinsBalance');
+      print('✅ CoinService: Added $coins coins. Updated users.uCoins (single source of truth)');
       return true;
     } catch (e) {
       print('❌ CoinService: Error adding coins: $e');
@@ -161,7 +111,8 @@ class CoinService {
     }
   }
 
-  /// Deduct coins from user (atomic update to both collections)
+  /// Deduct coins from user
+  /// SINGLE SOURCE OF TRUTH: users collection uCoins field
   /// Used for: Gift sending, call charges, purchases
   Future<bool> deductCoins({
     required String userId,
@@ -177,19 +128,10 @@ class CoinService {
         return false;
       }
 
-      // Get user data
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final userData = userDoc.data();
-      final userName = userData?['displayName'] as String? ?? '';
-
-      // Check if wallet document exists
-      final walletRef = _firestore.collection('wallets').doc(userId);
-      final walletDoc = await walletRef.get();
-
       // Use batch write for atomic operations
       final batch = _firestore.batch();
 
-      // 1. Deduct from users collection (PRIMARY UPDATE - ATOMIC)
+      // Deduct from users collection (single source of truth)
       batch.update(
         _firestore.collection('users').doc(userId),
         {
@@ -197,35 +139,7 @@ class CoinService {
         },
       );
 
-      // 2. Update or create wallets collection (SYNC WITH USERS COLLECTION - ATOMIC)
-      if (walletDoc.exists) {
-        // Update existing wallet using atomic increment (stays in sync)
-        batch.update(
-          walletRef,
-          {
-            'balance': FieldValue.increment(-coins),
-            'coins': FieldValue.increment(-coins),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
-      } else {
-        // Create wallet document if it doesn't exist
-        final currentUCoins = (userData?['uCoins'] as int?) ?? 0;
-        final newUCoinsBalance = currentUCoins - coins;
-        batch.set(
-          walletRef,
-          {
-            'userId': userId,
-            'userName': userName,
-            'balance': newUCoinsBalance,
-            'coins': newUCoinsBalance,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
-      }
-
-      // 3. Record transaction if transactionId provided
+      // Record transaction if transactionId provided
       if (transactionId != null) {
         batch.set(
           _firestore
@@ -245,7 +159,7 @@ class CoinService {
       // Commit all changes atomically
       await batch.commit();
 
-      print('✅ CoinService: Deducted $coins coins atomically. Remaining balance: ${balance - coins}');
+      print('✅ CoinService: Deducted $coins coins. Remaining balance: ${balance - coins}');
       return true;
     } catch (e) {
       print('❌ CoinService: Error deducting coins: $e');
@@ -259,9 +173,9 @@ class CoinService {
     return balance >= requiredCoins;
   }
 
-  /// Sync wallets collection with users collection (for legacy data)
-  /// This ensures wallets collection is always in sync with users collection
-  Future<bool> syncWalletWithUsers(String userId) async {
+  /// Migrate legacy coins field to uCoins (one-time migration helper)
+  /// This helps migrate old data where coins field was used instead of uCoins
+  Future<bool> migrateLegacyCoins(String userId) async {
     try {
       final userDoc = await _firestore.collection('users').doc(userId).get();
       if (!userDoc.exists) return false;
@@ -269,37 +183,20 @@ class CoinService {
       final userData = userDoc.data();
       final uCoins = (userData?['uCoins'] as int?) ?? 0;
       final coins = (userData?['coins'] as int?) ?? 0;
-      final userName = userData?['displayName'] as String? ?? '';
 
-      // Use uCoins as primary, fallback to coins
-      final balance = uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
-
-      final walletRef = _firestore.collection('wallets').doc(userId);
-      final walletDoc = await walletRef.get();
-
-      if (walletDoc.exists) {
-        // Update existing wallet
-        await walletRef.update({
-          'balance': balance,
-          'coins': balance,
-          'updatedAt': FieldValue.serverTimestamp(),
+      // If coins has value but uCoins is 0, migrate
+      if (coins > 0 && uCoins == 0) {
+        await _firestore.collection('users').doc(userId).update({
+          'uCoins': coins,
+          'coins': FieldValue.delete(), // Remove legacy field
         });
-      } else {
-        // Create wallet if it doesn't exist
-        await walletRef.set({
-          'userId': userId,
-          'userName': userName,
-          'balance': balance,
-          'coins': balance,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        print('✅ CoinService: Migrated $coins legacy coins to uCoins');
+        return true;
       }
 
-      print('✅ CoinService: Synced wallet with users collection. Balance: $balance');
-      return true;
+      return false;
     } catch (e) {
-      print('❌ CoinService: Error syncing wallet: $e');
+      print('❌ CoinService: Error migrating legacy coins: $e');
       return false;
     }
   }

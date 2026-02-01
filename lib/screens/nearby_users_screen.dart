@@ -202,11 +202,11 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
         surfaceTintColor: Colors.transparent, // Keep white when scrolling (no gray overlay)
         scrolledUnderElevation: 0, // No elevation shadow when scrolling
         automaticallyImplyLeading: false, // Remove back button since screen is swipeable
-        toolbarHeight: 48, // Reduced height for less space
+        toolbarHeight: 40, // Reduced height for less space
         title: Align(
           alignment: Alignment.centerLeft,
           child: Padding(
-            padding: const EdgeInsets.only(left: 4), // Slight left padding
+            padding: const EdgeInsets.only(left: 4, top: 2), // Slight left padding and reduced top padding
             child: Text(
               isHindi ? 'सभी उपयोगकर्ता' : 'All Users',
               style: const TextStyle(
@@ -566,12 +566,12 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
                         }
                       },
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                        backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF1B7C),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF69B4),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(17),
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        minimumSize: const Size(0, 44), // Fixed: Changed from Size.zero to meet 44px minimum touch target
+                        minimumSize: const Size(0, 32),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Text(
@@ -588,8 +588,8 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
                 const SizedBox(width: 7),
                 // Chat button
                 IconButton(
-                  icon: const Icon(Icons.chat_bubble_outline, size: 19),
-                  color: const Color(0xFFFF1B7C),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 22),
+                  color: const Color(0xFFFF69B4),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => _startChat(user),

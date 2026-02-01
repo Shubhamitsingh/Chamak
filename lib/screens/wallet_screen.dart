@@ -43,7 +43,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   int coinBalance = 0; // U Coins (User Coins)
   double hostEarnings = 0.0; // C Coins converted to real money
   bool _isLoading = true;
-  StreamSubscription<DocumentSnapshot>? _walletSubscription;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   bool _listenersSetup = false; // Track if listeners are set up
   
@@ -118,7 +117,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     print('🔄 Wallet: Setting up real-time listeners for user: $userId');
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
     
-    // Listen to users collection uCoins field (PRIMARY SOURCE OF TRUTH)
+    // Listen to users collection uCoins field (SINGLE SOURCE OF TRUTH)
     // This is updated immediately when coins are deducted during calls
     _userSubscription = firestore
         .collection('users')
@@ -133,35 +132,35 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           final uCoins = (userData?['uCoins'] as int?) ?? 0;
           final coins = (userData?['coins'] as int?) ?? 0;
           
-          // Use uCoins as primary (it's always updated during deductions)
-          // Only use coins if uCoins is 0 and coins has value (legacy data)
+          // Use uCoins as primary (single source of truth)
+          // Only use coins if uCoins is 0 and coins has value (legacy data migration)
           final newBalance = uCoins > 0 ? uCoins : (coins > 0 ? coins : 0);
           
-          debugPrint('📡 Wallet: Real-time update from users collection (PRIMARY)');
+          debugPrint('📡 Wallet: Real-time update from users.uCoins (single source of truth)');
           debugPrint('   uCoins: $uCoins, coins: $coins → New: $newBalance, Current: $coinBalance');
           
-          // Sync if they're different (coins should be synced to uCoins)
+          // Migrate legacy coins to uCoins if needed (one-time migration)
           if (coins > uCoins && coins > 0 && uCoins == 0) {
-            debugPrint('⚠️ Wallet: coins ($coins) > uCoins ($uCoins), syncing...');
+            debugPrint('⚠️ Wallet: Migrating legacy coins ($coins) → uCoins');
             firestore.collection('users').doc(userId).update({
               'uCoins': coins,
             }).then((_) {
-              debugPrint('✅ Wallet: Synced coins ($coins) → uCoins');
+              debugPrint('✅ Wallet: Migrated legacy coins → uCoins');
             }).catchError((e) {
-              debugPrint('⚠️ Wallet: Could not sync: $e');
+              debugPrint('⚠️ Wallet: Could not migrate: $e');
             });
           }
           
-          // ALWAYS update if balance changed (this is the source of truth)
+          // Update if balance changed
           if (newBalance != coinBalance) {
-            debugPrint('✅ Wallet: Updating from users (PRIMARY): $coinBalance → $newBalance');
+            debugPrint('✅ Wallet: Updating balance: $coinBalance → $newBalance');
             if (!mounted) return;
             setState(() {
               coinBalance = newBalance;
             });
             debugPrint('✅ Wallet: Real-time update complete! Balance: $coinBalance');
           } else {
-            debugPrint('ℹ️ Wallet: Balance unchanged from users collection ($coinBalance)');
+            debugPrint('ℹ️ Wallet: Balance unchanged ($coinBalance)');
           }
         }
       },
@@ -179,51 +178,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       },
     );
 
-    // Also listen to wallets collection for sync (SECONDARY - for display consistency)
-    _walletSubscription = firestore
-        .collection('wallets')
-        .doc(userId)
-        .snapshots()
-        .listen(
-      (snapshot) {
-        if (!mounted) return;
-        
-        if (snapshot.exists) {
-          final walletData = snapshot.data();
-          final balance = (walletData?['balance'] as int?) ?? 0;
-          final coins = (walletData?['coins'] as int?) ?? 0;
-          final walletBalance = balance > 0 ? balance : coins;
-          
-          debugPrint('📡 Wallet: Real-time update from wallets collection (SECONDARY)');
-          debugPrint('   balance: $balance, coins: $coins → Wallet: $walletBalance, Current: $coinBalance');
-          
-          // Only update if wallets balance is lower (coins can only decrease, not increase without purchase)
-          // This ensures we don't show stale higher values from wallets
-          if (walletBalance < coinBalance && walletBalance >= 0) {
-            debugPrint('✅ Wallet: Updating from wallets (lower value): $coinBalance → $walletBalance');
-            if (!mounted) return;
-            setState(() {
-              coinBalance = walletBalance;
-            });
-            debugPrint('✅ Wallet: Real-time update from wallets complete! Balance: $coinBalance');
-          } else if (walletBalance != coinBalance) {
-            debugPrint('ℹ️ Wallet: Wallets balance ($walletBalance) differs but using users value ($coinBalance) as source of truth');
-          }
-        } else {
-          debugPrint('⚠️ Wallet: Wallet document does not exist, using users collection only...');
-        }
-      },
-      onError: (error) {
-        debugPrint('❌ Wallet: Error in wallets listener: $error');
-        // Don't show error to user for secondary listener
-        // Primary listener (users) will handle errors
-      },
-    );
-    
     _listenersSetup = true;
-    debugPrint('✅ Wallet: Real-time listeners setup complete');
-    debugPrint('   Listening to: wallets/$userId');
-    debugPrint('   Listening to: users/$userId');
+    debugPrint('✅ Wallet: Real-time listener setup complete');
+    debugPrint('   Listening to: users/$userId (single source of truth)');
   }
 
   @override
@@ -234,7 +191,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     WidgetsBinding.instance.removeObserver(this);
     
     // Cancel subscriptions
-    _walletSubscription?.cancel();
     _userSubscription?.cancel();
     
     // Reset flags
@@ -307,17 +263,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           }
         } else {
           debugPrint('⚠️ Wallet: User document not found in users collection');
-          // Fallback to wallets collection only if users collection doesn't exist
-          try {
-            final walletDoc = await firestore.collection('wallets').doc(userId).get();
-            if (walletDoc.exists) {
-              final walletData = walletDoc.data();
-              finalBalance = (walletData?['balance'] as int?) ?? (walletData?['coins'] as int?) ?? 0;
-              debugPrint('⚠️ Wallet: Using wallets collection as fallback: $finalBalance');
-            }
-          } catch (e) {
-            debugPrint('⚠️ Wallet: Error loading from wallets collection: $e');
-          }
+          // No fallback - users collection is single source of truth
         }
       } catch (e) {
         debugPrint('❌ Wallet: Error loading from Firestore: $e');
@@ -369,7 +315,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       try {
         final userId = _auth.currentUser?.uid;
         if (userId != null) {
-          await _coinService.syncWalletWithUsers(userId);
+          await _coinService.migrateLegacyCoins(userId);
         }
       } catch (syncError) {
         debugPrint('❌ Wallet: Error syncing wallet: $syncError');
@@ -513,12 +459,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                   _buildBalanceCard(),
             
             const SizedBox(height: 2),
-            
-            // Host Earnings (if user is host)
-            if (widget.isHost) ...[
-              _buildHostEarningsCard(),
-              const SizedBox(height: 2),
-            ],
             
             // Recharge Packages
             _buildFlatRechargeTab(),

@@ -78,15 +78,39 @@ class HostApplicationService {
 
   /// Get application status for current user
   Stream<DocumentSnapshot?> getApplicationStatus(String userId) {
-    return _applicationsCollection
-        .where('userId', isEqualTo: userId)
-        .orderBy('submittedAt', descending: true)
-        .limit(1)
-        .snapshots()
-        .map((snapshot) {
-      if (snapshot.docs.isEmpty) return null;
-      return snapshot.docs.first;
-    });
+    try {
+      debugPrint('🔍 Fetching application status for user: $userId');
+      
+      return _applicationsCollection
+          .where('userId', isEqualTo: userId)
+          .orderBy('submittedAt', descending: true)
+          .limit(1)
+          .snapshots()
+          .map((snapshot) {
+        debugPrint('📊 Query result: ${snapshot.docs.length} documents');
+        if (snapshot.docs.isEmpty) {
+          debugPrint('ℹ️ No application found for user: $userId');
+          return null;
+        }
+        
+        debugPrint('✅ Application found: ${snapshot.docs.first.id}');
+        return snapshot.docs.first;
+      }).handleError((error) {
+        debugPrint('❌ Error in getApplicationStatus stream: $error');
+        if (error.toString().contains('index')) {
+          debugPrint('⚠️ Firestore index missing! Create composite index for host_applications');
+          debugPrint('   Fields: userId (Ascending), submittedAt (Descending)');
+          debugPrint('   Go to Firebase Console → Firestore → Indexes to create');
+        } else if (error.toString().contains('permission') || error.toString().contains('PERMISSION_DENIED')) {
+          debugPrint('⚠️ Permission denied! Check Firestore security rules');
+          debugPrint('   Verify user can read their own applications');
+        }
+        return null;
+      });
+    } catch (e) {
+      debugPrint('❌ Exception in getApplicationStatus: $e');
+      return Stream<DocumentSnapshot?>.value(null);
+    }
   }
 
   /// Get application by ID
@@ -121,32 +145,68 @@ class HostApplicationService {
   /// Approve application (admin only)
   Future<bool> approveApplication(String applicationId, String adminId) async {
     try {
+      debugPrint('🔍 [approveApplication] Starting approval for: $applicationId');
+      debugPrint('👤 [approveApplication] Admin ID: $adminId');
+      
       final application = await getApplicationById(applicationId);
       if (application == null) {
         debugPrint('❌ Application not found: $applicationId');
         return false;
       }
 
+      debugPrint('📋 [approveApplication] Application found for user: ${application.userId}');
+      debugPrint('📋 [approveApplication] Current status: ${application.status}');
+
       // Update application status
-      await _applicationsCollection.doc(applicationId).update({
-        'status': 'approved',
-        'reviewedAt': FieldValue.serverTimestamp(),
-        'reviewedBy': adminId,
-        'approvedAt': FieldValue.serverTimestamp(),
-      });
+      debugPrint('🔄 [approveApplication] Updating host_applications document...');
+      try {
+        await _applicationsCollection.doc(applicationId).update({
+          'status': 'approved',
+          'reviewedAt': FieldValue.serverTimestamp(),
+          'reviewedBy': adminId,
+          'approvedAt': FieldValue.serverTimestamp(),
+        });
+        debugPrint('✅ [approveApplication] Application document updated successfully');
+      } catch (e) {
+        debugPrint('❌ [approveApplication] Failed to update application document: $e');
+        debugPrint('❌ [approveApplication] Error type: ${e.runtimeType}');
+        if (e.toString().contains('permission') || e.toString().contains('PERMISSION_DENIED')) {
+          debugPrint('⚠️ [approveApplication] PERMISSION DENIED - Check:');
+          debugPrint('   1. Admin document exists in /admins/$adminId');
+          debugPrint('   2. isAdmin field is boolean true (not string)');
+          debugPrint('   3. User is authenticated with Firebase Auth');
+        }
+        rethrow;
+      }
 
       // Update user document to set isHost = true and isActive = true
-      await _firestore.collection('users').doc(application.userId).update({
-        'isHost': true,
-        'isActive': true,
-        'hostApprovedAt': FieldValue.serverTimestamp(),
-        'hostApplicationId': applicationId,
-      });
+      debugPrint('🔄 [approveApplication] Updating users document for: ${application.userId}');
+      try {
+        await _firestore.collection('users').doc(application.userId).update({
+          'isHost': true,
+          'isActive': true,
+          'hostApprovedAt': FieldValue.serverTimestamp(),
+          'hostApplicationId': applicationId,
+        });
+        debugPrint('✅ [approveApplication] User document updated successfully');
+      } catch (e) {
+        debugPrint('❌ [approveApplication] Failed to update user document: $e');
+        debugPrint('❌ [approveApplication] Error type: ${e.runtimeType}');
+        if (e.toString().contains('permission') || e.toString().contains('PERMISSION_DENIED')) {
+          debugPrint('⚠️ [approveApplication] PERMISSION DENIED - Check:');
+          debugPrint('   1. Admin document exists in /admins/$adminId');
+          debugPrint('   2. isAdmin field is boolean true (not string)');
+          debugPrint('   3. User is authenticated with Firebase Auth');
+        }
+        rethrow;
+      }
 
-      debugPrint('✅ Application approved: $applicationId');
+      debugPrint('✅ [approveApplication] Application approved successfully: $applicationId');
       return true;
     } catch (e) {
-      debugPrint('❌ Error approving application: $e');
+      debugPrint('❌ [approveApplication] Error approving application: $e');
+      debugPrint('❌ [approveApplication] Error details: ${e.toString()}');
+      debugPrint('❌ [approveApplication] Stack trace: ${StackTrace.current}');
       return false;
     }
   }

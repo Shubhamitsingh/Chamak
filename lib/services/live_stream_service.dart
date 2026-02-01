@@ -166,7 +166,8 @@ class LiveStreamService {
     }
   }
   
-  /// Get all active live streams
+  /// Get all active live streams (real-time stream - loads all, no pagination)
+  /// For paginated version, use getActiveLiveStreamsPaginated()
   Stream<List<LiveStreamModel>> getActiveLiveStreams() {
     print('🔍 Setting up getActiveLiveStreams query...');
     print('   Collection: $_collection');
@@ -176,6 +177,74 @@ class LiveStreamService {
     // First, do a one-time server read to get fresh data
     // Then listen to real-time updates
     return _getActiveLiveStreamsWithServerRead();
+  }
+  
+  /// Get active live streams with pagination (for initial load)
+  /// Returns a Future for paginated queries (not a stream)
+  Future<List<LiveStreamModel>> getActiveLiveStreamsPaginated({
+    int limit = 20,
+    DocumentSnapshot? lastDocument,
+  }) async {
+    try {
+      print('🔍 Getting paginated live streams: limit=$limit');
+      
+      Query query = _firestore
+          .collection(_collection)
+          .where('isActive', isEqualTo: true)
+          .orderBy('startedAt', descending: true)
+          .limit(limit);
+      
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+      
+      final snapshot = await query.get(const GetOptions(source: Source.server));
+      print('📊 Paginated query returned: ${snapshot.docs.length} documents');
+      
+      return _processSnapshot(snapshot);
+    } catch (e) {
+      print('❌ Error in getActiveLiveStreamsPaginated: $e');
+      // If index doesn't exist, fallback to non-paginated query
+      if (e.toString().contains('index')) {
+        print('⚠️ Index not found, falling back to non-paginated query');
+        final snapshot = await _firestore
+            .collection(_collection)
+            .where('isActive', isEqualTo: true)
+            .limit(limit)
+            .get(const GetOptions(source: Source.server));
+        return _processSnapshot(snapshot);
+      }
+      return [];
+    }
+  }
+  
+  /// Get active live streams as paginated stream (for real-time updates with pagination)
+  Stream<List<LiveStreamModel>> getActiveLiveStreamsPaginatedStream({
+    int limit = 20,
+    DocumentSnapshot? lastDocument,
+  }) {
+    try {
+      print('🔍 Setting up paginated live streams stream: limit=$limit');
+      
+      Query query = _firestore
+          .collection(_collection)
+          .where('isActive', isEqualTo: true)
+          .orderBy('startedAt', descending: true)
+          .limit(limit);
+      
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+      
+      return query.snapshots().map((snapshot) {
+        print('📡 Paginated stream update: ${snapshot.docs.length} documents');
+        return _processSnapshot(snapshot);
+      });
+    } catch (e) {
+      print('❌ Error in getActiveLiveStreamsPaginatedStream: $e');
+      // Fallback to non-paginated stream
+      return getActiveLiveStreams();
+    }
   }
   
   /// Get active live streams with forced server read

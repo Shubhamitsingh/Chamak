@@ -9,6 +9,7 @@ import 'home_screen.dart';
 import 'set_profile_screen.dart';
 import '../services/database_service.dart';
 import '../services/crashlytics_service.dart';
+import '../services/meta_events_service.dart';
 import '../generated/l10n/app_localizations.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -112,11 +113,19 @@ class _OtpScreenState extends State<OtpScreen> {
       
       try {
       final dbService = DatabaseService();
-      await dbService.createOrUpdateUser(
+      final isNewUser = await dbService.createOrUpdateUser(
         phoneNumber: widget.phoneNumber,
         countryCode: widget.countryCode,
       );
       debugPrint('✅ User saved to database successfully!');
+      
+      // Log Meta complete_registration event for new users only
+      if (isNewUser) {
+        debugPrint('📊 Logging Meta complete_registration event...');
+        await MetaEventsService.logCompleteRegistration(
+          method: 'phone',
+        );
+      }
       } catch (dbError) {
         debugPrint('❌ Database save error: $dbError');
         debugPrint('❌ Error details: ${dbError.runtimeType}');

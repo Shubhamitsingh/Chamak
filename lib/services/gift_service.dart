@@ -35,17 +35,13 @@ class GiftService {
         // Convert U Coins to C Coins for the host
         final cCoinsToGive = CoinConversionService.convertUtoC(uCoinCost);
         
-        // Get sender's wallet document
-        final senderWalletRef = _firestore.collection('wallets').doc(senderId);
-        final senderWalletDoc = await transaction.get(senderWalletRef);
-        
-        // Get sender's user document (for name if creating wallet)
+        // Get sender's user document (for name)
         final senderUserDoc = await transaction.get(
           _firestore.collection('users').doc(senderId),
         );
         final senderNameValue = senderUserDoc.data()?['displayName'] as String? ?? '';
         
-        // 1. Deduct U Coins from sender's users collection
+        // 1. Deduct U Coins from sender's users collection (single source of truth)
         transaction.update(
           _firestore.collection('users').doc(senderId),
           {
@@ -53,33 +49,7 @@ class GiftService {
           },
         );
         
-        // 2. Update or create sender's wallet collection
-        if (senderWalletDoc.exists) {
-          transaction.update(
-            senderWalletRef,
-            {
-              'balance': FieldValue.increment(-uCoinCost),
-              'coins': FieldValue.increment(-uCoinCost),
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-          );
-        } else {
-          final currentUCoins = (senderUserDoc.data()?['uCoins'] as int?) ?? 0;
-          final senderNewUCoinsBalance = currentUCoins - uCoinCost;
-          transaction.set(
-            senderWalletRef,
-            {
-              'userId': senderId,
-              'userName': senderNameValue,
-              'balance': senderNewUCoinsBalance,
-              'coins': senderNewUCoinsBalance,
-              'createdAt': FieldValue.serverTimestamp(),
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-          );
-        }
-        
-        print('💰 Gift: Deducting $uCoinCost U Coins atomically from both users and wallets collections');
+        print('💰 Gift: Deducting $uCoinCost U Coins from users.uCoins (single source of truth)');
         
         // 3. Add C Coins to receiver's earnings (SINGLE SOURCE OF TRUTH)
         final earningsRef = _firestore.collection('earnings').doc(receiverId);
@@ -117,7 +87,7 @@ class GiftService {
     }
   }
   
-  /// Get user's gift history (sent gifts)
+  /// Get user's gift history (sent gifts - real-time stream, loads 50)
   Stream<List<GiftModel>> getUserSentGifts(String userId) {
     return _firestore
         .collection('gifts')
@@ -130,7 +100,34 @@ class GiftService {
             .toList());
   }
   
-  /// Get host's gift history (received gifts)
+  /// Get user's sent gifts with pagination (for loading more)
+  Future<List<GiftModel>> getUserSentGiftsPaginated({
+    required String userId,
+    DocumentSnapshot? lastGift,
+    int limit = 20,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection('gifts')
+          .where('senderId', isEqualTo: userId)
+          .orderBy('timestamp', descending: true)
+          .limit(limit);
+      
+      if (lastGift != null) {
+        query = query.startAfterDocument(lastGift);
+      }
+      
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => GiftModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('❌ Error getting paginated sent gifts: $e');
+      return [];
+    }
+  }
+  
+  /// Get host's gift history (received gifts - real-time stream, loads 50)
   Stream<List<GiftModel>> getHostReceivedGifts(String hostId) {
     return _firestore
         .collection('gifts')
@@ -146,6 +143,33 @@ class GiftService {
           print('Error fetching gifts: $error');
           throw error;
         });
+  }
+  
+  /// Get host's received gifts with pagination (for loading more)
+  Future<List<GiftModel>> getHostReceivedGiftsPaginated({
+    required String hostId,
+    DocumentSnapshot? lastGift,
+    int limit = 20,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection('gifts')
+          .where('receiverId', isEqualTo: hostId)
+          .orderBy('timestamp', descending: true)
+          .limit(limit);
+      
+      if (lastGift != null) {
+        query = query.startAfterDocument(lastGift);
+      }
+      
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => GiftModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('❌ Error getting paginated received gifts: $e');
+      return [];
+    }
   }
   
   /// Fallback method: Get gifts without orderBy (no index needed)

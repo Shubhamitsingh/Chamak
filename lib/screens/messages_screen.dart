@@ -107,7 +107,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         title: Text(
           AppLocalizations.of(context)!.messages,
           style: const TextStyle(
-            color: Color(0xFF9C27B0),
+            color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -200,9 +200,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
                               child: Text(
                                 'Chamakz Team',
                                 style: TextStyle(
-                                  fontWeight: hasUnread ? FontWeight.bold : FontWeight.bold,
+                                  fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
                                   fontSize: 16,
-                                  color: const Color(0xFFFF1B7C),
+                                  color: hasUnread ? const Color(0xFFFF1B7C) : Colors.black87,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 1,
@@ -549,7 +549,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           unreadCount > 99 ? '99+' : unreadCount.toString(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 8,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -572,8 +572,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         child: Text(
                           otherUserName,
                           style: TextStyle(
-                            fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w600,
-                            fontSize: 12,
+                            fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
+                            fontSize: 16,
                             color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.black87,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -595,7 +595,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           child: Text(
                             'Lv.$displayLevel',
                             style: const TextStyle(
-                              fontSize: 8,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               height: 1.0,
@@ -613,7 +613,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     style: TextStyle(
                       color: unreadCount > 0 ? Colors.black87 : Colors.grey[600],
                       fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
-                      fontSize: 10,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -624,9 +624,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
             Text(
               _formatTimestamp(lastMessageTime),
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 11,
                 color: unreadCount > 0 ? const Color(0xFFFF1B7C) : Colors.grey[600],
-                fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
               ),
             ),
           ],

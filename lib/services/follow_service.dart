@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/follower_model.dart';
 import '../models/user_model.dart';
 
@@ -90,15 +91,8 @@ class FollowService {
         'followedAt': FieldValue.serverTimestamp(),
       });
 
-      // Update follower/following counts
-      batch.update(_firestore.collection('users').doc(currentUserId), {
-        'followingCount': FieldValue.increment(1),
-      });
-
-      batch.update(_firestore.collection('users').doc(targetUser.uid), {
-        'followersCount': FieldValue.increment(1),
-      });
-
+      // Counters will be updated automatically by Cloud Function (onFollow trigger)
+      // No need to update counters directly - prevents write contention
       await _retryFirestoreOperation(() => batch.commit());
       print('✅ Successfully followed user: ${targetUser.name}');
       return true;
@@ -131,16 +125,30 @@ class FollowService {
 
       batch.delete(followersRef);
 
-      // Update follower/following counts
-      batch.update(_firestore.collection('users').doc(currentUserId), {
-        'followingCount': FieldValue.increment(-1),
-      });
-
-      batch.update(_firestore.collection('users').doc(targetUserId), {
-        'followersCount': FieldValue.increment(-1),
-      });
-
+      // Commit batch first (delete subcollections)
       await _retryFirestoreOperation(() => batch.commit());
+      
+      // Update counters via Cloud Function (prevents write contention)
+      try {
+        final functions = FirebaseFunctions.instance;
+        final callable = functions.httpsCallable('updateUnfollowCounters');
+        await callable.call({
+          'userId': currentUserId,
+          'targetId': targetUserId,
+        });
+        print('✅ Counters updated via Cloud Function');
+      } catch (e) {
+        print('⚠️ Cloud Function call failed, updating counters directly: $e');
+        // Fallback: Update counters directly if Cloud Function fails
+        final fallbackBatch = _firestore.batch();
+        fallbackBatch.update(_firestore.collection('users').doc(currentUserId), {
+          'followingCount': FieldValue.increment(-1),
+        });
+        fallbackBatch.update(_firestore.collection('users').doc(targetUserId), {
+          'followersCount': FieldValue.increment(-1),
+        });
+        await fallbackBatch.commit();
+      }
       print('✅ Successfully unfollowed user');
       return true;
     } catch (e) {

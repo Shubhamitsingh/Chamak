@@ -19,7 +19,7 @@ class TermsAndConditionsScreen extends StatelessWidget {
           style: TextStyle(
             color: Colors.black87,
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: true,
@@ -136,7 +136,7 @@ class TermsAndConditionsScreen extends StatelessWidget {
                     '11. Contact Information',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                       color: Color(0xFFFF1B7C),
                     ),
                   ),
@@ -148,6 +148,7 @@ class TermsAndConditionsScreen extends StatelessWidget {
                         fontSize: 14,
                         color: Colors.grey[800],
                         height: 1.6,
+                        fontWeight: FontWeight.w400,
                       ),
                       children: [
                         const TextSpan(
@@ -209,9 +210,10 @@ class TermsAndConditionsScreen extends StatelessWidget {
                       'By using our platform, you acknowledge that you have read, understood, and agree to be bound by these Terms & Conditions.',
                       textAlign: TextAlign.left,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         color: Colors.grey[800],
                         height: 1.4,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ),
@@ -236,7 +238,7 @@ class TermsAndConditionsScreen extends StatelessWidget {
             title,
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               color: Color(0xFFFF1B7C),
             ),
           ),
@@ -248,6 +250,7 @@ class TermsAndConditionsScreen extends StatelessWidget {
               fontSize: 14,
               color: Colors.grey[800],
               height: 1.6,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ],

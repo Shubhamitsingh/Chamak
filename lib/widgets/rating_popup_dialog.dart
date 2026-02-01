@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:in_app_review/in_app_review.dart';
+import '../services/rating_service.dart';
 
 /// Modern Play Store rating popup dialog - Matching Telegram popup layout
+/// Uses hybrid approach: Native In-App Review API when available, falls back to Play Store URL
 class RatingPopupDialog extends StatefulWidget {
   final VoidCallback? onRated;
   final VoidCallback? onClosed;
@@ -21,6 +24,8 @@ class _RatingPopupDialogState extends State<RatingPopupDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _rotationController;
   bool _isRating = false;
+  final RatingService _ratingService = RatingService();
+  final InAppReview _inAppReview = InAppReview.instance;
 
   /// Play Store URL for the app
   static const String playStoreUrl =
@@ -42,12 +47,50 @@ class _RatingPopupDialogState extends State<RatingPopupDialog>
     super.dispose();
   }
 
-  /// Open Play Store rating page
+  /// Handle rate now - Hybrid approach: Try native API first, fallback to Play Store URL
   Future<void> _handleRateNow() async {
     if (_isRating) return;
     
     setState(() => _isRating = true);
     
+    try {
+      // ✅ HYBRID APPROACH: Try native In-App Review API first
+      final isAvailable = await _inAppReview.isAvailable();
+      
+      if (isAvailable) {
+        // PATH A: Show native Play Store dialog (best UX)
+        debugPrint('✅ Native In-App Review available - showing native dialog');
+        
+        // Mark as requested (for rate limiting)
+        await _ratingService.markReviewRequested();
+        
+        // Show native dialog
+        await _inAppReview.requestReview();
+        
+        // Mark as rated (user might have submitted)
+        widget.onRated?.call();
+        
+        // Close popup after short delay
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.of(context).pop(true); // true = user rated
+        }
+        return;
+      }
+      
+      // PATH B: Fallback to Play Store URL (if native API not available)
+      debugPrint('⚠️ Native In-App Review not available - using Play Store URL fallback');
+      await _openPlayStoreUrl();
+      
+    } catch (e) {
+      debugPrint('❌ Error in hybrid review approach: $e');
+      // Fallback to Play Store URL
+      await _openPlayStoreUrl();
+    }
+  }
+
+  /// Open Play Store URL (fallback method)
+  Future<void> _openPlayStoreUrl() async {
     try {
       // Mark as rated
       widget.onRated?.call();

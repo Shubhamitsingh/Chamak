@@ -16,7 +16,8 @@ class DatabaseService {
   String? get currentUserId => _auth.currentUser?.uid;
 
   // Create or Update User in Firestore
-  Future<void> createOrUpdateUser({
+  // Returns true if new user was created, false if existing user was updated
+  Future<bool> createOrUpdateUser({
     required String phoneNumber,
     required String countryCode,
   }) async {
@@ -24,7 +25,7 @@ class DatabaseService {
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
         print('❌ No authenticated user found');
-        return;
+        return false; // Return false if no user (shouldn't happen, but handle gracefully)
       }
 
       print('📝 Creating/Updating user in Firestore: $userId');
@@ -75,6 +76,7 @@ class DatabaseService {
           },
         );
         print('✅ Last login updated successfully');
+        return false; // Existing user updated
       } else {
         // New user → Create profile
         print('✨ New user detected, creating profile...');
@@ -91,6 +93,7 @@ class DatabaseService {
           'photoURL': generated,
           'createdAt': FieldValue.serverTimestamp(),
           'lastLogin': FieldValue.serverTimestamp(),
+          'lastActive': FieldValue.serverTimestamp(), // Track user activity
           'isActive': false, // New users need admin approval before going live
           'followersCount': 0,
           'followingCount': 0,
@@ -107,6 +110,7 @@ class DatabaseService {
         );
         print('✅ User profile created successfully in Firestore!');
         print('   Note: Coin fields (uCoins, cCoins) will be initialized when first accessed or by Cloud Functions');
+        return true; // New user created
       }
     } catch (e) {
       print('❌ Error creating/updating user in Firestore: $e');

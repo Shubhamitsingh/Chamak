@@ -410,7 +410,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           Text(
                             statusText,
                             style: const TextStyle(
-                              fontSize: 9,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 0.2,
@@ -511,7 +511,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                   Text(
                                     _formatDate(request.requestDate),
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 11,
                                       color: Colors.grey[600],
                                     ),
                                   ),
@@ -530,7 +530,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                     Text(
                                       _formatDate(request.approvedDate!),
                                       style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: 11,
                                         color: Colors.blue[600],
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -550,7 +550,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                     Text(
                                       _formatDate(request.paidDate!),
                                       style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: 11,
                                         color: Colors.green[600],
                                         fontWeight: FontWeight.w500,
                                       ),

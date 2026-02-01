@@ -109,9 +109,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               child: Text(
                                 'Chamakz Team',
                                 style: TextStyle(
-                                  fontWeight: hasUnread ? FontWeight.bold : FontWeight.bold,
+                                  fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
                                   fontSize: 16,
-                                  color: const Color(0xFFFF1B7C),
+                                  color: hasUnread ? const Color(0xFFFF1B7C) : Colors.black87,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 1,

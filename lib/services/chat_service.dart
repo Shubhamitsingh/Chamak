@@ -135,7 +135,7 @@ class ChatService {
     }
   }
 
-  // Get all user chats (real-time)
+  // Get all user chats (real-time - loads all chats)
   Stream<List<ChatModel>> getUserChats(String userId) {
     try {
       return _firestore
@@ -172,8 +172,43 @@ class ChatService {
       return Stream.value(<ChatModel>[]);
     }
   }
+  
+  // Get user chats with pagination (for initial load)
+  Future<List<ChatModel>> getUserChatsPaginated({
+    required String userId,
+    DocumentSnapshot? lastDocument,
+    int limit = 20,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .orderBy('lastMessageTime', descending: true)
+          .limit(limit);
+      
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+      
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) {
+            try {
+              return ChatModel.fromFirestore(doc);
+            } catch (e) {
+              print('❌ Error parsing chat document: $e');
+              return null;
+            }
+          })
+          .whereType<ChatModel>()
+          .toList();
+    } catch (e) {
+      print('❌ Error getting paginated chats: $e');
+      return [];
+    }
+  }
 
-  // Get messages for a specific chat (real-time)
+  // Get messages for a specific chat (real-time - loads last 100 messages)
   Stream<List<MessageModel>> getChatMessages(String chatId) {
     return _firestore
         .collection('chats')
@@ -185,6 +220,34 @@ class ChatService {
         .map((snapshot) => snapshot.docs
             .map((doc) => MessageModel.fromFirestore(doc))
             .toList());
+  }
+  
+  // Get chat messages with pagination (for loading older messages)
+  Future<List<MessageModel>> getChatMessagesPaginated({
+    required String chatId,
+    DocumentSnapshot? lastMessage,
+    int limit = 50,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(limit);
+      
+      if (lastMessage != null) {
+        query = query.startAfterDocument(lastMessage);
+      }
+      
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map((doc) => MessageModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('❌ Error getting paginated messages: $e');
+      return [];
+    }
   }
 
   // Mark all messages as read in a chat

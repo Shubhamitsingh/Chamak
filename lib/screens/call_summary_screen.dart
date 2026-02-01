@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/database_service.dart';
+import '../services/rating_service.dart';
 
-class CallSummaryScreen extends StatelessWidget {
+class CallSummaryScreen extends StatefulWidget {
   final String otherUserId;
   final String otherUserName;
   final String? otherUserImage;
@@ -21,6 +22,54 @@ class CallSummaryScreen extends StatelessWidget {
     required this.coinsEarned,
     required this.isHost,
   });
+
+  @override
+  State<CallSummaryScreen> createState() => _CallSummaryScreenState();
+}
+
+class _CallSummaryScreenState extends State<CallSummaryScreen> {
+  final RatingService _ratingService = RatingService();
+  bool _hasShownReviewRequest = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Trigger review request after successful call (wait a moment)
+    _triggerReviewAfterCall();
+  }
+
+  /// Trigger review request after successful call completion
+  Future<void> _triggerReviewAfterCall() async {
+    // Wait 2 seconds (don't interrupt user immediately)
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted || _hasShownReviewRequest) return;
+
+    try {
+      // Check eligibility (rate limiting)
+      final shouldShow = await _ratingService.shouldShowReviewRequest();
+      if (!shouldShow) {
+        debugPrint('ℹ️ Review request not eligible after call - skipping');
+        return;
+      }
+
+      // Try native In-App Review API first (best UX)
+      final nativeShown = await _ratingService.requestReview();
+
+      if (nativeShown) {
+        _hasShownReviewRequest = true;
+        debugPrint('✅ Review request shown after successful call (native)');
+        return;
+      }
+
+      // Fallback: Could show custom popup here if needed
+      // For now, just mark as shown to avoid multiple attempts
+      _hasShownReviewRequest = true;
+      debugPrint('ℹ️ Review request eligible but native API not available');
+    } catch (e) {
+      debugPrint('❌ Error triggering review after call: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,11 +99,11 @@ class CallSummaryScreen extends StatelessWidget {
         ],
       ),
       body: FutureBuilder<UserModel?>(
-        future: DatabaseService().getUserData(otherUserId),
+        future: DatabaseService().getUserData(widget.otherUserId),
         builder: (context, snapshot) {
           final userData = snapshot.data;
-          final displayName = userData?.displayName ?? otherUserName;
-          final photoUrl = userData?.photoURL ?? otherUserImage;
+          final displayName = userData?.displayName ?? widget.otherUserName;
+          final photoUrl = userData?.photoURL ?? widget.otherUserImage;
 
           return SingleChildScrollView(
             child: Column(
@@ -144,18 +193,18 @@ class CallSummaryScreen extends StatelessWidget {
                         child: _buildMetricCard(
                           icon: Icons.access_time,
                           label: 'Duration',
-                          value: _formatDuration(callDuration),
+                          value: _formatDuration(widget.callDuration),
                           color: const Color(0xFFFF69B4),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildMetricCard(
-                          icon: isHost ? Icons.monetization_on : null,
-                          coinImage: isHost ? null : 'assets/images/coin3.png',
-                          label: isHost ? 'Earned' : 'Spent',
-                          value: isHost ? '$coinsEarned' : '$coinsSpent',
-                          color: isHost ? const Color(0xFF4CAF50) : const Color(0xFFFF9800),
+                          icon: widget.isHost ? Icons.monetization_on : null,
+                          coinImage: widget.isHost ? null : 'assets/images/coin3.png',
+                          label: widget.isHost ? 'Earned' : 'Spent',
+                          value: widget.isHost ? '${widget.coinsEarned}' : '${widget.coinsSpent}',
+                          color: widget.isHost ? const Color(0xFF4CAF50) : const Color(0xFFFF9800),
                         ),
                       ),
                     ],
@@ -203,7 +252,7 @@ class CallSummaryScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isHost ? 'Call History' : 'Call Summary',
+                        widget.isHost ? 'Call History' : 'Call Summary',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -213,20 +262,20 @@ class CallSummaryScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       _buildInfoItem(
                         icon: Icons.phone,
-                        text: 'You talked for ${_formatDuration(callDuration)}',
+                        text: 'You talked for ${_formatDuration(widget.callDuration)}',
                       ),
                       const SizedBox(height: 8),
                       _buildInfoItem(
-                        icon: isHost ? Icons.trending_up : null,
-                        coinImage: isHost ? null : 'assets/images/coin3.png',
-                        text: isHost 
-                            ? 'You earned $coinsEarned coins from this call'
-                            : 'You spent $coinsSpent coins for this call',
+                        icon: widget.isHost ? Icons.trending_up : null,
+                        coinImage: widget.isHost ? null : 'assets/images/coin3.png',
+                        text: widget.isHost 
+                            ? 'You earned ${widget.coinsEarned} coins from this call'
+                            : 'You spent ${widget.coinsSpent} coins for this call',
                       ),
                       const SizedBox(height: 8),
                       _buildInfoItem(
                         icon: Icons.person,
-                        text: isHost 
+                        text: widget.isHost 
                             ? 'You received a call from $displayName'
                             : 'You called $displayName',
                       ),

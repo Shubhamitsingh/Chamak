@@ -160,10 +160,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
               child: ElevatedButton(
                 onPressed: () => _showSwitchAccountDialog(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pink,
+                  backgroundColor: const Color(0xFFFF1B7C),
                   foregroundColor: Colors.white,
                   elevation: 8,
-                  shadowColor: Colors.pink.withOpacity(0.4),
+                  shadowColor: const Color(0xFFFF1B7C).withOpacity(0.4),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -235,9 +235,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
             Text(
               title,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
                 color: isDestructive ? const Color.fromARGB(240, 240, 52, 38) : Colors.black87,
-                fontWeight: FontWeight.w500,
               ),
             ),
             if (trailing != null)
@@ -693,7 +693,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
           // Use dialogContext to avoid conflicts
           return Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 400),
@@ -703,8 +703,8 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
               },
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.85,
-                  maxWidth: 400,
+                  maxHeight: MediaQuery.of(context).size.height * 0.75,
+                  maxWidth: 320,
                 ),
                 child: Container(
                   decoration: BoxDecoration(
@@ -717,25 +717,18 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                       ],
                     ),
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withValues(alpha:0.2),
-                        blurRadius: 25,
-                        spreadRadius: 3,
-                      ),
-                    ],
                   ),
                   child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                     Container(
-                      width: 65,
-                      height: 65,
+                      width: 55,
+                      height: 55,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -744,31 +737,24 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                           ],
                         ),
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withValues(alpha:0.3),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          ),
-                        ],
                       ),
                       child: const Icon(
                         Icons.warning_rounded,
                         color: Colors.white,
-                        size: 36,
+                        size: 30,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text(
                       AppLocalizations.of(context)!.deleteAccount,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text(
                       AppLocalizations.of(context)!.typeDeleteToConfirm,
                       style: const TextStyle(
@@ -795,7 +781,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
@@ -810,7 +796,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -851,10 +837,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                               });
                             },
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                               backgroundColor: Colors.white,
                               side: BorderSide(color: Colors.grey[300]!, width: 2),
-                              minimumSize: const Size(0, 44),
+                              minimumSize: const Size(0, 40),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -862,7 +848,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                             child: Text(
                               AppLocalizations.of(context)!.cancel,
                               style: const TextStyle(
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black54,
                               ),
@@ -883,14 +869,6 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.withValues(alpha:0.4),
-                                  blurRadius: 10,
-                                  spreadRadius: 1,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
                             ),
                             child: ElevatedButton(
                               onPressed: () {
@@ -928,9 +906,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                               elevation: 0,
-                              minimumSize: const Size(0, 44),
+                              minimumSize: const Size(0, 40),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -938,7 +916,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                               child: Text(
                                 AppLocalizations.of(context)!.confirm,
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
@@ -1235,12 +1213,12 @@ class _PhoneUpdateDialogState extends State<_PhoneUpdateDialog> {
             prefixIcon: const Icon(Icons.search),
             border: OutlineInputBorder(
               borderSide: BorderSide(
-                color: const Color(0xFF9C27B0).withValues(alpha: 0.2),
+                color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
               ),
             ),
             focusedBorder: const OutlineInputBorder(
               borderSide: BorderSide(
-                color: Color(0xFF9C27B0),
+                color: Color(0xFFFF1B7C),
                 width: 2,
               ),
             ),

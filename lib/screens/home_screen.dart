@@ -235,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen>
     switch (state) {
       case AppLifecycleState.resumed:
         // App came to foreground - update status immediately
-        _onlineStatusService.updateLastSeen(userId);
+        _onlineStatusService.updateLastActive(userId);
         _onlineStatusService.initializeStatusTracking();
         break;
       case AppLifecycleState.paused:
@@ -1521,6 +1521,41 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  // Get engaging announcement placeholder text (rotates for variety)
+  String _getEngagingAnnouncementText() {
+    final engagingMessages = [
+      // New Features (without version/update mentions)
+      '✨ NEW: Exclusive Features Just Launched! Tap to Discover More • ',
+      '🎉 Latest Features: Explore What\'s New Today • ',
+      '🌟 Discover: Exciting New Content Available Now • ',
+      '💫 Fresh Content: Check Out What\'s Trending • ',
+      
+      // Urgency & FOMO
+      '⏰ Limited Time: Special Offers Ending Soon • ',
+      '🔥 Hot Right Now: Don\'t Miss Out on Exclusive Content • ',
+      '💥 24-Hour Special: Limited Spots Available • ',
+      '⚡ Act Fast: Exclusive Deals for Active Users • ',
+      
+      // Engagement & Community
+      '👥 Join Thousands: Connect with Amazing Creators • ',
+      '🌟 Trending Now: See What Everyone\'s Watching • ',
+      '💎 Premium Content: Unlock Exclusive Experiences • ',
+      '🎯 Discover: Find Your Perfect Match Today • ',
+      
+      // Value Proposition
+      '💸 Earn More: Start Your Creator Journey Now • ',
+      '🏆 Level Up: Unlock New Features & Rewards • ',
+      '🎁 Special Rewards: Claim Your Bonus Today • ',
+      '💯 Top Creators: Learn from the Best • ',
+    ];
+
+    // Rotate messages based on current time (changes every hour)
+    final hour = DateTime.now().hour;
+    final index = hour % engagingMessages.length;
+    return engagingMessages[index];
+  }
+
+
   // ========== SCROLLING ANNOUNCEMENT BAR ==========
   Widget _buildAnnouncementBar() {
     return RepaintBoundary(
@@ -1578,9 +1613,8 @@ class _HomeScreenState extends State<HomeScreen>
           // Get announcement text
           String announcementText;
           if (announcements.isEmpty) {
-            debugPrint('No announcements found - showing placeholder');
-            announcementText =
-                'Welcome to Chamakz! Stay tuned for exciting updates and announcements • ';
+            debugPrint('No announcements found - showing engaging placeholder');
+            announcementText = _getEngagingAnnouncementText();
           } else {
             // Get the first active announcement
             AnnouncementModel? activeAnnouncement;
@@ -1591,13 +1625,11 @@ class _HomeScreenState extends State<HomeScreen>
               );
             } catch (e) {
               debugPrint('Error getting announcement: $e');
-              announcementText =
-                  'Welcome to Chamakz! Stay tuned for exciting updates • ';
+              announcementText = _getEngagingAnnouncementText();
             }
 
             if (activeAnnouncement == null) {
-              announcementText =
-                  'Welcome to Chamakz! Stay tuned for exciting updates • ';
+              announcementText = _getEngagingAnnouncementText();
             } else {
               // Clean the text - remove any extra spaces, null characters, and ensure proper formatting
               final title = _sanitizeText(activeAnnouncement.title);

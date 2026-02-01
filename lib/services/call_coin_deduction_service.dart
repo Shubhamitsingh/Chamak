@@ -25,32 +25,14 @@ class CallCoinDeductionService {
       
       final userData = userDoc.data() ?? {};
       
-      // Check all possible coin fields (uCoins is primary, coins is legacy fallback)
+      // Check coin fields (uCoins is primary, coins is legacy fallback)
       final uCoins = (userData['uCoins'] as int?) ?? 0;
       final legacyCoins = (userData['coins'] as int?) ?? 0;
       
       print('💰 Balance check - uCoins: $uCoins, legacy coins: $legacyCoins');
       
-      // Also check wallet collection (with timeout)
-      int walletBalance = 0;
-      try {
-        final walletDoc = await _firestore.collection('wallets').doc(userId)
-            .get(const GetOptions(source: Source.server))
-            .timeout(const Duration(seconds: 10));
-        
-        if (walletDoc.exists) {
-          final walletData = walletDoc.data() ?? {};
-          walletBalance = (walletData['balance'] as int?) ?? 
-                         (walletData['coins'] as int?) ?? 0;
-          print('💰 Wallet balance: $walletBalance');
-        }
-      } catch (e) {
-        print('⚠️ Could not read wallet collection (non-critical): $e');
-        // Continue without wallet balance - not critical
-      }
-      
-      // Use the highest value found (prioritize uCoins, then legacy coins, then wallet)
-      final balance = [uCoins, legacyCoins, walletBalance].reduce((a, b) => a > b ? a : b);
+      // Use uCoins as primary, fallback to legacy coins
+      final balance = uCoins > 0 ? uCoins : (legacyCoins > 0 ? legacyCoins : 0);
       
       print('💰 Final balance used: $balance (required: $COINS_PER_MINUTE)');
       
@@ -81,31 +63,14 @@ class CallCoinDeductionService {
       
       final userData = userDoc.data() ?? {};
       
-      // Check all possible coin fields (uCoins is primary, coins is legacy fallback)
+      // Check coin fields (uCoins is primary, coins is legacy fallback)
       final uCoins = (userData['uCoins'] as int?) ?? 0;
       final legacyCoins = (userData['coins'] as int?) ?? 0;
       
-      // Also check wallet collection (with timeout)
-      int walletBalance = 0;
-      try {
-        final walletDoc = await _firestore.collection('wallets').doc(userId)
-            .get(const GetOptions(source: Source.server))
-            .timeout(const Duration(seconds: 10));
-        
-        if (walletDoc.exists) {
-          final walletData = walletDoc.data() ?? {};
-          walletBalance = (walletData['balance'] as int?) ?? 
-                         (walletData['coins'] as int?) ?? 0;
-        }
-      } catch (e) {
-        print('⚠️ Could not read wallet collection (non-critical): $e');
-        // Continue without wallet balance - not critical
-      }
+      // Use uCoins as primary, fallback to legacy coins
+      final balance = uCoins > 0 ? uCoins : (legacyCoins > 0 ? legacyCoins : 0);
       
-      // Use the highest value found (prioritize uCoins, then legacy coins, then wallet)
-      final balance = [uCoins, legacyCoins, walletBalance].reduce((a, b) => a > b ? a : b);
-      
-      print('💰 getUserBalance: uCoins=$uCoins, legacyCoins=$legacyCoins, wallet=$walletBalance, final=$balance');
+      print('💰 getUserBalance: uCoins=$uCoins, legacyCoins=$legacyCoins, final=$balance');
       
       return balance;
     } catch (e, stackTrace) {
@@ -147,10 +112,6 @@ class CallCoinDeductionService {
       // Convert U Coins to C Coins for host
       final cCoinsToCredit = CoinConversionService.convertUtoC(COINS_PER_MINUTE);
       
-      // Get caller's wallet document (to check if it exists)
-      final callerWalletRef = _firestore.collection('wallets').doc(callerId);
-      final callerWalletDoc = await callerWalletRef.get();
-      
       // Atomic batch write
       final batch = _firestore.batch();
       final callerUserRef = _firestore.collection('users').doc(callerId);
@@ -170,43 +131,13 @@ class CallCoinDeductionService {
         );
       }
       
-      // 2. Deduct U Coins from caller's users collection (PRIMARY UPDATE - ATOMIC)
+      // 2. Deduct from caller's users collection (single source of truth)
       batch.update(
         callerUserRef,
         {
           'uCoins': FieldValue.increment(-COINS_PER_MINUTE),
         },
       );
-      
-      // 2. Update or create caller's wallet collection (SYNC WITH USERS COLLECTION - ATOMIC)
-      if (callerWalletDoc.exists) {
-        // Update existing wallet document using atomic increment (stays in sync)
-        batch.update(
-          callerWalletRef,
-          {
-            'balance': FieldValue.increment(-COINS_PER_MINUTE),
-            'coins': FieldValue.increment(-COINS_PER_MINUTE),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
-      } else {
-        // Create wallet document if it doesn't exist
-        // First get current balance to set initial value
-        final currentUCoins = (callerUserDoc.data()?['uCoins'] as int?) ?? 0;
-        final callerNewUCoinsBalance = currentUCoins - COINS_PER_MINUTE;
-        final callerName = callerUserDoc.data()?['displayName'] as String? ?? '';
-        batch.set(
-          callerWalletRef,
-          {
-            'userId': callerId,
-            'userName': callerName,
-            'balance': callerNewUCoinsBalance,
-            'coins': callerNewUCoinsBalance,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
-      }
       
       // 3. Update host's earnings summary (SINGLE SOURCE OF TRUTH)
       // NOTE: Only update earnings.totalCCoins, not users.cCoins (to avoid duplicate field issues)
@@ -296,10 +227,6 @@ class CallCoinDeductionService {
       // Convert to C Coins
       final cCoinsToCredit = CoinConversionService.convertUtoC(coinsToDeduct);
       
-      // Get caller's wallet document (to check if it exists)
-      final callerWalletRef = _firestore.collection('wallets').doc(callerId);
-      final callerWalletDoc = await callerWalletRef.get();
-      
       // Atomic batch write
       final batch = _firestore.batch();
       final callerUserRef = _firestore.collection('users').doc(callerId);
@@ -319,43 +246,13 @@ class CallCoinDeductionService {
         );
       }
       
-      // 2. Deduct from caller's users collection (PRIMARY UPDATE - ATOMIC)
+      // 2. Deduct from caller's users collection (single source of truth)
       batch.update(
         callerUserRef,
         {
           'uCoins': FieldValue.increment(-coinsToDeduct),
         },
       );
-      
-      // 2. Update or create caller's wallet collection (SYNC WITH USERS COLLECTION - ATOMIC)
-      if (callerWalletDoc.exists) {
-        // Update existing wallet document using atomic increment (stays in sync)
-        batch.update(
-          callerWalletRef,
-          {
-            'balance': FieldValue.increment(-coinsToDeduct),
-            'coins': FieldValue.increment(-coinsToDeduct),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
-      } else {
-        // Create wallet document if it doesn't exist
-        // First get current balance to set initial value
-        final currentUCoins = (callerUserDoc.data()?['uCoins'] as int?) ?? 0;
-        final callerNewUCoinsBalance = currentUCoins - coinsToDeduct;
-        final callerName = callerUserDoc.data()?['displayName'] as String? ?? '';
-        batch.set(
-          callerWalletRef,
-          {
-            'userId': callerId,
-            'userName': callerName,
-            'balance': callerNewUCoinsBalance,
-            'coins': callerNewUCoinsBalance,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
-      }
       
       // 3. Update host earnings (SINGLE SOURCE OF TRUTH)
       // NOTE: Only update earnings.totalCCoins, not users.cCoins (to avoid duplicate field issues)

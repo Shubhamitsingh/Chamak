@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// Service to manage user online/offline status tracking
 /// 
 /// This service:
-/// - Updates lastSeen timestamp when user is active
+/// - Updates lastActive and lastSeen timestamps when user is active
 /// - Checks if user is online (within 5 minutes)
 /// - Checks if user is live (isLive field)
 /// - Provides streams for real-time status updates
@@ -15,7 +15,7 @@ class OnlineStatusService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   Timer? _statusUpdateTimer;
-  static const Duration _updateInterval = Duration(seconds: 60); // Update every 60 seconds
+  static const Duration _updateInterval = Duration(minutes: 2); // Update every 2 minutes
   static const int _onlineThresholdMinutes = 5; // Consider online if seen within 5 minutes
 
   /// Initialize status tracking for current user
@@ -25,7 +25,7 @@ class OnlineStatusService {
     if (userId == null) return;
 
     // Update immediately on init
-    await updateLastSeen(userId);
+    await updateLastActive(userId);
 
     // Start periodic updates
     _startPeriodicUpdates(userId);
@@ -37,7 +37,7 @@ class OnlineStatusService {
     _statusUpdateTimer = Timer.periodic(_updateInterval, (timer) async {
       final currentUserId = _auth.currentUser?.uid;
       if (currentUserId == userId) {
-        await updateLastSeen(userId);
+        await updateLastActive(userId);
       } else {
         timer.cancel();
       }
@@ -50,16 +50,25 @@ class OnlineStatusService {
     _statusUpdateTimer = null;
   }
 
-  /// Update lastSeen timestamp for current user
-  Future<void> updateLastSeen(String userId) async {
+  /// Update lastActive timestamp for current user
+  /// Also updates lastSeen for backward compatibility
+  Future<void> updateLastActive(String userId) async {
     try {
       await _firestore.collection('users').doc(userId).update({
-        'lastSeen': FieldValue.serverTimestamp(),
+        'lastActive': FieldValue.serverTimestamp(),
+        'lastSeen': FieldValue.serverTimestamp(), // Keep for backward compatibility
       });
     } catch (e) {
       // Silently handle errors (network issues, permissions, etc.)
-      debugPrint('⚠️ Failed to update lastSeen for $userId: $e');
+      debugPrint('⚠️ Failed to update lastActive for $userId: $e');
     }
+  }
+
+  /// Update lastSeen timestamp for current user (deprecated - use updateLastActive)
+  /// Kept for backward compatibility
+  @Deprecated('Use updateLastActive instead')
+  Future<void> updateLastSeen(String userId) async {
+    await updateLastActive(userId);
   }
 
   /// Check if a user is currently online

@@ -26,3 +26,14 @@
     java.lang.Object writeReplace();
     java.lang.Object readResolve();
 }
+
+# ✅ FIX: Keep Google Play Core classes (required for Flutter deferred components)
+# These classes are referenced by Flutter but may not be directly used
+-dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
+-keep class com.google.android.play.core.** { *; }
+
+# ✅ FIX: Keep Google Play Services annotation classes
+-dontwarn com.google.android.gms.common.annotation.NoNullnessRewrite
+-keep class com.google.android.gms.common.annotation.** { *; }

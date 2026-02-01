@@ -1,8 +1,72 @@
 import 'package:flutter/material.dart';
 import 'performance_dashboard_screen.dart';
+import '../services/cache_service.dart';
+import '../widgets/clear_cache_dialog.dart';
 
-class GeneralScreen extends StatelessWidget {
+class GeneralScreen extends StatefulWidget {
   const GeneralScreen({super.key});
+
+  @override
+  State<GeneralScreen> createState() => _GeneralScreenState();
+}
+
+class _GeneralScreenState extends State<GeneralScreen> {
+  final CacheService _cacheService = CacheService();
+  String _cacheSize = 'Calculating...';
+  bool _isLoadingCacheSize = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCacheSize();
+  }
+
+  Future<void> _loadCacheSize() async {
+    try {
+      final size = await _cacheService.getCacheSize();
+      if (mounted) {
+        setState(() {
+          _cacheSize = size;
+          _isLoadingCacheSize = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cacheSize = 'Unknown';
+          _isLoadingCacheSize = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showClearCacheDialog() async {
+    final confirmed = await ClearCacheDialog.show(context, _cacheSize);
+    
+    if (confirmed == true) {
+      // Show progress dialog
+      ClearCacheDialog.showProgress(context);
+      
+      // Clear cache
+      final result = await _cacheService.clearCache();
+      
+      if (mounted) {
+        if (result['success'] == true) {
+          // Show success
+          ClearCacheDialog.showSuccess(context, result['formatted']);
+          
+          // Refresh cache size
+          await _loadCacheSize();
+        } else {
+          // Show error
+          ClearCacheDialog.showError(
+            context,
+            result['error'] ?? 'Unknown error occurred',
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +104,13 @@ class GeneralScreen extends StatelessWidget {
             },
           ),
           
+          // Clear Cache
+          _buildSettingItem(
+            title: 'Clear Cache',
+            subtitle: _isLoadingCacheSize ? 'Calculating...' : _cacheSize,
+            onTap: _showClearCacheDialog,
+          ),
+          
           // How to use Chamakz
           _buildSettingItem(
             title: 'How to use Chamakz',
@@ -60,6 +131,7 @@ class GeneralScreen extends StatelessWidget {
 
   Widget _buildSettingItem({
     required String title,
+    String? subtitle,
     required VoidCallback onTap,
   }) {
     return ListTile(
@@ -69,10 +141,23 @@ class GeneralScreen extends StatelessWidget {
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
           color: Colors.black87,
         ),
       ),
+      subtitle: subtitle != null
+          ? Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+              ),
+            )
+          : null,
       trailing: const Icon(
         Icons.arrow_forward_ios,
         size: 14,

@@ -50,7 +50,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _checkAdminStatus();
     _loadAdminActions();
   }
@@ -72,6 +72,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
     });
 
     final isAdmin = await _adminService.isAdmin();
+    final currentUser = FirebaseAuth.instance.currentUser;
 
     setState(() {
       _isAdmin = isAdmin;
@@ -80,18 +81,75 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
 
     if (!isAdmin) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Unauthorized: Only admins can access this panel'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
+        // Show detailed error with User UID
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('Admin Access Denied'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'You do not have admin permissions. To fix this:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                const Text('1. Go to Firebase Console → Firestore Database'),
+                const Text('2. Create collection: "admins"'),
+                const Text('3. Create document with ID: (your User UID below)'),
+                const Text('4. Add field: isAdmin = true (boolean type)'),
+                const SizedBox(height: 12),
+                if (currentUser != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Your User UID:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        SelectableText(
+                          currentUser.uid,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (mounted) {
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.pop(context);
-          }
-        });
       }
     }
   }
@@ -389,6 +447,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
               icon: const Icon(Icons.star, size: 20),
               child: const Text('Host Applications'),
             ),
+            Tab(
+              icon: const Icon(Icons.people, size: 20),
+              child: const Text('Users'),
+            ),
           ],
         ),
       ),
@@ -430,6 +492,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
           _buildTeamMessagesTab(),
           // Host Applications Tab
           _buildHostApplicationsTab(),
+          // Users List Tab
+          _buildUsersListTab(),
         ],
       ),
     );
@@ -2293,16 +2357,85 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success
-                  ? 'Application approved successfully'
-                  : 'Failed to approve application',
+        if (!success) {
+          // Show detailed error message
+          final currentUser = FirebaseAuth.instance.currentUser;
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Permission Error'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Failed to approve application due to missing permissions.',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'To fix this:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('1. Go to Firebase Console → Firestore Database'),
+                  const Text('2. Create collection: "admins"'),
+                  const Text('3. Create document with ID: (your User UID)'),
+                  const Text('4. Add field: isAdmin = true (boolean)'),
+                  const SizedBox(height: 12),
+                  if (currentUser != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Your User UID:',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          SelectableText(
+                            currentUser.uid,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
             ),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
-        );
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Application approved successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
     }
   }
@@ -2379,6 +2512,180 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
           ),
         );
       }
+    }
+  }
+
+  /// Build Users List Tab
+  Widget _buildUsersListTab() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .orderBy('lastActive', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No users found'));
+        }
+        
+        return ListView.builder(
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final userDoc = snapshot.data!.docs[index];
+            final userData = userDoc.data() as Map<String, dynamic>;
+            final lastActive = userData['lastActive'] as Timestamp?;
+            
+            return _buildUserListTile(userDoc.id, userData, lastActive);
+          },
+        );
+      },
+    );
+  }
+
+  /// Build User List Tile with Activity Display
+  Widget _buildUserListTile(String userId, Map<String, dynamic> userData, Timestamp? lastActive) {
+    final displayName = userData['displayName'] ?? 'No Name';
+    final phoneNumber = userData['phoneNumber'] ?? 'N/A';
+    final numericId = userData['numericUserId'] ?? 'N/A';
+    final isActive = userData['isActive'] ?? false;
+    
+    // Get activity status
+    final activityStatus = _getActivityStatus(lastActive);
+    final activityDisplay = _getActivityDisplay(lastActive);
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        leading: Stack(
+          children: [
+            CircleAvatar(
+              backgroundImage: userData['photoURL'] != null
+                  ? NetworkImage(userData['photoURL'])
+                  : null,
+              child: userData['photoURL'] == null
+                  ? Text(
+                      numericId.toString().isNotEmpty
+                          ? numericId.toString().substring(0, 1).toUpperCase()
+                          : '?',
+                    )
+                  : null,
+            ),
+            // Online status indicator
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: activityStatus['color'],
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        title: Text(
+          displayName,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('ID: $numericId | Phone: $phoneNumber'),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  activityStatus['icon'],
+                  size: 14,
+                  color: activityStatus['color'],
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  activityDisplay,
+                  style: TextStyle(
+                    color: activityStatus['color'],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        trailing: isActive
+            ? const Icon(Icons.check_circle, color: Colors.green)
+            : const Icon(Icons.cancel, color: Colors.red),
+        onTap: () {
+          _selectUser(userData);
+        },
+      ),
+    );
+  }
+
+  /// Get activity status (online, offline)
+  Map<String, dynamic> _getActivityStatus(Timestamp? lastActive) {
+    if (lastActive == null) {
+      return {
+        'status': 'offline',
+        'color': Colors.grey,
+        'icon': Icons.circle_outlined,
+      };
+    }
+    
+    final now = DateTime.now();
+    final lastActiveDate = lastActive.toDate();
+    final difference = now.difference(lastActiveDate);
+    final minutes = difference.inMinutes;
+    
+    if (minutes < 5) {
+      // Currently Active (green)
+      return {
+        'status': 'online',
+        'color': Colors.green,
+        'icon': Icons.circle,
+      };
+    } else {
+      // Not Active (gray)
+      return {
+        'status': 'offline',
+        'color': Colors.grey,
+        'icon': Icons.circle_outlined,
+      };
+    }
+  }
+
+  /// Get human-readable activity display
+  String _getActivityDisplay(Timestamp? lastActive) {
+    if (lastActive == null) {
+      return 'Never active';
+    }
+    
+    final now = DateTime.now();
+    final lastActiveDate = lastActive.toDate();
+    final difference = now.difference(lastActiveDate);
+    final minutes = difference.inMinutes;
+    final hours = difference.inHours;
+    final days = difference.inDays;
+    
+    if (minutes < 5) {
+      return 'Currently Active';
+    } else if (minutes < 60) {
+      return '$minutes mins ago';
+    } else if (hours < 24) {
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} ago';
+    } else if (days < 7) {
+      return '$days ${days == 1 ? 'day' : 'days'} ago';
+    } else {
+      return 'Last seen: ${DateFormat('MM/dd/yyyy').format(lastActiveDate)}';
     }
   }
 }

@@ -114,11 +114,14 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     required ValueChanged<bool> onChanged,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      dense: true,
+      minVerticalPadding: 0,
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
           color: Colors.black87,
         ),
       ),

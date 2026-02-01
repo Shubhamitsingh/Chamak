@@ -7,7 +7,6 @@ import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'edit_profile_screen.dart';
 import 'wallet_screen.dart';
 import 'my_earning_screen.dart';
-import 'account_security_screen.dart';
 import 'settings_screen.dart';
 import 'chat_list_screen.dart';
 import 'level_screen.dart';
@@ -30,6 +29,7 @@ import '../models/announcement_model.dart';
 import '../models/event_model.dart';
 import '../models/banner_model.dart';
 import 'become_creator_screen.dart';
+import 'creator_application_status_screen.dart';
 import '../widgets/cached_avatar_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -1271,46 +1271,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildDivider(),
             
-            // Become a Creator - Only show if user is not already a host
-            StreamBuilder<DocumentSnapshot>(
-              stream: _firestore.collection('users').doc(user.userId).snapshots(),
-              builder: (context, userSnapshot) {
-                final isHost = userSnapshot.hasData && userSnapshot.data!.exists
-                    ? (userSnapshot.data!.data() as Map<String, dynamic>)['isHost'] ?? false
-                    : false;
-                
-                // Don't show if user is already a host
-                if (isHost) {
-                  return const SizedBox.shrink();
-                }
-                
-                // Check application status
-                return StreamBuilder<DocumentSnapshot?>(
-                  stream: _hostApplicationService.getApplicationStatus(user.userId),
-                  builder: (context, appSnapshot) {
-                    // Show menu item if no application or application is rejected
-                    final hasPendingOrApproved = appSnapshot.hasData && appSnapshot.data != null;
-                    if (hasPendingOrApproved) {
-                      final appData = appSnapshot.data!.data() as Map<String, dynamic>?;
-                      final status = appData?['status'] ?? 'pending';
-                      
-                      // Only show if rejected (can reapply) or pending (show status)
-                      if (status == 'approved') {
-                        return const SizedBox.shrink(); // Already approved, don't show
-                      }
-                      
-                      // Show with status badge if pending
+            // Become a Creator - Always show menu (even if approved, so user can see status)
+            StreamBuilder<DocumentSnapshot?>(
+              stream: _hostApplicationService.getApplicationStatus(user.userId),
+              builder: (context, appSnapshot) {
+                    // Handle errors gracefully
+                    if (appSnapshot.hasError) {
+                      debugPrint('❌ Error loading application status: ${appSnapshot.error}');
+                      // Show menu item without status if error
                       return Column(
                         children: [
                           _buildMenuOption(
                             icon: Icons.star_rounded,
                             title: 'Become a Creator',
-                            subtitle: status == 'pending'
-                                ? 'Application under review'
-                                : 'Reapply to become a creator',
+                            subtitle: 'Apply to become a creator',
                             color: const Color(0xFFFF1B7C),
-                            badgeCount: status == 'pending' ? 1 : null,
-                            showBadgeOnTrailing: true,
                             onTap: () {
                               if (!mounted) return;
                               _stopAutoScroll();
@@ -1327,6 +1302,101 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     _startAutoScroll();
                                   }
                                 });
+                              } catch (e) {
+                                debugPrint('Navigation error: $e');
+                              }
+                            },
+                          ),
+                          _buildDivider(),
+                        ],
+                      );
+                    }
+                    
+                    // Show menu item if no application or application is rejected
+                    final hasApplication = appSnapshot.hasData && appSnapshot.data != null;
+                    if (hasApplication) {
+                      final appData = appSnapshot.data!.data() as Map<String, dynamic>?;
+                      final status = appData?['status'] ?? 'pending';
+                      final applicationId = appSnapshot.data!.id;
+                      
+                      // ✅ Determine status icon and subtitle
+                      Widget? statusIcon;
+                      String subtitle;
+                      
+                      switch (status) {
+                        case 'approved':
+                          statusIcon = const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 24,
+                          );
+                          subtitle = 'Application Approved ✅ - Tap to view';
+                          break;
+                        case 'rejected':
+                          statusIcon = const Icon(
+                            Icons.cancel,
+                            color: Colors.red,
+                            size: 24,
+                          );
+                          subtitle = 'Application Rejected ❌ - Tap to reapply';
+                          break;
+                        case 'pending':
+                        case 'reviewing':
+                          statusIcon = const Icon(
+                            Icons.pending_actions,
+                            color: Colors.orange,
+                            size: 24,
+                          );
+                          subtitle = 'Application under review - Tap to check status';
+                          break;
+                        default:
+                          subtitle = 'Application status: $status';
+                      }
+                      
+                      return Column(
+                        children: [
+                          _buildMenuOption(
+                            icon: Icons.star_rounded,
+                            title: 'Become a Creator',
+                            subtitle: subtitle,
+                            color: const Color(0xFFFF1B7C),
+                            badgeCount: (status == 'pending' || status == 'reviewing') ? 1 : null,
+                            showBadgeOnTrailing: true,
+                            trailing: statusIcon, // ✅ Show status icon (green tick/red icon)
+                            onTap: () {
+                              if (!mounted) return;
+                              _stopAutoScroll();
+                              try {
+                                // Navigate to status screen if pending/reviewing/approved, form if rejected
+                                if (status == 'pending' || status == 'reviewing' || status == 'approved') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreatorApplicationStatusScreen(
+                                        applicationId: applicationId,
+                                        phoneNumber: widget.phoneNumber,
+                                      ),
+                                    ),
+                                  ).then((_) {
+                                    if (mounted) {
+                                      _startAutoScroll();
+                                    }
+                                  });
+                                } else {
+                                  // Rejected - show form to reapply
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => BecomeCreatorScreen(
+                                        phoneNumber: widget.phoneNumber,
+                                      ),
+                                    ),
+                                  ).then((_) {
+                                    if (mounted) {
+                                      _startAutoScroll();
+                                    }
+                                  });
+                                }
                               } catch (e) {
                                 debugPrint('Navigation error: $e');
                               }
@@ -1369,8 +1439,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildDivider(),
                       ],
                     );
-                  },
-                );
               },
             ),
             
@@ -1387,35 +1455,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const WarningScreen(),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      _startAutoScroll();
-                    }
-                  });
-                } catch (e) {
-                  debugPrint('Navigation error: $e');
-                }
-              },
-            ),
-            _buildDivider(),
-            
-            _buildMenuOption(
-              icon: Icons.verified_user_rounded,
-              title: AppLocalizations.of(context)!.accountSecurity,
-              subtitle: AppLocalizations.of(context)!.phonePasswordAccountSettings,
-              color: const Color(0xFF8B5CF6),
-              onTap: () {
-                if (!mounted) return;
-                _stopAutoScroll();
-                try {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AccountSecurityScreen(
-                        phoneNumber: widget.phoneNumber,
-                        userId: IdGeneratorService.getDisplayId(user.numericUserId),
-                      ),
                     ),
                   ).then((_) {
                     if (mounted) {
@@ -1525,6 +1564,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     int? userLevel, // User level to display
     bool showBadgeOnTrailing = false, // Show badge on trailing (right side) instead of icon
     String? iconImage, // Optional image path to replace icon
+    Widget? trailing, // Optional trailing widget (for status icons)
   }) {
     return ListTile(
       onTap: onTap,
@@ -1725,12 +1765,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-          // Forward Arrow
-          Icon(
-            Icons.arrow_forward_ios,
-            size: 14,
-            color: Colors.grey[400],
-          ),
+          // Custom trailing widget (for status icons) or default arrow
+          if (trailing != null)
+            trailing
+          else
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Colors.grey[400],
+            ),
         ],
       ),
     );

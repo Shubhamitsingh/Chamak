@@ -133,7 +133,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 ),
               ],
             ),
-            backgroundColor: const Color(0xFF9C27B0),
+            backgroundColor: const Color(0xFFFF1B7C),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -242,26 +242,26 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header Section (Compact)
-                Container(
+              Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF9C27B0), // Purple
-                        Color(0xFFE91E63), // Pink
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFFFF1B7C), // Pink
+                      Color(0xFFFF69B4), // Pink
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF9C27B0).withValues(alpha: 0.3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
                   child: Row(
                     children: [
                       Container(
@@ -339,41 +339,41 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                             horizontal: 10,
                             vertical: 6,
                           ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF9C27B0).withValues(alpha: 0.1)
-                                : Colors.grey[100],
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFFFF1B7C).withValues(alpha: 0.1)
+                            : Colors.grey[100],
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF9C27B0)
-                                  : Colors.grey[300]!,
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFFFF1B7C)
+                              : Colors.grey[300]!,
                               width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isSelected ? Icons.check_circle : Icons.circle_outlined,
+                            color: isSelected
+                                ? const Color(0xFFFF1B7C)
+                                : Colors.grey[600],
+                                size: 14,
+                          ),
+                              const SizedBox(width: 5),
+                          Text(
+                            category['label']!,
+                            style: TextStyle(
+                                  fontSize: 11,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? const Color(0xFFFF1B7C)
+                                  : Colors.grey[700],
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isSelected ? Icons.check_circle : Icons.circle_outlined,
-                                color: isSelected
-                                    ? const Color(0xFF9C27B0)
-                                    : Colors.grey[600],
-                                size: 14,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                category['label']!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                  color: isSelected
-                                      ? const Color(0xFF9C27B0)
-                                      : Colors.grey[700],
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -499,22 +499,22 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.75, // 75% of screen width
                       height: 44, // Fixed: Meets 44px minimum touch target
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF9C27B0), // Purple
-                            Color(0xFFE91E63), // Pink
-                          ],
-                        ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFFFF1B7C), // Pink
+                        Color(0xFFFF69B4), // Pink
+                      ],
+                    ),
                         borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF9C27B0).withValues(alpha: 0.4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
+                    ],
+                  ),
                       child: ElevatedButton(
                         onPressed: _isSubmitting ? null : _submitFeedback,
                         style: ElevatedButton.styleFrom(

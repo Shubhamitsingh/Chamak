@@ -351,14 +351,14 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                  colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF6366F1).withValues(alpha:0.2),
+                    color: const Color(0xFFFF1B7C).withValues(alpha:0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

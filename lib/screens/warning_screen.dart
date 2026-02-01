@@ -125,9 +125,9 @@ class _WarningScreenState extends State<WarningScreen> {
                     const SizedBox(height: 4),
                     Text(
                       loc.followCommunityGuidelines,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey,
+                        color: Colors.grey[600],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -153,6 +153,7 @@ class _WarningScreenState extends State<WarningScreen> {
                                 rule,
                                 style: const TextStyle(
                                   fontSize: 15,
+                                  fontWeight: FontWeight.w400,
                                   color: Colors.black87,
                                   height: 1.5,
                                 ),

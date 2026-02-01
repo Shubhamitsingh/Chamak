@@ -53,7 +53,9 @@ class LanguageSelectionScreen extends StatelessWidget {
           final accent = _getLanguageColor(languageCode);
 
           return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+            dense: true,
+            minVerticalPadding: 0,
             leading: CircleAvatar(
               radius: 20,
               backgroundColor: accent.withValues(alpha: 0.12),
@@ -68,16 +70,16 @@ class LanguageSelectionScreen extends StatelessWidget {
             ),
             title: Text(
               languageData['nativeName']!,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
             subtitle: Text(
               languageData['name']!,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: Colors.grey[600],
               ),
             ),
