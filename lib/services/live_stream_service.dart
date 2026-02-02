@@ -276,6 +276,7 @@ class LiveStreamService {
         print('   Source: ${snapshot.metadata.isFromCache ? "CACHE ⚠️" : "SERVER ✅"}');
         print('   Has pending writes: ${snapshot.metadata.hasPendingWrites}');
         
+        
         // CRITICAL: If data is from cache, force a server read to get fresh data
         if (snapshot.metadata.isFromCache) {
           print('   ⚠️ Data from cache - will refresh with server data on next update');

@@ -17,8 +17,28 @@ class _TeamMessagesScreenState extends State<TeamMessagesScreen> {
   @override
   void initState() {
     super.initState();
-    // Mark all messages as read when screen opens
-    _teamMessageService.markAllMessagesAsRead();
+    // ✅ FIX: Await and handle errors when marking messages as read
+    _markAllMessagesAsRead();
+  }
+
+  // Mark all messages as read with proper error handling
+  Future<void> _markAllMessagesAsRead() async {
+    try {
+      await _teamMessageService.markAllMessagesAsRead();
+      debugPrint('✅ [TEAM MESSAGES SCREEN] All messages marked as read');
+    } catch (e) {
+      debugPrint('❌ [TEAM MESSAGES SCREEN] Error marking messages as read: $e');
+      // Optionally show error to user (non-blocking)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to mark messages as read. Please try again.'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   String _formatTimestamp(DateTime timestamp) {

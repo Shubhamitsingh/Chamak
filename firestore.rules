@@ -579,10 +579,12 @@ service cloud.firestore {
       allow create: if request.auth != null;
       
       // Users can update readBy field (mark as read), admins can update all fields
+      // ✅ FIX: Allow users to update their own readBy entry (add or update to true)
+      // This allows batch updates where user adds their own entry without affecting others
       allow update: if request.auth != null 
         && (isAdmin() 
             || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) 
-                && request.resource.data.readBy.keys().hasOnly([request.auth.uid])));
+                && request.resource.data.readBy[request.auth.uid] == true));
       
       // Only admins can delete team messages
       allow delete: if isAdmin();

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import 'avatar_service.dart';
 import 'id_generator_service.dart';
+import 'device_service.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -52,9 +53,14 @@ class DatabaseService {
           print('🆔 Generated numeric ID for existing user: $numericIdToUpdate');
         }
 
+        // Get current device ID for single device login tracking
+        final deviceId = await DeviceService.getDeviceId();
+        
         Map<String, dynamic> updateData = {
           if (numericIdToUpdate != null) 'numericUserId': numericIdToUpdate,
           'lastLogin': FieldValue.serverTimestamp(),
+          'currentDeviceId': deviceId, // Update current device ID
+          'currentDeviceLoginAt': FieldValue.serverTimestamp(), // Update device login time
           // Note: isActive field is NOT updated here - it's managed by admin only
           // This prevents overwriting admin-set approval status
         };
@@ -84,6 +90,10 @@ class DatabaseService {
         final numericId = IdGeneratorService.generateNumericUserId();
         print('🆔 Generated numeric ID for new user: $numericId');
         
+        // Get current device ID for single device login tracking
+        final deviceId = await DeviceService.getDeviceId();
+        print('📱 Device ID for new user: $deviceId');
+        
         await _usersCollection.doc(userId).set({
           'userId': userId,
           'numericUserId': numericId, // Store numeric ID
@@ -94,6 +104,8 @@ class DatabaseService {
           'createdAt': FieldValue.serverTimestamp(),
           'lastLogin': FieldValue.serverTimestamp(),
           'lastActive': FieldValue.serverTimestamp(), // Track user activity
+          'currentDeviceId': deviceId, // Store current device ID
+          'currentDeviceLoginAt': FieldValue.serverTimestamp(), // Store device login time
           'isActive': false, // New users need admin approval before going live
           'followersCount': 0,
           'followingCount': 0,

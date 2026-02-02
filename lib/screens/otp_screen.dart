@@ -10,6 +10,7 @@ import 'set_profile_screen.dart';
 import '../services/database_service.dart';
 import '../services/crashlytics_service.dart';
 import '../services/meta_events_service.dart';
+import '../services/device_service.dart';
 import '../generated/l10n/app_localizations.dart';
 
 class OtpScreen extends StatefulWidget {

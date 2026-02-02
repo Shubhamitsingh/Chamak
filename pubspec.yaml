@@ -55,6 +55,9 @@ dependencies:
   # App Info & Version
   package_info_plus: ^8.0.0
   
+  # Device Info - For single device login tracking
+  device_info_plus: ^10.1.0
+  
   # Google Play In-App Updates
   in_app_update: ^4.1.2
   

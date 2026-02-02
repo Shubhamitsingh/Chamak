@@ -27,6 +27,7 @@ import '../services/agora_token_service.dart';
 import '../services/telegram_popup_service.dart';
 import '../widgets/telegram_channel_popup.dart';
 import '../widgets/enhanced_loading_screen.dart';
+import '../services/device_service.dart';
 import 'live_reels_screen.dart';
 import 'nearby_users_screen.dart';
 import 'dart:async';
@@ -117,6 +118,9 @@ class _HomeScreenState extends State<HomeScreen>
   final OnlineStatusService _onlineStatusService = OnlineStatusService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   late AnimationController _marqueeController;
+  
+  // Single device login - Stream subscription for device tracking
+  StreamSubscription<DocumentSnapshot>? _deviceSessionSubscription;
 
   // Live stream preview state
   Timer? _previewDelayTimer;
@@ -175,6 +179,9 @@ class _HomeScreenState extends State<HomeScreen>
     Future.delayed(const Duration(seconds: 6), () {
       _checkAndShowTelegramPopup();
     });
+    
+    // 🔐 Single Device Login - Listen for device changes
+    _setupDeviceSessionListener();
     
     // Sync topTabIndex with PageController's initial page after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -237,6 +244,8 @@ class _HomeScreenState extends State<HomeScreen>
         // App came to foreground - update status immediately
         _onlineStatusService.updateLastActive(userId);
         _onlineStatusService.initializeStatusTracking();
+        // Setup device session listener when app resumes
+        _setupDeviceSessionListener();
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
@@ -248,6 +257,79 @@ class _HomeScreenState extends State<HomeScreen>
         break;
     }
   }
+  
+  /// Setup Firestore listener to detect when user logs in on another device
+  /// If currentDeviceId changes, automatically logout this device
+  void _setupDeviceSessionListener() {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      debugPrint('⚠️ [SINGLE DEVICE] No user ID, cannot setup device listener');
+      return;
+    }
+    
+    // Cancel existing subscription if any
+    _deviceSessionSubscription?.cancel();
+    
+    debugPrint('🔐 [SINGLE DEVICE] Setting up device session listener for user: $userId');
+    
+    _deviceSessionSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .listen(
+      (snapshot) async {
+        if (!snapshot.exists || !mounted) return;
+        
+        try {
+          final data = snapshot.data();
+          final currentDeviceId = data?['currentDeviceId'] as String?;
+          final myDeviceId = await DeviceService.getDeviceId();
+          
+          debugPrint('🔐 [SINGLE DEVICE] Device check - Firestore: $currentDeviceId, Current: $myDeviceId');
+          
+          // If device ID changed, user logged in on another device
+          if (currentDeviceId != null && currentDeviceId != myDeviceId) {
+            debugPrint('⚠️ [SINGLE DEVICE] User logged in on another device!');
+            debugPrint('   Firestore device: $currentDeviceId');
+            debugPrint('   This device: $myDeviceId');
+            debugPrint('   Logging out this device...');
+            
+            // Show message to user
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    'You have been logged out because you logged in on another device.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 4),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              
+              // Wait a moment for user to see the message
+              await Future.delayed(const Duration(milliseconds: 500));
+              
+              // Logout current device
+              await _auth.signOut();
+              
+              // Navigate to login screen
+              if (mounted) {
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('❌ [SINGLE DEVICE] Error checking device session: $e');
+        }
+      },
+      onError: (error) {
+        debugPrint('❌ [SINGLE DEVICE] Error in device session listener: $error');
+      },
+    );
+  }
+  
 
   void _startPreviewDelayTimer() {
     debugPrint('⏱️ Starting preview delay timer (3 seconds)');
@@ -605,6 +687,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    // Cancel device session subscription
+    _deviceSessionSubscription?.cancel();
+    
     WidgetsBinding.instance.removeObserver(this);
     _onlineStatusService.stopStatusTracking();
     _previewDelayTimer?.cancel();
@@ -1925,7 +2010,7 @@ class _HomeScreenState extends State<HomeScreen>
                 liveHostIds.add(stream.hostId);
                 debugPrint('   ✅ Live: ${stream.hostName} (hostId: ${stream.hostId})');
               }
-              debugPrint('🔍 [EXPLORE] Live hostIds: ${liveHostIds.toList()}');
+              debugPrint('🔍 [EXPLORE] Live hostIds from streams: ${liveHostIds.toList()}');
             } else {
               debugPrint('📺 [EXPLORE] No live streams found');
             }
@@ -1936,11 +2021,26 @@ class _HomeScreenState extends State<HomeScreen>
             
             // Debug: Check if any host IDs match live stream hostIds
             debugPrint('🔍 [EXPLORE] Checking host ID matches...');
+            debugPrint('   - Total hosts found: ${hosts.length}');
+            debugPrint('   - Live stream hostIds: ${liveHostIds.toList()}');
             for (var host in hosts) {
+              final hostData = host.data() as Map<String, dynamic>?;
+              final hostName = hostData?['displayName'] ?? 'Unknown';
               if (liveHostIds.contains(host.id)) {
-                final hostData = host.data() as Map<String, dynamic>?;
-                final hostName = hostData?['displayName'] ?? 'Unknown';
-                debugPrint('   ✅ MATCH FOUND: Host $hostName (ID: ${host.id}) matches live stream!');
+                debugPrint('   ✅ MATCH: Host $hostName (ID: ${host.id}) is LIVE!');
+              } else {
+                debugPrint('   ⚪ NO MATCH: Host $hostName (ID: ${host.id}) - will show as offline');
+                // Check if this host's ID appears as hostId in any stream (for debugging)
+                if (liveStreamsSnapshot.hasData) {
+                  try {
+                    liveStreamsSnapshot.data!.firstWhere(
+                      (s) => s.hostId == host.id,
+                    );
+                    debugPrint('      ⚠️ FOUND: Stream exists with hostId=${host.id}, but matching logic failed!');
+                  } catch (e) {
+                    // No matching stream found - this is expected for offline hosts
+                  }
+                }
               }
             }
             
@@ -2957,14 +3057,25 @@ class _HomeScreenState extends State<HomeScreen>
               }
             }
 
-            // Get all hosts and filter to ONLY live hosts
+            // Get all hosts and separate live/offline
             final hosts = hostsSnapshot.data!.docs;
-            final liveHosts = hosts.where((host) => liveStreamsMap.containsKey(host.id)).toList();
+            final liveHosts = <DocumentSnapshot>[];
+            final nonLiveHosts = <DocumentSnapshot>[];
             
-            debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live hosts only (${hosts.length - liveHosts.length} offline hosts hidden)');
+            for (var host in hosts) {
+              if (liveStreamsMap.containsKey(host.id)) {
+                liveHosts.add(host);
+              } else {
+                nonLiveHosts.add(host);
+              }
+            }
+            
+            // Show ONLY live hosts (real-time availability)
+            final sortedHosts = [...liveHosts];
+            debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live hosts only (${nonLiveHosts.length} offline hosts hidden)');
             
             // Show empty state if no hosts are live
-            if (liveHosts.isEmpty) {
+            if (sortedHosts.isEmpty) {
               if (!mounted) return const SizedBox.shrink();
               return Center(
                 child: Column(
@@ -3003,9 +3114,9 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
-              itemCount: liveHosts.length > 50 ? 50 : liveHosts.length,
+              itemCount: sortedHosts.length > 50 ? 50 : sortedHosts.length,
               itemBuilder: (context, index) {
-                final hostDoc = liveHosts[index];
+                final hostDoc = sortedHosts[index];
                 final hostData = hostDoc.data() as Map<String, dynamic>;
                 final hostId = hostDoc.id;
                 final hostName = hostData['displayName'] ?? 'Host';
@@ -3327,14 +3438,25 @@ class _HomeScreenState extends State<HomeScreen>
               }
             }
 
-            // Get all hosts and filter to ONLY live hosts
+            // Get all hosts and separate live/offline
             final hosts = hostsSnapshot.data!.docs;
-            final liveHosts = hosts.where((host) => liveStreamsMap.containsKey(host.id)).toList();
+            final liveHosts = <DocumentSnapshot>[];
+            final nonLiveHosts = <DocumentSnapshot>[];
             
-            debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live hosts only (${hosts.length - liveHosts.length} offline hosts hidden)');
+            for (var host in hosts) {
+              if (liveStreamsMap.containsKey(host.id)) {
+                liveHosts.add(host);
+              } else {
+                nonLiveHosts.add(host);
+              }
+            }
+            
+            // Show ONLY live hosts (real-time availability)
+            final sortedHosts = [...liveHosts];
+            debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live hosts only (${nonLiveHosts.length} offline hosts hidden)');
             
             // Show empty state if no hosts are live
-            if (liveHosts.isEmpty) {
+            if (sortedHosts.isEmpty) {
               if (!mounted) return const SizedBox.shrink();
               return Center(
                 child: Column(
@@ -3373,9 +3495,9 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
-              itemCount: liveHosts.length > 50 ? 50 : liveHosts.length,
+              itemCount: sortedHosts.length > 50 ? 50 : sortedHosts.length,
               itemBuilder: (context, index) {
-                final hostDoc = liveHosts[index];
+                final hostDoc = sortedHosts[index];
                 final hostData = hostDoc.data() as Map<String, dynamic>;
                 final hostId = hostDoc.id;
                 final hostName = hostData['displayName'] ?? 'Host';

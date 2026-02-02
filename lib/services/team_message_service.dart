@@ -54,6 +54,7 @@ class TeamMessageService {
   Stream<int> getUnreadTeamMessagesCount() {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
+      debugPrint('⚠️ [BADGE COUNT] User ID is null, returning 0');
       return Stream.value(0);
     }
 
@@ -63,14 +64,26 @@ class TeamMessageService {
         .snapshots()
         .map((snapshot) {
       int unreadCount = 0;
+      debugPrint('🔔 [BADGE COUNT] Checking ${snapshot.docs.length} messages for user: $userId');
+      
       for (var doc in snapshot.docs) {
         final data = doc.data();
         // Check if user has read this message
         final readBy = data['readBy'] as Map<String, dynamic>? ?? {};
-        if (!readBy.containsKey(userId) || readBy[userId] != true) {
+        
+        // ✅ FIX: Handle type mismatches (string "true" vs boolean true vs int 1)
+        final readValue = readBy[userId];
+        final isRead = readValue == true || readValue == "true" || readValue == 1;
+        
+        if (!isRead) {
           unreadCount++;
+          debugPrint('   ⚪ Unread: ${doc.id} (readBy[$userId] = $readValue)');
+        } else {
+          debugPrint('   ✅ Read: ${doc.id}');
         }
       }
+      
+      debugPrint('🔔 [BADGE COUNT] Final unread count: $unreadCount');
       return unreadCount;
     });
   }
@@ -115,27 +128,103 @@ class TeamMessageService {
   // Mark all team messages as read
   Future<void> markAllMessagesAsRead() async {
     final userId = _auth.currentUser?.uid;
-    if (userId == null) return;
+    if (userId == null) {
+      debugPrint('⚠️ [TEAM MESSAGES] Cannot mark as read: User ID is null');
+      return;
+    }
 
     try {
-      // Get all unread messages
+      debugPrint('📖 [TEAM MESSAGES] Marking all messages as read for user: $userId');
+      
+      // ✅ FIX: Force server read to avoid cached data
       final snapshot = await _firestore
           .collection('team_messages')
-          .get();
+          .get(const GetOptions(source: Source.server));
+      
+      if (snapshot.docs.isEmpty) {
+        debugPrint('✅ [TEAM MESSAGES] No messages to mark as read');
+        return;
+      }
 
-      // Batch update all messages
-      final batch = _firestore.batch();
+      // ✅ FIX: Update documents one-by-one instead of batch (more reliable with Firestore rules)
+      int updateCount = 0;
+      int successCount = 0;
+      int failCount = 0;
+      
       for (var doc in snapshot.docs) {
-        final readBy = doc.data()['readBy'] as Map<String, dynamic>? ?? {};
-        if (!readBy.containsKey(userId) || readBy[userId] != true) {
-          batch.update(doc.reference, {
-            'readBy.$userId': true,
-          });
+        final data = doc.data();
+        final readBy = data['readBy'] as Map<String, dynamic>? ?? {};
+        
+        // ✅ FIX: Handle type mismatches - check if already read
+        final readValue = readBy[userId];
+        final isRead = readValue == true || readValue == "true" || readValue == 1;
+        
+        if (!isRead) {
+          updateCount++;
+          try {
+            // Update individually (more reliable with rules, better error handling)
+            await doc.reference.update({
+              'readBy.$userId': true,
+            });
+            successCount++;
+            debugPrint('   ✅ Marked ${doc.id} as read');
+          } catch (e) {
+            failCount++;
+            debugPrint('   ❌ Failed to mark ${doc.id} as read: $e');
+            // Continue with other documents even if one fails
+          }
         }
       }
-      await batch.commit();
+      
+      if (updateCount > 0) {
+        if (successCount > 0) {
+          debugPrint('✅ [TEAM MESSAGES] Successfully marked $successCount/$updateCount messages as read');
+        }
+        if (failCount > 0) {
+          debugPrint('⚠️ [TEAM MESSAGES] Failed to mark $failCount messages (check Firestore rules)');
+          // Don't throw error - partial success is better than total failure
+        }
+      } else {
+        debugPrint('✅ [TEAM MESSAGES] All messages already read');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ [TEAM MESSAGES] Error marking all messages as read: $e');
+      debugPrint('❌ [TEAM MESSAGES] Stack trace: $stackTrace');
+      // Re-throw to allow UI to handle
+      rethrow;
+    }
+  }
+
+  // Verify that messages were actually marked as read (for debugging)
+  Future<bool> verifyMessagesMarkedAsRead() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      debugPrint('⚠️ [VERIFY] User ID is null');
+      return false;
+    }
+
+    try {
+      final snapshot = await _firestore
+          .collection('team_messages')
+          .get(const GetOptions(source: Source.server));
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final readBy = data['readBy'] as Map<String, dynamic>? ?? {};
+        final readValue = readBy[userId];
+        final isRead = readValue == true || readValue == "true" || readValue == 1;
+        
+        if (!isRead) {
+          debugPrint('⚠️ [VERIFY] Message ${doc.id} is still unread (readBy[$userId] = $readValue)');
+          return false;
+        }
+      }
+      
+      debugPrint('✅ [VERIFY] All messages are marked as read');
+      return true;
     } catch (e) {
-      debugPrint('Error marking all team messages as read: $e');
+      debugPrint('❌ [VERIFY] Error verifying: $e');
+      return false;
     }
   }
 }

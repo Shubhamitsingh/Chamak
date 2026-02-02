@@ -28,6 +28,8 @@ class UserModel {
   final int totalCoinsPurchased; // Lifetime total coins purchased (for user level)
   final int totalCoinsReceived; // Lifetime total coins received as gifts (for host level)
   final String? fcmToken; // FCM token for push notifications
+  final String? currentDeviceId; // Current device ID (for single device login)
+  final DateTime? currentDeviceLoginAt; // When logged in on current device
 
   UserModel({
     required this.userId,
@@ -57,6 +59,8 @@ class UserModel {
     this.totalCoinsPurchased = 0, // Lifetime total coins purchased
     this.totalCoinsReceived = 0, // Lifetime total coins received
     this.fcmToken,
+    this.currentDeviceId,
+    this.currentDeviceLoginAt,
   });
 
   // Convert Firestore document to UserModel
@@ -101,6 +105,8 @@ class UserModel {
       totalCoinsPurchased: data['totalCoinsPurchased'] ?? 0, // Lifetime purchases
       totalCoinsReceived: data['totalCoinsReceived'] ?? 0, // Lifetime received
       fcmToken: data['fcmToken'],
+      currentDeviceId: data['currentDeviceId']?.toString(),
+      currentDeviceLoginAt: (data['currentDeviceLoginAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -134,6 +140,9 @@ class UserModel {
       'totalCoinsPurchased': totalCoinsPurchased, // Lifetime purchases
       'totalCoinsReceived': totalCoinsReceived, // Lifetime received
       'fcmToken': fcmToken,
+      'currentDeviceId': currentDeviceId,
+      if (currentDeviceLoginAt != null)
+        'currentDeviceLoginAt': Timestamp.fromDate(currentDeviceLoginAt!),
     };
   }
 
@@ -162,6 +171,8 @@ class UserModel {
     int? totalCoinsPurchased,
     int? totalCoinsReceived,
     String? fcmToken,
+    String? currentDeviceId,
+    DateTime? currentDeviceLoginAt,
   }) {
     return UserModel(
       userId: userId,
@@ -191,6 +202,8 @@ class UserModel {
       totalCoinsPurchased: totalCoinsPurchased ?? this.totalCoinsPurchased,
       totalCoinsReceived: totalCoinsReceived ?? this.totalCoinsReceived,
       fcmToken: fcmToken ?? this.fcmToken,
+      currentDeviceId: currentDeviceId ?? this.currentDeviceId,
+      currentDeviceLoginAt: currentDeviceLoginAt ?? this.currentDeviceLoginAt,
     );
   }
 

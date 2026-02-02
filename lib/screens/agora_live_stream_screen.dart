@@ -3014,35 +3014,15 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
           final isStreamActive = stream?.isActive ?? true;
           final hostStatus = stream?.hostStatus ?? 'live';
           
-          // Calculate time since join (if viewer just joined)
-          final timeSinceJoin = _joinTime != null 
-              ? DateTime.now().difference(_joinTime!)
-              : const Duration(seconds: 10); // Default to 10 seconds if join time not set
-          
-          // Only consider host offline if:
-          // 1. Stream is explicitly inactive/ended, OR
-          // 2. Remote UID is null AND we've waited at least 5 seconds (to avoid false positives on initial join)
-          final isHostOffline = (!isStreamActive || hostStatus == 'ended') || 
-              (_remoteUid == null && timeSinceJoin.inSeconds >= 5);
-          
-          // Update offline state
-          if (isHostOffline != _hostIsOffline) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                setState(() {
-                  _hostIsOffline = isHostOffline;
-                });
-              }
-            });
-          }
-          
-          // If host is offline (and we've waited enough time), show offline message
-          if (isHostOffline && (!isStreamActive || hostStatus == 'ended')) {
+          // ✅ FIX: Priority 1 - Check if stream ended FIRST (Firestore is source of truth)
+          // If stream is ended, ALWAYS show offline screen regardless of video state
+          final isStreamEnded = !isStreamActive || hostStatus == 'ended';
+          if (isStreamEnded) {
             return _buildHostOfflineScreen();
           }
           
-          // If remote video is available, show it
-          if (_remoteUid != null) {
+          // ✅ FIX: Priority 2 - If stream is active and remote video available, show it
+          if (_remoteUid != null && isStreamActive) {
             return AgoraVideoView(
               controller: VideoViewController.remote(
                 rtcEngine: _engine,
@@ -3055,12 +3035,19 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
             );
           }
           
-          // No video available yet - show black screen (waiting for connection)
-          return Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Colors.black,
-          );
+          // ✅ FIX: Priority 3 - Stream is active but no video yet
+          // Show waiting message instead of black screen
+          final timeSinceJoin = _joinTime != null 
+              ? DateTime.now().difference(_joinTime!)
+              : const Duration(seconds: 0);
+          
+          // If waited too long (10 seconds), show offline (host might have left without ending stream)
+          if (timeSinceJoin.inSeconds >= 10) {
+            return _buildHostOfflineScreen();
+          }
+          
+          // Still waiting - show waiting message (better UX than black screen)
+          return _buildWaitingForHostScreen();
         },
       );
     }
@@ -4398,6 +4385,76 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     );
   }
 
+  // Build waiting for host screen (when stream is active but no video yet)
+  Widget _buildWaitingForHostScreen() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.black.withValues(alpha: 0.8),
+            Colors.grey[900]!.withValues(alpha: 0.9),
+            Colors.black.withValues(alpha: 0.8),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated loading indicator
+            SizedBox(
+              width: 80,
+              height: 80,
+              child: CircularProgressIndicator(
+                strokeWidth: 4,
+                valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFFF1B7C)),
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Main message
+            FadeIn(
+              child: Text(
+                'Waiting for Host...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Subtitle message
+            FadeIn(
+              delay: const Duration(milliseconds: 200),
+              child: Text(
+                'The host is preparing to start the stream',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 16,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Build host offline screen (when host ends stream)
   Widget _buildHostOfflineScreen() {
     return Container(
@@ -4499,13 +4556,34 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
             FadeIn(
               delay: const Duration(milliseconds: 200),
               child: Text(
-                'The live stream has ended.\nPlease check back later.',
+                'The host has ended the live stream.\nComing soon...',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: Colors.grey[400],
                   fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  height: 1.5,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Back button
+            FadeIn(
+              delay: const Duration(milliseconds: 400),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                label: const Text(
+                  'Go Back',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF1B7C),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
                 ),
               ),
             ),
