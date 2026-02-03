@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
-import 'contact_support_screen.dart';
 import 'coin_purchase_history_screen.dart';
 import 'payprime_payment_webview_screen.dart';
 import 'upi_payment_selection_screen.dart';
@@ -353,17 +353,22 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF1A1A1A), // Dark background
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        centerTitle: true,
+        backgroundColor: const Color(0xFF1A1A1A), // Dark background
+        elevation: 0,
+        centerTitle: false, // Left align title
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Color(0xFF1A1A1A), // Dark status bar
+          statusBarIconBrightness: Brightness.light, // Light icons
+          statusBarBrightness: Brightness.dark,
+        ),
         automaticallyImplyLeading: false, // Disable default back button
         leading: widget.showBackButton
             ? IconButton(
                 icon: const Icon(
                   Icons.arrow_back,
-                  color: Colors.black87,
+                  color: Colors.white,
                   size: 22,
                 ),
                 onPressed: () {
@@ -378,164 +383,134 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         title: Text(
           AppLocalizations.of(context)!.wallet,
           style: const TextStyle(
-            color: Colors.black87,
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
         actions: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Refresh Icon
-              IconButton(
-                icon: const Icon(
-                  Icons.refresh,
-                  color: Colors.black87,
-                  size: 22,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: _loadCoinBalance,
+          // Coin Balance Pill Button
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF1B7C), // App theme pink
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(width: 1),
-              // Coin Purchase History Icon (3 dots)
-              IconButton(
-                icon: const Icon(
-                  Icons.more_vert,
-                  color: Colors.black87,
-                  size: 22,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () {
-                  try {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CoinPurchaseHistoryScreen(),
-                      ),
-                    );
-                  } catch (e) {
-                    debugPrint('Error navigating to coin purchase history: $e');
-                  }
-                },
-              ),
-              const SizedBox(width: 1),
-              // Contact Support Icon
-              IconButton(
-                icon: const Icon(
-                  Icons.support_agent,
-                  color: Colors.black87,
-                  size: 22,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () {
-                  try {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ContactSupportScreen(),
-                      ),
-                    );
-                  } catch (e) {
-                    debugPrint('Error navigating to contact support: $e');
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)))
-            : SingleChildScrollView(
-                child: Column(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Coin Balance Card
-                  _buildBalanceCard(),
-            
-            const SizedBox(height: 2),
-            
-            // Recharge Packages
-            _buildFlatRechargeTab(),
-            
-            const SizedBox(height: 20),
-            
-            // Trust Text Above Trust Badges
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '1: ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                          height: 1.4,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          AppLocalizations.of(context)!.rechargeWithConfidence,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w500,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Image.asset(
+                    'assets/images/coin3.png',
+                    width: 16,
+                    height: 16,
+                    fit: BoxFit.contain,
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '2: ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                          height: 1.4,
-                        ),
+                  const SizedBox(width: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${NumberFormat.decimalPattern().format(coinBalance)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Expanded(
-                        child: Text(
-                          AppLocalizations.of(context)!.fastSafeTrusted,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w500,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.star,
+                    color: Colors.amber,
+                    size: 14,
                   ),
                 ],
               ),
             ),
-            
-            const SizedBox(height: 20),
-            
-            // Trust Badges at Bottom
-            _buildTrustBadges(),
-            
-            const SizedBox(height: 50),
-          ],
-        ),
+          ),
+          const SizedBox(width: 1),
+          // Coin Purchase History Icon (3 dots)
+          IconButton(
+            icon: const Icon(
+              Icons.more_vert,
+              color: Colors.white,
+              size: 22,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              try {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CoinPurchaseHistoryScreen(),
+                  ),
+                );
+              } catch (e) {
+                debugPrint('Error navigating to coin purchase history: $e');
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-        ),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF1B7C)))
+            : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title Section
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Main Title
+                          Text(
+                            'Make a Video Call',
+                            style: const TextStyle(
+                              color: Color(0xFFFF1B7C), // App theme pink
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              height: 1.2,
+                            ),
+                          ),
+                          Text(
+                            'with Coins',
+                            style: const TextStyle(
+                              color: Color(0xFFFF1B7C), // App theme pink
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Subtitle
+                          Text(
+                            'Call beauties with coins',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+            
+                    // Recharge Packages
+                    _buildFlatRechargeTab(),
+            
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+      ),
     );
   }
 
@@ -907,247 +882,311 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   // ========== FLAT RECHARGE TAB ==========
   Widget _buildFlatRechargeTab() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Text(
-            AppLocalizations.of(context)!.depositAmount,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[900],
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableWidth = constraints.maxWidth;
+          if (availableWidth <= 0) {
+            return const SizedBox.shrink();
+          }
+          
+          // 2-column grid for better card size on dark theme
+          final crossAxisCount = availableWidth > 400 ? 2 : 2;
+          final cardWidth = (availableWidth - (crossAxisCount - 1) * 12) / crossAxisCount;
+          final cardHeight = 220.0; // Increased height to prevent overflow
+          
+          return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: cardWidth / cardHeight,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
-          ),
-          const SizedBox(height: 6),
-          // 3-column grid - Flexible
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final availableWidth = constraints.maxWidth;
-              if (availableWidth <= 0) {
-                return const SizedBox.shrink();
-              }
-              
-              final cardWidth = (availableWidth - 16) / 3;
-              final cardHeight = cardWidth * 1.1;
-              
-              // Ensure minimum card size and valid aspect ratio
-              final minCardSize = 60.0;
-              final safeCardWidth = cardWidth < minCardSize ? minCardSize : cardWidth;
-              final safeCardHeight = cardHeight < minCardSize ? minCardSize : cardHeight;
-              final aspectRatio = safeCardWidth / safeCardHeight;
-              
-              // Clamp aspect ratio to prevent invalid values
-              final safeAspectRatio = aspectRatio.clamp(0.5, 2.0);
-              
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: safeAspectRatio,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: rechargePackages.length,
-                itemBuilder: (context, index) {
-                  return _buildDepositCard(rechargePackages[index], index);
-                },
-              );
+            itemCount: rechargePackages.length,
+            itemBuilder: (context, index) {
+              return _buildDepositCard(rechargePackages[index], index);
             },
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  // ========== DEPOSIT CARD (3-COLUMN GRID) ==========
+  // ========== DEPOSIT CARD (Dark Theme Design) ==========
   Widget _buildDepositCard(Map<String, dynamic> package, int index) {
     final int coins = package['coins'];
     final int inr = package['inr'];
     final dynamic bonusValue = package['bonus'];
     final int bonus = (bonusValue is int) ? bonusValue : (bonusValue is String) ? int.tryParse(bonusValue) ?? 0 : 0;
-    // Badge display logic for 11 packages (removed ₹7,999)
-    // Show bonus badge (star + %) for packages with bonus > 0, except entry level (index 0)
+    final String? badgeText = package['badge'] as String?;
+    
+    // Badge display logic
     final bool showBadge = bonus > 0 && index > 0;
-    // Show badge text container for specific packages (₹199, ₹599, ₹1999, ₹4999)
-    // Updated indices after removing ₹7,999: ₹199(index 3), ₹599(index 5), ₹1999(index 7), ₹4999(index 9)
-    final bool showBadgeText = (index == 3 || index == 5 || index == 7 || index == 9) && package['badge'] != null;
+    final bool showBadgeText = badgeText != null && badgeText.isNotEmpty;
+    final bool showOnceBadge = index == 0; // First package shows "Once"
     
     return GestureDetector(
       onTap: () => _handleRecharge(package),
       child: Container(
-        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: Colors.amber[700]!.withOpacity(0.3),
-            width: 1,
-          ),
+          color: const Color(0xFF2A2A2A), // Dark grey card background
+          borderRadius: BorderRadius.circular(12),
         ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-              Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: IntrinsicHeight(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Coin image
-                        Image.asset(
-                          'assets/images/coin3.png',
-                          width: 32,
-                          height: 32,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(height: 5),
-                        // Coin value
-                        Text(
-                          NumberFormat.decimalPattern().format(coins),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Main Content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 8),
+                  // Coin Display - Single coin for first item, stacked for others
+                  SizedBox(
+                    height: 50, // Fixed height to prevent clipping
+                    width: double.infinity,
+                    child: index == 0
+                        ? // First grid item - Single coin
+                          Center(
+                            child: Image.asset(
+                              'assets/images/coin3.png',
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                        : // Other items - Stacked coins with sparkles
+                          Stack(
+                            alignment: Alignment.center,
+                            clipBehavior: Clip.none, // Allow overflow for sparkles
+                            children: [
+                              // Coin 1 (back)
+                              Positioned(
+                                bottom: 4,
+                                child: Image.asset(
+                                  'assets/images/coin3.png',
+                                  width: 32,
+                                  height: 32,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              // Coin 2 (middle)
+                              Positioned(
+                                bottom: 2,
+                                child: Image.asset(
+                                  'assets/images/coin3.png',
+                                  width: 28,
+                                  height: 28,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              // Coin 3 (front)
+                              Image.asset(
+                                'assets/images/coin3.png',
+                                width: 24,
+                                height: 24,
+                                fit: BoxFit.contain,
+                              ),
+                              // Sparkle effects
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: Icon(
+                                  Icons.auto_awesome,
+                                  size: 8,
+                                  color: Colors.amber[300],
+                                ),
+                              ),
+                              Positioned(
+                                top: 2,
+                                left: -2,
+                                child: Icon(
+                                  Icons.auto_awesome,
+                                  size: 6,
+                                  color: Colors.amber[200],
+                                ),
+                              ),
+                            ],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 4),
-                        // Divider
-                        Container(
-                          width: 20,
-                          height: 1,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 4),
-                        // INR value
-                        Text(
-                          '₹${NumberFormat.decimalPattern().format(inr)}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFFF1B7C),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Coin Amount
+                  Text(
+                    '${NumberFormat.decimalPattern().format(coins)} Coins',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const SizedBox(height: 4),
+                  
+                  // Package Name
+                  Text(
+                    badgeText ?? _getPackageName(index),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[400],
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const Spacer(),
+                  
+                  // Price Button at Bottom
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF1B7C), // App theme pink
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '₹ ${NumberFormat.decimalPattern().format(inr)}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // "Once" Badge - Top Left
+            if (showOnceBadge)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade600,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Once',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ),
-              // Badge Text Container - Top Center (for 4th grid item)
-              if (showBadgeText)
-                Positioned(
-                  top: -2,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      constraints: const BoxConstraints(
-                        maxWidth: double.infinity,
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFEF4444),
-                            Color(0xFFDC2626),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFEF4444).withValues(alpha:0.4),
-                            blurRadius: 3,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        (package['badge'] as String? ?? ''),
-                        style: const TextStyle(
-                          fontSize: 7,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ),
-              // Bonus Badge - Top Right (Inside Container)
-              if (showBadge)
-                Positioned(
-                  top: 2,
-                  right: 2,
+            
+            // Badge Text - Top Center
+            if (showBadgeText && !showOnceBadge)
+              Positioned(
+                top: 8,
+                left: 0,
+                right: 0,
+                child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [
-                          Color(0xFFEF4444),
-                          Color(0xFFDC2626),
+                          Color(0xFFFF1B7C),
+                          Color(0xFFE0166C),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFEF4444).withValues(alpha:0.4),
-                          blurRadius: 3,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 1,
-                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.star,
-                          color: Colors.white,
-                          size: 7,
-                        ),
-                        const SizedBox(width: 1),
-                        Text(
-                          '$bonus%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 7,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      badgeText ?? '',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
-        ],
-      ),
+              ),
+            
+            // Bonus Badge - Top Right
+            if (showBadge)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFFFF1B7C),
+                        Color(0xFFE0166C),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.star,
+                        color: Colors.white,
+                        size: 8,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '$bonus%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
+  }
+  
+  // Helper method to get package name
+  String _getPackageName(int index) {
+    final names = [
+      'One Time',
+      'Starter',
+      'Popular Choice',
+      'Mid-tier',
+      'Smart Buy',
+      'Great Value',
+      'Best Value',
+      'VIP Choice',
+      'Most Popular',
+      'Exclusive',
+      'Elite Member',
+      'Legendary',
+    ];
+    return index < names.length ? names[index] : 'Package';
   }
 
   // ========== PAYMENT HANDLERS ==========

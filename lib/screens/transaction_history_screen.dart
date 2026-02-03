@@ -34,18 +34,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFF1A1A1A), // Dark background
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF1A1A1A), // Dark background
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Transaction History',
           style: TextStyle(
-            color: Colors.black87,
+            color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -67,6 +67,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     return Container(
       height: 50,
       padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A), // Dark grey container
+      ),
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -90,7 +93,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         overflow: TextOverflow.ellipsis,
       ),
       selected: isSelected,
-      selectedColor: const Color(0xFFFF1B7C),
+      selectedColor: const Color(0xFFFF1B7C), // App theme pink
       onSelected: (selected) {
         if (selected) {
           setState(() {
@@ -99,26 +102,24 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         }
       },
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black87,
+        color: isSelected ? Colors.white : Colors.grey[400],
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         fontSize: 13,
       ),
-      backgroundColor: Colors.grey[200],
+      backgroundColor: const Color(0xFF1A1A1A), // Dark background
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     );
   }
 
   Widget _buildTransactionsList(String userId) {
-    // Use fallback methods if index error occurred
-    final withdrawalStream = _useFallback
-        ? _withdrawalService.getUserWithdrawalRequestsFallback(userId)
-        : _withdrawalService.getUserWithdrawalRequests(userId);
+    // Use getUserWithdrawalRequests which now uses fallback by default (no index needed)
+    final withdrawalStream = _withdrawalService.getUserWithdrawalRequests(userId);
     
     return StreamBuilder<List<WithdrawalRequestModel>>(
       stream: withdrawalStream,
       builder: (context, withdrawalSnapshot) {
             if (withdrawalSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Color(0xFFFF69B4)));
+              return const Center(child: CircularProgressIndicator(color: Color(0xFFFF1B7C)));
             }
 
             if (withdrawalSnapshot.hasError) {
@@ -156,7 +157,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -165,7 +166,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey[600],
+                            color: Colors.grey[400],
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -197,24 +198,24 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.error_outline, size: 60, color: Colors.red[400]),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Error Loading Transactions',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Error Loading Transactions',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Unable to load transaction history. Please try again later.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                        const SizedBox(height: 12),
+                        Text(
+                          'Unable to load transaction history. Please try again later.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[400],
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: () {
@@ -282,20 +283,33 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.receipt_long_outlined, size: 60, color: Colors.grey[400]),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A2A),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.receipt_long_outlined, size: 60, color: Colors.grey[600]),
+                    ),
                     const SizedBox(height: 16),
-                    Text(
+                    const Text(
                       'No transactions yet',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Your withdrawal history will appear here',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 14),
                     ),
                   ],
                 ),
               );
             }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(12),
+            return ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               itemCount: combined.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final item = combined[index];
                 // Only show withdrawal requests now
@@ -313,32 +327,27 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     Color statusColor;
     IconData statusIcon;
     String statusText;
-    Color backgroundColor;
 
     switch (request.status.toLowerCase()) {
       case 'pending':
         statusColor = const Color(0xFFFF9800); // Orange
         statusIcon = Icons.access_time_rounded;
         statusText = 'Pending';
-        backgroundColor = const Color(0xFFFF9800).withOpacity(0.1);
         break;
       case 'approved':
         statusColor = const Color(0xFF2196F3); // Blue
         statusIcon = Icons.verified_rounded;
         statusText = 'Approved';
-        backgroundColor = const Color(0xFF2196F3).withOpacity(0.1);
         break;
       case 'paid':
         statusColor = const Color(0xFF04B104); // Green
         statusIcon = Icons.check_circle_rounded;
         statusText = 'Paid';
-        backgroundColor = const Color(0xFF04B104).withOpacity(0.1);
         break;
       default:
         statusColor = Colors.grey;
         statusIcon = Icons.help_outline_rounded;
         statusText = request.status.toUpperCase();
-        backgroundColor = Colors.grey.withOpacity(0.1);
     }
 
     // Amount is now stored directly in INR (not C Coins)
@@ -350,258 +359,123 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             ? Icons.account_balance_rounded
             : Icons.currency_bitcoin_rounded;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-      elevation: 1.5,
-      shadowColor: Colors.black.withOpacity(0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: statusColor.withOpacity(0.2),
-          width: 1,
+    return InkWell(
+      onTap: request.paymentProofURL != null
+          ? () => _showPaymentProof(request.paymentProofURL!)
+          : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A2A2A), // Light grey container
+          borderRadius: BorderRadius.circular(12),
         ),
-      ),
-      child: InkWell(
-        onTap: request.paymentProofURL != null
-            ? () => _showPaymentProof(request.paymentProofURL!)
-            : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                backgroundColor,
-                backgroundColor.withOpacity(0.5),
-              ],
+        child: Row(
+          children: [
+            // Icon with Status Color
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                methodIcon,
+                color: statusColor,
+                size: 24,
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header Row: Status Badge + Amount
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Status Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: statusColor.withOpacity(0.3),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
+            const SizedBox(width: 16),
+            // Description and Date
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Withdrawal',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, color: Colors.white, size: 11),
-                          const SizedBox(width: 3),
-                          Text(
-                            statusText,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Amount Column - Show only INR amount
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Row(
+                      const SizedBox(width: 8),
+                      // Status Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
                           children: [
+                            Icon(statusIcon, color: Colors.white, size: 10),
+                            const SizedBox(width: 3),
                             Text(
-                              '₹',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            Text(
-                              inrAmount.toStringAsFixed(2),
+                              statusText,
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 9,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                                letterSpacing: 0.2,
+                                color: Colors.white,
                               ),
                             ),
                           ],
                         ),
-                        Text(
-                          'Withdrawal',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 6),
-                
-                // Details Section - Compact Row
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Method Icon
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(7),
                       ),
-                      child: Icon(
-                        methodIcon,
-                        color: statusColor,
-                        size: 14,
-                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${request.withdrawalMethod} • ${_formatDate(request.requestDate)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[400],
                     ),
-                    const SizedBox(width: 8),
-                    // Method & Date Info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${request.withdrawalMethod}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 2,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.calendar_today_rounded,
-                                    size: 10,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    _formatDate(request.requestDate),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (request.approvedDate != null)
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.verified_rounded,
-                                      size: 10,
-                                      color: Colors.blue[600],
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      _formatDate(request.approvedDate!),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.blue[600],
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              if (request.paidDate != null)
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.payments_rounded,
-                                      size: 10,
-                                      color: Colors.green[600],
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      _formatDate(request.paidDate!),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.green[600],
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // Payment Proof Indicator
-                if (request.paymentProofURL != null) ...[
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(
-                        color: Colors.blue[200]!,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  ),
+                  if (request.paymentProofURL != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
                       children: [
                         Icon(
                           Icons.receipt_long_rounded,
                           size: 12,
-                          color: Colors.blue[700],
+                          color: Colors.blue[400],
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Payment proof - Tap to view',
+                          'Payment proof available',
                           style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.blue[700],
+                            fontSize: 11,
+                            color: Colors.blue[400],
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ],
+              ),
+            ),
+            // Amount on Right
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '₹${inrAmount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor == const Color(0xFF04B104) 
+                        ? const Color(0xFF04B104) // Green for paid
+                        : Colors.white, // White for pending/approved
+                  ),
+                ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

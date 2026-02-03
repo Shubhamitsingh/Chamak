@@ -6,6 +6,11 @@ import '../screens/event_screen.dart';
 
 class BannerService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // Cache for banners to show immediately on subsequent loads
+  static List<BannerModel>? _cachedBanners;
+  static DateTime? _cacheTimestamp;
+  static const Duration _cacheValidityDuration = Duration(minutes: 5); // Cache for 5 minutes
 
   // Get active banners stream (real-time updates)
   Stream<List<BannerModel>> getActiveBannersStream({
@@ -15,9 +20,13 @@ class BannerService {
   }) {
     debugPrint('🔍 Fetching banners - userLevel: $userLevel, userType: $userType, country: $userCountry');
     
-    // Fetch ALL banners (without isActive filter) to handle missing isActive field
-    // Then filter and sort client-side
-    return _firestore
+    // Check if we have valid cached banners
+    final hasValidCache = _cachedBanners != null && 
+                          _cacheTimestamp != null &&
+                          DateTime.now().difference(_cacheTimestamp!) < _cacheValidityDuration;
+    
+    // Create a stream that emits cached data immediately, then updates with fresh data
+    Stream<List<BannerModel>> stream = _firestore
         .collection('banners')
         .snapshots()
         .handleError((error) {
@@ -105,8 +114,20 @@ class BannerService {
         debugPrint('⚠️ No active banners found after filtering!');
       }
       
+      // Update cache
+      _cachedBanners = activeBanners;
+      _cacheTimestamp = DateTime.now();
+      
       return activeBanners;
     });
+    
+    // If we have valid cache, emit it immediately, then continue with the stream
+    if (hasValidCache && _cachedBanners != null) {
+      debugPrint('⚡ Using cached banners (${_cachedBanners!.length} banners)');
+      return Stream.value(_cachedBanners!).asyncExpand((_) => stream);
+    }
+    
+    return stream;
   }
 
   // Get active banners (one-time fetch)

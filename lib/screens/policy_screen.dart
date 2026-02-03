@@ -14,7 +14,7 @@ class _PolicyScreenState extends State<PolicyScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -67,6 +67,9 @@ class _PolicyScreenState extends State<PolicyScreen> with SingleTickerProviderSt
               Tab(
                 text: AppLocalizations.of(context)!.termsConditions,
               ),
+              const Tab(
+                text: 'Child Safety',
+              ),
             ],
           ),
         ),
@@ -76,6 +79,7 @@ class _PolicyScreenState extends State<PolicyScreen> with SingleTickerProviderSt
         children: [
           _buildPrivacyPolicyContent(),
           _buildTermsConditionsContent(),
+          _buildChildSafetyPolicyContent(),
         ],
       ),
     );
@@ -671,6 +675,216 @@ class _PolicyScreenState extends State<PolicyScreen> with SingleTickerProviderSt
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChildSafetyPolicyContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 40),
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Updated Date
+            Text(
+              'Updated on: ${_getCurrentDate()}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Title
+            _buildSection(
+              title: 'Child Sexual Abuse Policy',
+              children: [
+                _buildParagraph(
+                  'Chamakz has a Zero Tolerance Policy against child sexual abuse content or any content that can be harmful to minors. Users may not use Chamakz\'s services to create, publish, reproduce, transmit, distribute, or store such content, which includes but is not limited to:',
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Section 1: Prohibited Content
+            _buildSection(
+              title: '1. Prohibited Content',
+              children: [
+                // Sexualization of minors
+                _buildSubSection(
+                  title: 'Sexualization of minors:',
+                  content: 'Sexually explicit content featuring minors and content that sexually exploits minors.',
+                ),
+                const SizedBox(height: 16),
+                
+                // Sexual acts involving minors
+                _buildSubSection(
+                  title: 'Sexual acts involving minors:',
+                  content: 'Content showing a minor participating in sexual activities or encouraging minors to do sexual activities.',
+                ),
+                const SizedBox(height: 16),
+                
+                // Misleading content
+                _buildSubSection(
+                  title: 'Misleading content:',
+                  content: 'Content that targets young minors, but contains:\n• Sexual content\n• Sexual violence\n• Obscenity\n• Other contents containing adult or age-inappropriate themes such as violence, sex, and more.',
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Section 2: Our Response
+            _buildSection(
+              title: '2. Our Response',
+              children: [
+                _buildParagraph(
+                  'If we are made aware that our services have been used to store and/or transmit any content of that kind, we act immediately to remove any and all such content, block the user accounts involved and report all related activity to authorities.',
+                ),
+                const SizedBox(height: 12),
+                _buildParagraph(
+                  'Chamakz hereby reserves the right to take further action including but not limited to cooperation with law enforcement agencies and/or government bodies to assist them in prosecuting those involved.',
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Section 3: Reporting
+            _buildSection(
+              title: '3. Reporting Violations',
+              children: [
+                _buildParagraph(
+                  'If you are aware of child sexual abuse content or illegal content on the Chamakz platform, please report to:',
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Email: ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[800],
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return const LinearGradient(
+                          colors: [
+                            Color(0xFF9C27B0), // Purple
+                            Color(0xFFE91E63), // Pink
+                          ],
+                        ).createShader(bounds);
+                      },
+                      child: const Text(
+                        'info@chamakz.app',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildParagraph(
+                  'Please provide information reasonably sufficient to permit Chamakz to locate the material.',
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Section 4: Additional Resources
+            _buildSection(
+              title: '4. Additional Resources',
+              children: [
+                _buildParagraph(
+                  'If you become aware of child exploitation or abuse of minors elsewhere on the internet or offline, we recommend you contact one of the following, based on your location:',
+                ),
+                const SizedBox(height: 16),
+                
+                _buildSubSection(
+                  title: 'North America, Australia, New Zealand:',
+                  content: 'National Center for Missing & Exploited Children (NCMEC)',
+                ),
+                const SizedBox(height: 16),
+                
+                _buildSubSection(
+                  title: 'Europe:',
+                  content: 'Law Enforcement Reporting Channels for Child Sexual Coercion and Extortion',
+                ),
+                const SizedBox(height: 16),
+                
+                _buildSubSection(
+                  title: 'South America and other locales:',
+                  content: 'International Centre for Missing & Exploited Children global hotline',
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Important Notice
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.red[200]!,
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red[700],
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Important Notice',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red[900],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Chamakz takes child safety extremely seriously. Any violation of this policy will result in immediate account termination and reporting to law enforcement authorities.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red[900],
+                      fontWeight: FontWeight.w500,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 60),
+          ],
+        ),
       ),
     );
   }

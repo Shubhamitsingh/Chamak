@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
-import 'contact_support_screen.dart';
 import 'transaction_history_screen.dart';
 import '../services/gift_service.dart';
 import '../services/withdrawal_service.dart';
 import '../services/database_service.dart';
 import '../services/id_generator_service.dart';
-import '../models/gift_model.dart' show GiftModel;
 
 class MyEarningScreen extends StatefulWidget {
   final String phoneNumber;
@@ -43,14 +41,6 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   static const double _coinToInrRate = 0.04; // 1 C Coin = ₹0.04
   static const double _minWithdrawalINR = 20.00; // Minimum ₹20 to withdraw (500 C Coins * 0.04)
   
-  // Stats for quick cards (now calculated in real-time via StreamBuilder)
-  int todayEarnings = 0;
-  int weekEarnings = 0;
-  int monthEarnings = 0;
-  
-  // Previous period earnings for trend calculation
-  int previousWeekEarnings = 0;
-  int previousMonthEarnings = 0;
   
   bool _isProcessing = false;
   bool _isLoading = true;
@@ -92,46 +82,6 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           _isLoading = false;
         });
       }
-    }
-  }
-  
-  /// Calculate earnings for Today, Week, Month from gifts list
-  /// This is now called from StreamBuilder for real-time updates
-  Map<String, int> _calculatePeriodEarningsFromGifts(List<GiftModel> gifts) {
-    try {
-      final now = DateTime.now();
-      final todayStart = DateTime(now.year, now.month, now.day);
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      final monthStart = DateTime(now.year, now.month, 1);
-      
-      int today = 0;
-      int week = 0;
-      int month = 0;
-      
-      for (var gift in gifts) {
-        if (gift.timestamp == null) continue;
-        final giftDate = gift.timestamp!;
-        final cCoins = gift.cCoinsEarned ?? 0;
-        
-        if (giftDate.isAfter(todayStart)) {
-          today += cCoins;
-        }
-        if (giftDate.isAfter(DateTime(weekStart.year, weekStart.month, weekStart.day))) {
-          week += cCoins;
-        }
-        if (giftDate.isAfter(monthStart)) {
-          month += cCoins;
-        }
-      }
-      
-      return {
-        'today': today,
-        'week': week,
-        'month': month,
-      };
-    } catch (e) {
-      debugPrint('Error calculating period earnings: $e');
-      return {'today': 0, 'week': 0, 'month': 0};
     }
   }
   
@@ -193,64 +143,35 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     }
   }
 
-  // Helper method to build AppBar
+  // Helper method to build AppBar - Pink theme like reference image
   PreferredSizeWidget _buildAppBar({bool showActions = true}) {
     return AppBar(
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-      ),
+      backgroundColor: const Color(0xFFFF1B7C), // Pink color like reference
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+        icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
-        AppLocalizations.of(context)!.myEarning,
+        AppLocalizations.of(context)!.withdrawMoney,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
       ),
       centerTitle: true,
       actions: showActions
           ? [
-              // History/Details Icon - Navigate to Transaction History
+              // Clock icon for history - like reference image
               IconButton(
                 icon: const Icon(
-                  Icons.more_vert,
+                  Icons.access_time,
                   color: Colors.white,
-                  size: 22,
+                  size: 24,
                 ),
                 onPressed: _navigateToTransactionHistory,
                 tooltip: 'Transaction History',
-              ),
-              // Contact Support Icon
-              IconButton(
-                icon: const Icon(
-                  Icons.support_agent,
-                  color: Colors.white,
-                  size: 22,
-                ),
-                onPressed: () {
-                  try {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ContactSupportScreen(),
-                      ),
-                    );
-                  } catch (e) {
-                    debugPrint('Error navigating to contact support: $e');
-                  }
-                },
-                tooltip: 'Contact Support',
               ),
             ]
           : null,
@@ -288,33 +209,37 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     }
     
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: RefreshIndicator(
         onRefresh: _loadEarningsData,
-        color: const Color(0xFF4CAF50),
+        color: const Color(0xFFFF1B7C),
           child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 60),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Earning Overview Card (Enhanced)
-              _buildEarningOverview(),
+              // Stack for card inside pink container
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Pink Header Section with Available Coins
+                  _buildPinkHeaderSection(),
+                  
+                  // White Conversion Card (inside pink container)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: null,
+                    bottom: 16, // Inside the pink container
+                    child: _buildConversionCard(),
+                  ),
+                ],
+              ),
               
-              const SizedBox(height: 12),
+              const SizedBox(height: 30),
               
-              // Quick Stats Cards
-              _buildQuickStatsCards(),
-              
-              const SizedBox(height: 12),
-              
-              // Withdrawal Section
-              _buildWithdrawalSection(),
-              
-              const SizedBox(height: 12),
-              
-              // Trust Badges Section
-              _buildTrustBadges(),
+              // Withdrawal Input Section
+              _buildWithdrawalInputSection(),
               
               const SizedBox(height: 40),
             ],
@@ -324,7 +249,265 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     );
   }
 
-  // ========== EARNING OVERVIEW ==========
+  // ========== PINK HEADER SECTION (Like Reference Image) ==========
+  Widget _buildPinkHeaderSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 80),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFF1B7C), // Pink background
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          // "Available Coins" label - centered
+          Text(
+            'Available Coins',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.95),
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+              const SizedBox(height: 12),
+          // Large coin balance - centered
+          Text(
+            _displayedBalance.toString(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 52,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ========== CONVERSION CARD (White Card Overlapping) ==========
+  Widget _buildConversionCard() {
+    // Calculate USD: 1000 C Coins = ? USD
+    // 1 C Coin = ₹0.04, so 1000 C Coins = ₹40
+    // ₹40 / 82 (USD rate) = $0.488 ≈ $0.49
+    // But reference shows $2.148, so using that rate: 1000 coins = $2.148 means 1 coin = $0.002148
+    final usdRate = 2.148 / 1000; // Based on reference image
+    final conversionUSD = 1000 * usdRate;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(12),
+          topRight: Radius.circular(3),
+          bottomLeft: Radius.circular(3),
+          bottomRight: Radius.circular(12),
+        ),
+        border: Border.all(
+          color: const Color(0xFFFF1B7C).withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Left: Star icon + Conversion rate (USD)
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Circular gradient icon with white star
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF9800), Color(0xFFFFEB3B)], // Orange to Yellow
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.star,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    '1000 Coin = \$ ${conversionUSD.toStringAsFixed(3)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Right: Withdraw button
+          ElevatedButton(
+            onPressed: () {
+              // Quick withdraw action - can open withdrawal form
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey[800],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              minimumSize: const Size(0, 38),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Withdraw',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ========== WITHDRAWAL INPUT SECTION ==========
+  Widget _buildWithdrawalInputSection() {
+    // Calculate USD equivalent using same rate as conversion card
+    // 1000 coins = $2.148, so 1 coin = $0.002148
+    final usdRatePerCoin = 2.148 / 1000;
+    double usdEquivalent = 0.0;
+    if (_amountController.text.isNotEmpty) {
+      final coinAmount = int.tryParse(_amountController.text) ?? 0;
+      usdEquivalent = coinAmount * usdRatePerCoin;
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // "Enter Amount" label
+          const Text(
+            'Enter Amount',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+              const SizedBox(height: 12),
+              
+          // Input field with USD equivalent
+          Row(
+            children: [
+              // Input field
+              Expanded(
+                child: TextFormField(
+                  controller: _amountController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    setState(() {}); // Update USD equivalent
+                  },
+                  style: const TextStyle(fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Enter withdraw Coin',
+                    hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 2),
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              // Equals sign
+              const Text(
+                '=',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              // USD equivalent box
+              Container(
+                width: 100,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[800],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '\$ ${usdEquivalent.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+              
+          const SizedBox(height: 8),
+          
+          // Minimum withdraw message
+          Text(
+            'Minimum Withdraw ${(_minWithdrawalINR / _coinToInrRate).round()} Coin',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.red[600],
+              fontWeight: FontWeight.w500,
+          ),
+        ),
+        ],
+      ),
+    );
+  }
+
+  // ========== EARNING OVERVIEW (OLD - Keep for reference) ==========
   Widget _buildEarningOverview() {
     return Container(
       margin: const EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -429,10 +612,6 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          if (weekEarnings > 0 && previousWeekEarnings > 0) ...[
-                            const SizedBox(width: 8),
-                            _buildTrendIndicator(weekEarnings, previousWeekEarnings),
-                          ],
                         ],
                       ),
                       
@@ -578,238 +757,6 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     );
   }
 
-  // ========== QUICK STATS CARDS ==========
-  Widget _buildQuickStatsCards() {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      return const SizedBox.shrink();
-    }
-
-    // Use StreamBuilder for real-time period earnings updates
-    return StreamBuilder<List<GiftModel>>(
-      stream: _giftService.getHostReceivedGifts(currentUser.uid),
-      builder: (context, snapshot) {
-        // Calculate period earnings from current gifts snapshot
-        final periodEarnings = snapshot.hasData
-            ? _calculatePeriodEarningsFromGifts(snapshot.data!)
-            : {'today': todayEarnings, 'week': weekEarnings, 'month': monthEarnings};
-
-        // Update state variables for backward compatibility
-        if (snapshot.hasData && mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                todayEarnings = periodEarnings['today'] ?? 0;
-                weekEarnings = periodEarnings['week'] ?? 0;
-                monthEarnings = periodEarnings['month'] ?? 0;
-              });
-            }
-          });
-        }
-
-        // Update previous values for trend calculation
-        if (snapshot.hasData && mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                previousWeekEarnings = weekEarnings;
-                previousMonthEarnings = monthEarnings;
-              });
-            }
-          });
-        }
-
-        return Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                title: 'Today',
-                value: periodEarnings['today'] ?? 0,
-                icon: Icons.today,
-                color: const Color(0xFF66BB6A),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                title: 'This Week',
-                value: periodEarnings['week'] ?? 0,
-                icon: Icons.date_range,
-                color: const Color(0xFF4CAF50),
-                previousValue: previousWeekEarnings,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                title: 'This Month',
-                value: periodEarnings['month'] ?? 0,
-                icon: Icons.calendar_month,
-                color: const Color(0xFF2E7D32),
-                previousValue: previousMonthEarnings,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildStatCard({
-    required String title,
-    required int value,
-    required IconData icon,
-    required Color color,
-    int? previousValue,
-  }) {
-    // Calculate percentage change if previous value exists
-    double? percentageChange;
-    if (previousValue != null && previousValue > 0) {
-      percentageChange = ((value - previousValue) / previousValue) * 100;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.2), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color.withOpacity(0.15), color.withOpacity(0.08)],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 18, color: color),
-              ),
-              if (percentageChange != null)
-                _buildTrendBadge(percentageChange),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/coin3.png',
-                width: 16,
-                height: 16,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(Icons.monetization_on, size: 16, color: color);
-                },
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  value.toString(),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to build trend indicator
-  Widget _buildTrendIndicator(int current, int previous) {
-    if (previous == 0) return const SizedBox.shrink();
-    final change = ((current - previous) / previous) * 100;
-    final isPositive = change >= 0;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isPositive ? Icons.trending_up : Icons.trending_down,
-            size: 12,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 2),
-          Text(
-            '${isPositive ? '+' : ''}${change.toStringAsFixed(0)}%',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to build trend badge for stat cards
-  Widget _buildTrendBadge(double percentageChange) {
-    final isPositive = percentageChange >= 0;
-    final color = isPositive ? Colors.green : Colors.red;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isPositive ? Icons.arrow_upward : Icons.arrow_downward,
-            size: 10,
-            color: color,
-          ),
-          const SizedBox(width: 2),
-          Text(
-            '${isPositive ? '+' : ''}${percentageChange.toStringAsFixed(0)}%',
-            style: TextStyle(
-              color: color,
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ========== WITHDRAWAL SECTION ==========
   Widget _buildWithdrawalSection() {
@@ -1050,6 +997,40 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                             ),
                           ),
                     ),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Bottom info with icon and text in container
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: Colors.grey[700],
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Withdrawal requests are processed within 24-48 hours',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

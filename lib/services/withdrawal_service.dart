@@ -39,20 +39,11 @@ class WithdrawalService {
   }
 
   // Get a stream of user's withdrawal requests
+  // Uses fallback method by default to avoid Firestore index requirement
   Stream<List<WithdrawalRequestModel>> getUserWithdrawalRequests(String userId) {
-    return _firestore
-        .collection('withdrawal_requests')
-        .where('userId', isEqualTo: userId)
-        .orderBy('requestDate', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => WithdrawalRequestModel.fromFirestore(doc))
-            .toList())
-        .handleError((error) {
-          // Log error but let it propagate to UI for handling
-          AppLogger.error('Error fetching withdrawal requests', error);
-          throw error;
-        });
+    // Use fallback method to avoid index requirement
+    // This method sorts in memory instead of using Firestore orderBy
+    return getUserWithdrawalRequestsFallback(userId);
   }
   
   // Fallback method: Get withdrawal requests without orderBy (no index needed)

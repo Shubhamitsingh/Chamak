@@ -60,12 +60,12 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF1A1A1A), // Dark background
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF1A1A1A), // Dark background
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 24),
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
@@ -85,7 +85,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
               gradient: LinearGradient(
                 colors: [
                   Colors.transparent,
-                  Colors.grey[200]!,
+                  Colors.grey[700]!,
                   Colors.transparent,
                 ],
               ),
@@ -94,23 +94,14 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF1B7C)))
           : Column(
               children: [
-                // White Content Section - Scrollable
+                // Dark Content Section - Scrollable
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.white,
-                          Colors.grey[50]!,
-                        ],
-                        stops: const [0.0, 0.3],
-                      ),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1A1A1A), // Dark background
                     ),
                     child: SingleChildScrollView(
                       child: Column(
@@ -144,7 +135,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                 
                 // Go Live Button - Fixed at Bottom
                 Container(
-                  color: Colors.white,
+                  color: const Color(0xFF1A1A1A), // Dark background
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                   child: SafeArea(
                     top: false,
@@ -197,7 +188,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
               const Text(
                 'Rules',
                 style: TextStyle(
-                  color: Colors.black87,
+                  color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
@@ -244,7 +235,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
               Text(
                 'Go Live',
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: Colors.grey[400],
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.2,
@@ -323,10 +314,10 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFF2A2A2A), // Dark grey container
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
+              color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
               width: 1.5,
             ),
             boxShadow: [
@@ -361,7 +352,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                       'Go live, make connections & get gifts',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        color: Colors.black87,
+                        color: Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
                         height: 1.3,
@@ -376,7 +367,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                 'Review the community guidelines to ensure a safe and positive experience.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.grey[700],
+                  color: Colors.grey[400],
                   fontSize: 13,
                   height: 1.4,
                   letterSpacing: 0.05,
@@ -453,7 +444,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                 child: Text(
                   'Community Guidelines',
                   style: const TextStyle(
-                    color: Colors.black87,
+                    color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.2,
@@ -483,10 +474,10 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF2A2A2A), // Dark grey container
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: Colors.grey[200]!,
+          color: Colors.grey[700]!,
           width: 1,
         ),
         boxShadow: [
@@ -533,7 +524,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Colors.black87,
+                    color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.1,
@@ -543,7 +534,7 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                 Text(
                   description,
                   style: TextStyle(
-                    color: Colors.grey[700],
+                    color: Colors.grey[400],
                     fontSize: 12,
                     height: 1.4,
                     letterSpacing: 0.05,
@@ -619,7 +610,7 @@ class _SpeechBubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white
+      ..color = const Color(0xFF2A2A2A) // Dark grey for speech bubble tail
       ..style = PaintingStyle.fill;
 
     final path = Path();
@@ -632,7 +623,7 @@ class _SpeechBubblePainter extends CustomPainter {
     
     // Border
     final borderPaint = Paint()
-      ..color = const Color(0xFFFF1B7C).withValues(alpha: 0.2)
+      ..color = const Color(0xFFFF1B7C).withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawPath(path, borderPaint);

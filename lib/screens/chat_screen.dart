@@ -331,11 +331,7 @@ class _ChatScreenState extends State<ChatScreen> {
               margin: const EdgeInsets.only(right: 6), // Reduced from 8 to 6
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Reduced from (12, 8) to (10, 6)
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
+                color: const Color(0xFFFF1B7C), // App theme color
                 borderRadius: BorderRadius.circular(18), // Slightly reduced from 20 to 18
               ),
               child: Row(
@@ -579,14 +575,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      gradient: _containsDigitsWarning 
-                          ? null
-                          : const LinearGradient(
-                              colors: [Color(0xFFFF1B7C), Color(0xFFFF69B4)],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                      color: _containsDigitsWarning ? Colors.grey[400] : null,
+                      color: _containsDigitsWarning ? Colors.grey[400] : const Color(0xFFFF1B7C), // App theme color
                       shape: BoxShape.circle,
                       boxShadow: _containsDigitsWarning 
                           ? null
@@ -911,13 +900,13 @@ class _ChatScreenState extends State<ChatScreen> {
                             ? const Color(0xFFFFB800).withValues(alpha: 0.15)
                             : Colors.white
                         : isSentByMe
-                            ? const Color(0xFFFF69B4)
+                            ? const Color(0xFFFF1B7C)
                             : Colors.white,
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isSentByMe ? 16 : 4),
-                      bottomRight: Radius.circular(isSentByMe ? 4 : 16),
+                      topLeft: const Radius.circular(8),
+                      topRight: const Radius.circular(8),
+                      bottomLeft: Radius.circular(isSentByMe ? 8 : 2),
+                      bottomRight: Radius.circular(isSentByMe ? 2 : 8),
                     ),
                     border: isGift
                         ? Border.all(

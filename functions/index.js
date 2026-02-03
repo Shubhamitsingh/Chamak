@@ -317,6 +317,183 @@ exports.sendMessageNotification = onDocumentCreated(
 );
 
 /**
+ * Send notification when admin sends a message in support chat
+ * Triggers automatically when a new message is created in supportChats/{chatId}/messages
+ */
+exports.sendChatNotification = onDocumentCreated(
+    "supportChats/{chatId}/messages/{messageId}",
+    async (event) => {
+      try {
+        const messageData = event.data.data();
+        const messageId = event.params.messageId;
+        const chatId = event.params.chatId;
+        const senderId = messageData.senderId;
+
+        console.log(`💬 New message created in chat: ${chatId}, messageId: ${messageId}`);
+        console.log(`📋 Message data:`, JSON.stringify(messageData, null, 2));
+        console.log(`👤 Sender ID: ${senderId}`);
+        console.log(`📨 Receiver ID: ${messageData.receiverId}`);
+
+        // Check if message is from admin
+        // Admin messages have receiverId === "user" (string literal)
+        // This is set by Flutter app when isAdmin = true
+        const receiverId = messageData.receiverId;
+        const isAdminMessage = receiverId === "user" || 
+                               receiverId === "user" || // Double check
+                               senderId === "admin" || 
+                               senderId?.startsWith("admin_");
+
+        console.log(`🔍 Admin detection check:`);
+        console.log(`   receiverId === "user": ${receiverId === "user"}`);
+        console.log(`   senderId === "admin": ${senderId === "admin"}`);
+        console.log(`   senderId starts with "admin_": ${senderId?.startsWith("admin_")}`);
+        console.log(`   Final result - isAdminMessage: ${isAdminMessage}`);
+
+        if (!isAdminMessage) {
+          console.log(`⏭️ Skipping notification - message is from user`);
+          console.log(`   senderId: ${senderId}, receiverId: ${receiverId}`);
+          return null;
+        }
+
+        console.log(`✅ Admin message detected! (senderId: ${senderId}, receiverId: ${receiverId})`);
+
+        // Get chat document to find userId
+        const chatDoc = await admin.firestore()
+            .collection("supportChats")
+            .doc(chatId)
+            .get();
+
+        if (!chatDoc.exists) {
+          console.error(`❌ Chat document not found: ${chatId}`);
+          return null;
+        }
+
+        const chatData = chatDoc.data();
+        const userId = chatData?.userId;
+
+        if (!userId) {
+          console.error(`❌ User ID not found in chat document: ${chatId}`);
+          return null;
+        }
+
+        console.log(`👤 Found user ID: ${userId}`);
+
+        // Get user document to find FCM token
+        const userDoc = await admin.firestore()
+            .collection("users")
+            .doc(userId)
+            .get();
+
+        if (!userDoc.exists) {
+          console.error(`❌ User document not found: ${userId}`);
+          return null;
+        }
+
+        const userData = userDoc.data();
+        
+        console.log(`📋 User data fields:`, Object.keys(userData || {}));
+        
+        // Try multiple FCM token field names
+        const fcmToken = userData?.fcmToken || 
+                        userData?.fcm_token || 
+                        userData?.deviceToken || 
+                        userData?.device_token || 
+                        userData?.pushToken || 
+                        userData?.push_token || 
+                        userData?.token;
+
+        console.log(`🔍 FCM token check:`);
+        console.log(`   fcmToken: ${userData?.fcmToken ? 'EXISTS' : 'NOT FOUND'}`);
+        console.log(`   fcm_token: ${userData?.fcm_token ? 'EXISTS' : 'NOT FOUND'}`);
+        console.log(`   deviceToken: ${userData?.deviceToken ? 'EXISTS' : 'NOT FOUND'}`);
+        console.log(`   Final token: ${fcmToken ? fcmToken.substring(0, 20) + '...' : 'NULL'}`);
+
+        if (!fcmToken || fcmToken.length === 0) {
+          console.error(`❌ FCM token not found for user: ${userId}`);
+          console.error(`⚠️ User may need to re-enable notifications in the app`);
+          console.error(`⚠️ Available fields:`, Object.keys(userData || {}));
+          return null;
+        }
+
+        console.log(`✅ Found FCM token for user: ${userId}`);
+        console.log(`   Token preview: ${fcmToken.substring(0, 30)}...`);
+
+        // Prepare notification message
+        const messageText = messageData.message || "";
+        const truncatedMessage = messageText.length > 100 
+            ? messageText.substring(0, 100) + "..." 
+            : messageText;
+
+        const notification = {
+          title: "New Message from Admin",
+          body: truncatedMessage,
+        };
+
+        const data = {
+          type: "support_message",
+          chatId: chatId,
+          messageId: messageId,
+          senderId: senderId,
+          userId: userId,
+          timestamp: messageData.timestamp?.toISOString() || new Date().toISOString(),
+        };
+
+        // Send push notification
+        const message = {
+          notification: notification,
+          data: data,
+          token: fcmToken,
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "chamak_messages",
+              sound: "default",
+              priority: "high",
+              defaultVibrateTimings: true,
+              defaultSound: true,
+            },
+          },
+          apns: {
+            headers: {
+              "apns-priority": "10",
+            },
+            payload: {
+              aps: {
+                alert: notification,
+                sound: "default",
+                badge: 1,
+              },
+            },
+          },
+        };
+
+        console.log(`📤 Sending push notification...`);
+        console.log(`   Title: ${notification.title}`);
+        console.log(`   Body: ${notification.body.substring(0, 50)}...`);
+        console.log(`   Chat ID: ${chatId}`);
+        console.log(`   User ID: ${userId}`);
+        
+        const response = await admin.messaging().send(message);
+        console.log(`✅ Push notification sent successfully!`);
+        console.log(`   User: ${userId}`);
+        console.log(`   Message ID: ${response}`);
+        console.log(`   Chat ID: ${chatId}`);
+
+        return response;
+      } catch (error) {
+        console.error("❌ Error sending chat notification:");
+        console.error(`   Error message: ${error.message}`);
+        console.error(`   Error code: ${error.code || 'N/A'}`);
+        console.error(`   Stack trace:`, error.stack);
+        console.error(`   Chat ID: ${chatId}`);
+        console.error(`   Message ID: ${messageId}`);
+        // Don't throw - allow message to be saved even if notification fails
+        return null;
+      }
+    }
+);
+
+/**
  * Clean up old notification requests (older than 7 days)
  * Runs every 24 hours
  */

@@ -40,18 +40,18 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     final currentUser = _auth.currentUser;
     
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFF1A1A1A), // Dark background
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF1A1A1A), // Dark background
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 20),
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Transaction History',
+          'Spending History',
           style: TextStyle(
-            color: Colors.black87,
+            color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -75,10 +75,10 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF2A2A2A), // Dark grey container
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -88,7 +88,7 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
         children: [
           Icon(
             Icons.filter_list,
-            color: Colors.grey[600],
+            color: Colors.grey[400],
             size: 20,
           ),
           const SizedBox(width: 8),
@@ -98,10 +98,10 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: const Color(0xFF1A1A1A),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: Colors.grey[300]!,
+                    color: Colors.grey[700]!,
                     width: 1,
                   ),
                 ),
@@ -110,7 +110,7 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                     Icon(
                       Icons.calendar_today,
                       size: 16,
-                      color: Colors.grey[700],
+                      color: Colors.grey[400],
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -118,16 +118,16 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                         _selectedDate == null
                             ? 'All Transactions'
                             : DateFormat('MMM d, y').format(_selectedDate!),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Colors.black87,
+                          color: Colors.white,
                         ),
                       ),
                     ),
                     Icon(
                       Icons.arrow_drop_down,
-                      color: Colors.grey[600],
+                      color: Colors.grey[400],
                       size: 20,
                     ),
                   ],
@@ -142,13 +142,13 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: Colors.grey[700],
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.close,
                   size: 16,
-                  color: Colors.grey[700],
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -186,7 +186,7 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                     callSnapshot.connectionState == ConnectionState.waiting ||
                     giftSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
+                    child: CircularProgressIndicator(color: Color(0xFFFF1B7C)),
                   );
                 }
 
@@ -335,13 +335,9 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
 
             // Display filtered transactions
             return ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               itemCount: filteredTransactions.length,
-              separatorBuilder: (context, index) => Divider(
-                height: 1,
-                thickness: 1,
-                color: Colors.grey[200],
-              ),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final transaction = filteredTransactions[index];
                 final type = transaction['type'] as String;
@@ -393,13 +389,13 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: const Color(0xFF2A2A2A),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.receipt_long_outlined,
                 size: 64,
-                color: Colors.grey[400],
+                color: Colors.grey[600],
               ),
             ),
             const SizedBox(height: 24),
@@ -408,7 +404,7 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 12),
@@ -417,7 +413,7 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: Colors.grey[400],
                 height: 1.5,
               ),
             ),
@@ -435,131 +431,86 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     DateTime? createdAt,
     DateTime? completedAt,
   }) {
-    final isCompleted = status.toLowerCase() == 'completed';
-    final statusColor = isCompleted ? const Color(0xFF04B104) : const Color(0xFFFF9800);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final dateTime = createdAt ?? DateTime.now();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A), // Light grey container
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status indicator (left colored bar)
-          Container(
-            width: 3,
-            height: 50,
-            decoration: BoxDecoration(
-              color: statusColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
+          // Coin Icon with Sparkles
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Image.asset(
+                'assets/images/coin3.png',
+                width: 40,
+                height: 40,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.monetization_on,
+                    size: 40,
+                    color: Color(0xFFFFB800),
+                  );
+                },
+              ),
+              // Sparkle effects
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Icon(
+                  Icons.auto_awesome,
+                  size: 8,
+                  color: Colors.amber[300],
+                ),
+              ),
+              Positioned(
+                top: 2,
+                left: -2,
+                child: Icon(
+                  Icons.auto_awesome,
+                  size: 6,
+                  color: Colors.amber[200],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          // Main content
+          const SizedBox(width: 16),
+          // Description and Date
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: Amount and Status
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Amount
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Image.asset(
-                          'assets/images/coin3.png',
-                          width: 16,
-                          height: 16,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.monetization_on,
-                              size: 16,
-                              color: Color(0xFFFFB800),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          NumberFormat.decimalPattern().format(coins),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Status
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        isCompleted ? 'Completed' : 'Pending',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: statusColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                // Amount in rupees
                 Text(
-                  '₹${NumberFormat.decimalPattern().format(amount)}',
-                  style: TextStyle(
-                    fontSize: 13,
+                  'Coin Purchase',
+                  style: const TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 8),
-                // Date and UTR
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 12,
-                      color: Colors.grey[500],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(createdAt ?? DateTime.now()),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    if (utrNumber.isNotEmpty) ...[
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.receipt,
-                        size: 12,
-                        color: Colors.grey[500],
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          utrNumber,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('MM/dd/yyyy, hh:mm a').format(dateTime),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[400],
+                  ),
                 ),
               ],
+            ),
+          ),
+          // Amount on Right (Green for positive)
+          Text(
+            '+${NumberFormat.decimalPattern().format(coins)}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF04B104), // Green color
             ),
           ),
         ],
@@ -572,121 +523,86 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     DateTime? timestamp,
     required int duration,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final dateTime = timestamp ?? DateTime.now();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A), // Light grey container
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status indicator (left colored bar)
-          Container(
-            width: 3,
-            height: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF9800),
-              borderRadius: BorderRadius.circular(2),
-            ),
+          // Coin Icon with Sparkles
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Image.asset(
+                'assets/images/coin3.png',
+                width: 40,
+                height: 40,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.monetization_on,
+                    size: 40,
+                    color: Color(0xFFFFB800),
+                  );
+                },
+              ),
+              // Sparkle effects
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Icon(
+                  Icons.auto_awesome,
+                  size: 8,
+                  color: Colors.amber[300],
+                ),
+              ),
+              Positioned(
+                top: 2,
+                left: -2,
+                child: Icon(
+                  Icons.auto_awesome,
+                  size: 6,
+                  color: Colors.amber[200],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          // Main content
+          const SizedBox(width: 16),
+          // Description and Date
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: Amount and Type
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Amount
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        const Text(
-                          '-',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFFF9800),
-                          ),
-                        ),
-                        Image.asset(
-                          'assets/images/coin3.png',
-                          width: 16,
-                          height: 16,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.monetization_on,
-                              size: 16,
-                              color: Color(0xFFFFB800),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          NumberFormat.decimalPattern().format(coins),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Type
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF9800).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Call',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFFFF9800),
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Video Call',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                // Duration and Date
-                Row(
-                  children: [
-                    Icon(
-                      Icons.phone_in_talk,
-                      size: 12,
-                      color: Colors.grey[500],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDuration(duration),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(
-                      Icons.access_time,
-                      size: 12,
-                      color: Colors.grey[500],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(timestamp ?? DateTime.now()),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('MM/dd/yyyy, hh:mm a').format(dateTime),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[400],
+                  ),
                 ),
               ],
+            ),
+          ),
+          // Amount on Right (Red for negative)
+          Text(
+            '-${NumberFormat.decimalPattern().format(coins)}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.red, // Red color for deductions
             ),
           ),
         ],
@@ -700,144 +616,93 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     required String giftType,
     required String receiverName,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final dateTime = timestamp ?? DateTime.now();
+    final description = giftType.isNotEmpty 
+        ? giftType 
+        : receiverName.isNotEmpty 
+            ? 'Gift to $receiverName'
+            : 'Gift';
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A), // Light grey container
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status indicator (left colored bar)
-          Container(
-            width: 3,
-            height: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF69B4),
-              borderRadius: BorderRadius.circular(2),
-            ),
+          // Coin Icon with Sparkles
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Image.asset(
+                'assets/images/coin3.png',
+                width: 40,
+                height: 40,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.monetization_on,
+                    size: 40,
+                    color: Color(0xFFFFB800),
+                  );
+                },
+              ),
+              // Sparkle effects
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Icon(
+                  Icons.auto_awesome,
+                  size: 8,
+                  color: Colors.amber[300],
+                ),
+              ),
+              Positioned(
+                top: 2,
+                left: -2,
+                child: Icon(
+                  Icons.auto_awesome,
+                  size: 6,
+                  color: Colors.amber[200],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          // Main content
+          const SizedBox(width: 16),
+          // Description and Date
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: Amount and Type
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Amount
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        const Text(
-                          '-',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFFF69B4),
-                          ),
-                        ),
-                        Image.asset(
-                          'assets/images/coin3.png',
-                          width: 16,
-                          height: 16,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.monetization_on,
-                              size: 16,
-                              color: Color(0xFFFFB800),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          NumberFormat.decimalPattern().format(coins),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Type
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF69B4).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Gift',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFFFF69B4),
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
-                // Gift type and Date
-                Row(
-                  children: [
-                    Icon(
-                      Icons.card_giftcard,
-                      size: 12,
-                      color: Colors.grey[500],
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        giftType.isNotEmpty ? giftType : 'Gift',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (receiverName.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.person,
-                        size: 12,
-                        color: Colors.grey[500],
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          receiverName,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 12),
-                    Icon(
-                      Icons.access_time,
-                      size: 12,
-                      color: Colors.grey[500],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(timestamp ?? DateTime.now()),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('MM/dd/yyyy, hh:mm a').format(dateTime),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[400],
+                  ),
                 ),
               ],
+            ),
+          ),
+          // Amount on Right (Red for negative)
+          Text(
+            '-${NumberFormat.decimalPattern().format(coins)}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.red, // Red color for deductions
             ),
           ),
         ],

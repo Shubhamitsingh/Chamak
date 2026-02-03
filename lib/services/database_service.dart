@@ -55,7 +55,7 @@ class DatabaseService {
 
         // Get current device ID for single device login tracking
         final deviceId = await DeviceService.getDeviceId();
-        
+
         Map<String, dynamic> updateData = {
           if (numericIdToUpdate != null) 'numericUserId': numericIdToUpdate,
           'lastLogin': FieldValue.serverTimestamp(),

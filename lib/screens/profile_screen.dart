@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'edit_profile_screen.dart';
 import 'wallet_screen.dart';
@@ -24,6 +25,7 @@ import '../services/event_service.dart';
 import '../services/announcement_tracking_service.dart';
 import '../services/banner_service.dart';
 import '../services/host_application_service.dart';
+import '../services/team_message_service.dart';
 import '../models/user_model.dart';
 import '../models/announcement_model.dart';
 import '../models/event_model.dart';
@@ -51,6 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final AnnouncementTrackingService _trackingService = AnnouncementTrackingService();
   final BannerService _bannerService = BannerService();
   final HostApplicationService _hostApplicationService = HostApplicationService();
+  final TeamMessageService _teamMessageService = TeamMessageService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -713,8 +716,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             userCountry: user.countryCode,
           ),
       builder: (context, snapshot) {
-        // Loading state
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // Get banners (use cached data if available, even during loading)
+        final banners = snapshot.data ?? [];
+        
+        // Show loading indicator ONLY if we have no banners AND we're waiting for first load
+        if (snapshot.connectionState == ConnectionState.waiting && banners.isEmpty) {
           return Container(
             height: 60,
             child: Center(
@@ -726,13 +732,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        // Error state - hide banner section
-        if (snapshot.hasError) {
+        // Error state - hide banner section only if no cached banners
+        if (snapshot.hasError && banners.isEmpty) {
           debugPrint('❌ Error loading banners: ${snapshot.error}');
           return SizedBox.shrink();
         }
-
-        final banners = snapshot.data ?? [];
         
         // No banners - hide section
         if (banners.isEmpty) {
@@ -828,38 +832,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Container(
                       width: double.infinity,
                       height: 60,
-                      child: Image.network(
-                        banner.imageUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: banner.imageUrl,
                         width: double.infinity,
                         height: 60,
                         fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            height: 60,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Color(0xFFE91E63),
-                                  Color(0xFF9C27B0),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                        // Show placeholder immediately (no loading delay)
+                        placeholder: (context, url) => Container(
+                          height: 60,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFFE91E63),
+                                Color(0xFF9C27B0),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                            child: Center(
+                          ),
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
                               child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                  : null,
                                 color: Colors.white,
                                 strokeWidth: 2,
                               ),
                             ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
+                          ),
+                        ),
+                        // Show error state
+                        errorWidget: (context, url, error) {
                           debugPrint('❌ Error loading banner image: $error');
                           return Container(
                             height: 60,
@@ -882,6 +885,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           );
                         },
+                        // Cache images for faster loading
+                        memCacheWidth: 800, // Optimize memory usage
+                        memCacheHeight: 120,
                       ),
                     ),
                   );
@@ -1066,36 +1072,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildDivider(),
             
-            // Messages with Unread Badge
+            // Messages with Unread Badge (Regular Chats + Chamakz Team Messages)
             StreamBuilder<int>(
               stream: _chatService.getTotalUnreadCount(user.uid),
-              builder: (context, unreadSnapshot) {
-                final unreadCount = unreadSnapshot.data ?? 0;
-                return _buildMenuOption(
-                  icon: Icons.forum_rounded,
-                  title: AppLocalizations.of(context)!.messages,
-                  subtitle: AppLocalizations.of(context)!.chatInbox,
-                  color: const Color(0xFF3B82F6),
-                  iconImage: 'assets/images/comment.png', // Use custom comment icon
-                  badgeCount: unreadCount,
-                  showBadgeOnTrailing: true, // Show badge on right side like level
-                  onTap: () {
-                    if (!mounted) return;
-                    _stopAutoScroll();
-                    try {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ChatListScreen(),
-                        ),
-                      ).then((_) {
-                        if (mounted) {
-                          _startAutoScroll();
+              builder: (context, chatUnreadSnapshot) {
+                // Combine regular chat unread count with team messages unread count
+                return StreamBuilder<int>(
+                  stream: _teamMessageService.getUnreadTeamMessagesCount(),
+                  builder: (context, teamUnreadSnapshot) {
+                    final chatUnreadCount = chatUnreadSnapshot.data ?? 0;
+                    final teamUnreadCount = teamUnreadSnapshot.data ?? 0;
+                    final totalUnreadCount = chatUnreadCount + teamUnreadCount;
+                    
+                    debugPrint('🔔 [Profile Badge] Chat unread: $chatUnreadCount, Team unread: $teamUnreadCount, Total: $totalUnreadCount');
+                    
+                    return _buildMenuOption(
+                      icon: Icons.forum_rounded,
+                      title: AppLocalizations.of(context)!.messages,
+                      subtitle: AppLocalizations.of(context)!.chatInbox,
+                      color: const Color(0xFF3B82F6),
+                      iconImage: 'assets/images/comment.png', // Use custom comment icon
+                      badgeCount: totalUnreadCount > 0 ? totalUnreadCount : null,
+                      showBadgeOnTrailing: true, // Show badge on right side like level
+                      onTap: () {
+                        if (!mounted) return;
+                        _stopAutoScroll();
+                        try {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ChatListScreen(),
+                            ),
+                          ).then((_) {
+                            if (mounted) {
+                              _startAutoScroll();
+                            }
+                          });
+                        } catch (e) {
+                          debugPrint('Navigation error: $e');
                         }
-                      });
-                    } catch (e) {
-                      debugPrint('Navigation error: $e');
-                    }
+                      },
+                    );
                   },
                 );
               },

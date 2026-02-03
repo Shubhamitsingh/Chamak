@@ -102,6 +102,12 @@ class SupportChatService {
 
       // Update chat metadata
       final chatRef = _firestore.collection('supportChats').doc(chatId);
+      
+      // Get chat document to retrieve userId (needed for unread count and notification)
+      final chatDoc = await chatRef.get();
+      final chatData = chatDoc.data();
+      final userId = chatData?['userId'] as String?;
+      
       final updateData = <String, dynamic>{
         'lastMessage': message,
         'lastMessageTime': FieldValue.serverTimestamp(),
@@ -111,7 +117,9 @@ class SupportChatService {
       // Update unread count for receiver
       if (isAdmin) {
         // Admin sent message, increment user's unread count
-        updateData['unreadCount.$senderId'] = FieldValue.increment(1);
+        if (userId != null) {
+          updateData['unreadCount.$userId'] = FieldValue.increment(1);
+        }
       } else {
         // User sent message, increment admin's unread count
         updateData['unreadCount.admin'] = FieldValue.increment(1);
@@ -125,19 +133,19 @@ class SupportChatService {
       // Send push notification to receiver (admin or user)
       try {
         if (isAdmin) {
-          // Admin sent message to user - get user info for notification
-          final chatDoc = await chatRef.get();
-          if (chatDoc.exists) {
-            final chatData = chatDoc.data();
-            final userId = chatData?['userId'] as String?;
-            if (userId != null) {
-              await _notificationService.sendMessageNotification(
-                receiverUserId: userId,
-                senderName: 'Support Team',
-                messageText: message,
-                chatId: chatId,
-              );
-            }
+          // Admin sent message to user - send notification
+          if (userId != null) {
+            debugPrint('🔔 Sending push notification to user: $userId');
+            // Send support chat notification with specific type
+            await _notificationService.sendSupportMessageNotification(
+              receiverUserId: userId,
+              senderName: 'Support Team',
+              messageText: message,
+              chatId: chatId,
+            );
+            debugPrint('✅ Push notification sent successfully');
+          } else {
+            debugPrint('⚠️ User ID not found in chat document, cannot send notification');
           }
         } else {
           // User sent message to admin - notify all admins

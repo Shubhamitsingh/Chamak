@@ -567,7 +567,7 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
                       },
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF69B4),
+                        backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF1B7C), // App theme color
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18),
                         ),
@@ -589,7 +589,7 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
                 // Chat button
                 IconButton(
                   icon: const Icon(Icons.chat_bubble_outline, size: 22),
-                  color: const Color(0xFFFF69B4),
+                  color: const Color(0xFFFF1B7C), // App theme color
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => _startChat(user),

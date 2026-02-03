@@ -90,8 +90,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     children: [
                       CircleAvatar(
                         radius: 22,
-                        backgroundColor: const Color(0xFFFF1B7C).withValues(alpha: 0.1),
-                        backgroundImage: const AssetImage('assets/images/logopink.png'),
+                        backgroundColor: const Color(0xFFFF1B7C), // App theme color
+                        backgroundImage: const AssetImage('assets/images/splaslogo.png'),
                       ),
                     ],
                   ),

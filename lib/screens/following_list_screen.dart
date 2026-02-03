@@ -484,7 +484,7 @@ class _FollowingListScreenState extends State<FollowingListScreen> {
                             },
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF69B4),
+                              backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF1B7C), // App theme color
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(18),
                               ),

@@ -8,6 +8,7 @@ import '../main.dart'; // Import navigatorKey
 import '../screens/wallet_screen.dart';
 import '../screens/chat_list_screen.dart';
 import '../screens/team_messages_screen.dart';
+import '../screens/contact_support_chat_screen.dart';
 
 // Top-level function to handle background messages
 @pragma('vm:entry-point')
@@ -276,10 +277,29 @@ class NotificationService {
           builder: (context) => const TeamMessagesScreen(),
         ),
       );
+    } else if (notificationType == 'support_message') {
+      print('📞 Support chat notification tapped - Navigating to ContactSupportChatScreen');
+      // Navigate directly to support chat screen
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => const ContactSupportChatScreen(),
+        ),
+      );
     } else if (notificationType == 'message' || notificationType == 'chat') {
       print('📩 Message notification tapped');
       final chatId = data['chatId'] as String?;
       final userId = data['userId'] as String?;
+      
+      // Check if this is a support chat (chatId starts with 'support_')
+      if (chatId != null && chatId.startsWith('support_')) {
+        print('📞 Support chat detected - Navigating to ContactSupportChatScreen');
+        navigator.push(
+          MaterialPageRoute(
+            builder: (context) => const ContactSupportChatScreen(),
+          ),
+        );
+        return;
+      }
       
       // ⚠️ CRITICAL FIX: ChatScreen requires both chatId and otherUser
       // For now, navigate to ChatListScreen and let user select the chat
@@ -415,6 +435,67 @@ class NotificationService {
       print('✅ Notification request created');
     } catch (e) {
       print('❌ Error sending notification request: $e');
+    }
+  }
+
+  // Send support chat notification (specific for admin-to-user support messages)
+  Future<void> sendSupportMessageNotification({
+    required String receiverUserId,
+    required String senderName,
+    required String messageText,
+    required String chatId,
+  }) async {
+    try {
+      print('🔔 [Support Chat] Sending notification to user: $receiverUserId');
+      print('🔔 [Support Chat] Chat ID: $chatId');
+      print('🔔 [Support Chat] Message: $messageText');
+      
+      // Get receiver's FCM token
+      final receiverDoc = await _firestore
+          .collection('users')
+          .doc(receiverUserId)
+          .get();
+      
+      if (!receiverDoc.exists) {
+        print('❌ [Support Chat] Receiver user not found: $receiverUserId');
+        return;
+      }
+
+      final receiverToken = receiverDoc.data()?['fcmToken'] as String?;
+      
+      if (receiverToken == null || receiverToken.isEmpty) {
+        print('❌ [Support Chat] Receiver FCM token not found for user: $receiverUserId');
+        print('⚠️ [Support Chat] User may need to log in again to register FCM token');
+        return;
+      }
+
+      print('✅ [Support Chat] FCM token found: ${receiverToken.substring(0, 20)}...');
+
+      // Store notification request in Firestore with support_message type
+      // This will be picked up by Cloud Functions to send the actual notification
+      await _firestore.collection('notificationRequests').add({
+        'token': receiverToken,
+        'notification': {
+          'title': senderName,
+          'body': messageText,
+        },
+        'data': {
+          'type': 'support_message', // Specific type for support chat
+          'chatId': chatId,
+          'senderId': FirebaseAuth.instance.currentUser?.uid ?? '',
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+        'createdAt': FieldValue.serverTimestamp(),
+        'processed': false,
+      });
+      
+      print('✅ [Support Chat] Notification request created successfully');
+      print('   - Type: support_message');
+      print('   - Chat ID: $chatId');
+      print('   - User ID: $receiverUserId');
+    } catch (e) {
+      print('❌ [Support Chat] Error sending notification request: $e');
+      print('❌ [Support Chat] Stack trace: ${StackTrace.current}');
     }
   }
 

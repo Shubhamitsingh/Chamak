@@ -33,60 +33,6 @@ import 'nearby_users_screen.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 
-// Optimized Scrolling Text Widget for Banner
-class _ScrollingText extends StatelessWidget {
-  final String text;
-  final AnimationController controller;
-
-  const _ScrollingText({
-    required this.text,
-    required this.controller,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (context, child) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const NeverScrollableScrollPhysics(),
-            child: Transform.translate(
-              offset: Offset(-controller.value * 300, 0),
-              child: Row(
-                children: [
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                  ),
-                  const SizedBox(width: 100),
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class HomeScreen extends StatefulWidget {
   final String phoneNumber;
 
@@ -117,7 +63,6 @@ class _HomeScreenState extends State<HomeScreen>
       LocationPermissionService();
   final OnlineStatusService _onlineStatusService = OnlineStatusService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  late AnimationController _marqueeController;
   
   // Single device login - Stream subscription for device tracking
   StreamSubscription<DocumentSnapshot>? _deviceSessionSubscription;
@@ -142,19 +87,14 @@ class _HomeScreenState extends State<HomeScreen>
       SystemUiMode.edgeToEdge,
       overlays: SystemUiOverlay.values,
     );
-    // Force status bar style so battery/network icons stay visible on light background
+    // Force status bar style with app theme pink color
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
+        statusBarColor: Color(0xFFFF1B7C), // App theme pink
+        statusBarIconBrightness: Brightness.light, // White icons on pink background
+        statusBarBrightness: Brightness.dark,
       ),
     );
-    // Initialize marquee animation controller
-    _marqueeController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 8),
-    )..repeat();
 
     // Start delay timer for live stream previews (3 seconds)
     _startPreviewDelayTimer();
@@ -696,7 +636,6 @@ class _HomeScreenState extends State<HomeScreen>
     _previewDelayNotifier.dispose();
     _pageController.dispose();
     _topMenuScrollController.dispose();
-    _marqueeController.dispose();
     super.dispose();
   }
 
@@ -1005,21 +944,25 @@ class _HomeScreenState extends State<HomeScreen>
   // ========== HOME TAB (Explore/Live) ==========
   Widget _buildHomeTab() {
     final overlayStyle = SystemUiOverlayStyle.dark.copyWith(
-      statusBarColor: Colors.transparent, // let top bar background show through
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light,
+      statusBarColor: const Color(0xFFFF1B7C), // App theme pink
+      statusBarIconBrightness: Brightness.light, // White icons on pink background
+      statusBarBrightness: Brightness.dark,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
-      child: SafeArea(
-        child: Stack(
-            children: [
-              Column(
-                children: [
-                  if (!_isLiveReelsFullScreen) _buildTopBar(),
-                  if (!_isLiveReelsFullScreen) _buildAnnouncementBar(),
-                  Expanded(
+      child: Stack(
+          children: [
+            Column(
+              children: [
+                // Status bar spacer to push content below status bar
+                Container(
+                  height: MediaQuery.of(context).padding.top,
+                  color: const Color(0xFFFF1B7C), // App theme pink
+                ),
+                if (!_isLiveReelsFullScreen) _buildTopBar(),
+                if (!_isLiveReelsFullScreen) _buildTabNavigation(),
+                Expanded(
                     child: ClipRect(
                       child: PageView.builder(
                         controller: _pageController,
@@ -1035,9 +978,9 @@ class _HomeScreenState extends State<HomeScreen>
                             if (index != 1) {
                               SystemChrome.setSystemUIOverlayStyle(
                                 const SystemUiOverlayStyle(
-                                  statusBarColor: Colors.transparent,
-                                  statusBarIconBrightness: Brightness.dark,
-                                  statusBarBrightness: Brightness.light,
+                                  statusBarColor: Color(0xFFFF1B7C), // App theme pink
+                                  statusBarIconBrightness: Brightness.light, // White icons on pink background
+                                  statusBarBrightness: Brightness.dark,
                                 ),
                               );
                             }
@@ -1055,34 +998,33 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
-              if (_isLiveReelsFullScreen)
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.35),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: _navigateToExploreTab,
-                        ),
+            if (_isLiveReelsFullScreen)
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: _navigateToExploreTab,
                       ),
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       );
   }
@@ -1096,9 +1038,9 @@ class _HomeScreenState extends State<HomeScreen>
     // Reset status bar style immediately
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
+        statusBarColor: Color(0xFFFF1B7C), // App theme pink
+        statusBarIconBrightness: Brightness.light, // White icons on pink background
+        statusBarBrightness: Brightness.dark,
       ),
     );
     
@@ -1131,295 +1073,57 @@ class _HomeScreenState extends State<HomeScreen>
     debugPrint('✅ Navigated to Explore tab');
   }
 
-  // ========== TOP BAR (Explore/Live/Following Toggle + Search in One Line) ==========
+  // ========== TOP BAR (Branded AppBar with Chamakz Title) ==========
   Widget _buildTopBar() {
     return Container(
-        margin: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-        height: 42,
+        margin: EdgeInsets.zero,
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFF1B7C), // App theme pink background
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(12),
+            bottomRight: Radius.circular(12),
+          ),
+        ),
         child: Row(
           children: [
-            // Text-Only Tabs (Left Side) - Scrollable
+            // Left Side: App Brand Name "Chamakz"
             Expanded(
-              child: SingleChildScrollView(
-                controller: _topMenuScrollController,
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Explore Button
-                    Semantics(
-                      label: 'Explore tab. ${_topTabIndex == 0 ? "Currently selected" : "Tap to switch to explore"}',
-                      button: true,
-                      selected: _topTabIndex == 0,
-                      child: GestureDetector(
-                        onTap: () {
-                          _pageController.animateToPage(
-                            0,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        },
-                        child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.explore,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: _topTabIndex == 0
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: _topTabIndex == 0
-                                  ? Colors.black87
-                                  : Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          if (_topTabIndex == 0)
-                            Container(
-                              width: 30,
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color:
-                                    const Color(0xFFFF1B7C), // pink underline
-                                borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ],
-                      ),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8, right: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: const Text(
+                    'Chamakz',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
                     ),
-                    ),
-
-                    const SizedBox(width: 15),
-
-                    // Live Button
-                    Semantics(
-                      label: 'Live streams tab. ${_topTabIndex == 1 ? "Currently selected" : "Tap to switch to live streams"}',
-                      button: true,
-                      selected: _topTabIndex == 1,
-                      child: GestureDetector(
-                        onTap: () {
-                          _pageController.animateToPage(
-                            1,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        },
-                        child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              if (_topTabIndex != 1)
-                                Icon(
-                                  Icons.circle,
-                                  size: 8,
-                                  color: Colors.red,
-                                ),
-                              if (_topTabIndex != 1) const SizedBox(width: 4),
-                              Text(
-                                AppLocalizations.of(context)!.live,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: _topTabIndex == 1
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: _topTabIndex == 1
-                                      ? Colors.black87
-                                      : Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          if (_topTabIndex == 1)
-                            Container(
-                              width: 30,
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color:
-                                    const Color(0xFFFF1B7C), // pink underline
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    ),
-
-                    const SizedBox(width: 15),
-
-                    // Following Button
-                    GestureDetector(
-                      onTap: () {
-                        _pageController.animateToPage(
-                          2,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.following,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: _topTabIndex == 2
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: _topTabIndex == 2
-                                  ? Colors.black87
-                                  : Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          if (_topTabIndex == 2)
-                            Container(
-                              width: 30,
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color:
-                                    const Color(0xFFFF1B7C), // pink underline
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 15),
-
-                    // New Button
-                    GestureDetector(
-                      onTap: () {
-                        _pageController.animateToPage(
-                          3,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                AppLocalizations.of(context)!.newHosts,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: _topTabIndex == 3
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: _topTabIndex == 3
-                                      ? Colors.black87
-                                      : Colors.grey[600],
-                                ),
-                              ),
-                              if (_topTabIndex != 3) ...[
-                                const SizedBox(width: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'NEW',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          if (_topTabIndex == 3)
-                            Container(
-                              width: 30,
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color:
-                                    const Color(0xFFFF1B7C), // pink underline
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 15),
-
-                    // Nearby Button
-                    GestureDetector(
-                      onTap: () {
-                        _pageController.animateToPage(
-                          4,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.near_me,
-                                size: 16,
-                                color: Color(0xFFFF1B7C),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Nearby',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: _topTabIndex == 4
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: _topTabIndex == 4
-                                      ? Colors.black87
-                                      : Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          if (_topTabIndex == 4)
-                            Container(
-                              width: 30,
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color:
-                                    const Color(0xFFFF1B7C), // pink underline
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
 
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
 
-            // Announcement Icon with Badge Counter (Only Unseen) - Optimized
+            // Right Side: Icons (Announcement + Search)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Announcement Icon with Badge Counter (Only Unseen) - Optimized
             StreamBuilder<List<AnnouncementModel>>(
               stream: _eventService.getAnnouncementsStream(),
               builder: (context, announcementSnapshot) {
                 if (!announcementSnapshot.hasData) {
                   return Padding(
-                    padding: const EdgeInsets.all(4.0),
+                    padding: const EdgeInsets.all(2.0),
                     child: Icon(
                       Icons.whatshot_rounded,
-                      color: Colors.orange[700],
-                      size: 26,
+                      color: Colors.white.withOpacity(0.95),
+                      size: 24,
                     ),
                   );
                 }
@@ -1431,11 +1135,11 @@ class _HomeScreenState extends State<HomeScreen>
                   builder: (context, seenSnapshot) {
                     if (!seenSnapshot.hasData) {
                       return Padding(
-                        padding: const EdgeInsets.all(4.0),
+                        padding: const EdgeInsets.all(2.0),
                         child: Icon(
                           Icons.whatshot_rounded,
-                          color: Colors.orange[700],
-                          size: 26,
+                          color: Colors.white.withOpacity(0.95),
+                          size: 24,
                         ),
                       );
                     }
@@ -1483,11 +1187,11 @@ class _HomeScreenState extends State<HomeScreen>
                             clipBehavior: Clip.none,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.all(4.0),
+                                padding: const EdgeInsets.all(2.0),
                                 child: Icon(
                                   Icons.whatshot_rounded,
-                                  color: Colors.orange[700],
-                                  size: 26,
+                                  color: Colors.white.withOpacity(0.95),
+                                  size: 24,
                                 ),
                               ),
                               // Counter Badge (Only Unseen)
@@ -1545,227 +1249,306 @@ class _HomeScreenState extends State<HomeScreen>
               },
             ),
 
-            const SizedBox(width: 1),
+                const SizedBox(width: 4),
 
-            // User Search Icon (Search People by ID)
-            Semantics(
-              label: 'Search users by ID',
-              button: true,
-              child: GestureDetector(
-                onTap: () {
-                  if (!mounted) return;
-                  try {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const UserSearchScreen(),
+                // User Search Icon (Search People by ID)
+                Semantics(
+                  label: 'Search users by ID',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (!mounted) return;
+                      try {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const UserSearchScreen(),
+                          ),
+                        );
+                      } catch (e) {
+                        debugPrint('Navigation error: $e');
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: Colors.white.withOpacity(0.95),
+                        size: 24,
                       ),
-                    );
-                  } catch (e) {
-                    debugPrint('Navigation error: $e');
-                  }
-                },
-                child: Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: Icon(
-                  Icons.search_rounded,
-                  color: Colors.grey[700],
-                  size: 26,
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              ],
             ),
           ],
         ),
       );
   }
 
-  // Helper method to sanitize text and remove problematic characters
-  String _sanitizeText(String? text) {
-    if (text == null || text.isEmpty) return '';
-
-    try {
-      // Remove null characters, control characters, and problematic unicode
-      String sanitized = text
-          .replaceAll('\x00', '') // Remove null characters
-          .replaceAll(RegExp(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]'),
-              '') // Remove control characters
-          .trim()
-          .replaceAll(
-              RegExp(r'\s+'), ' '); // Replace multiple spaces with single space
-
-      // Ensure it's valid UTF-8 and doesn't contain widget references
-      sanitized = sanitized.replaceAll(
-          RegExp(r'<[^>]*>'), ''); // Remove any HTML-like tags
-      sanitized = sanitized.replaceAll(RegExp(r'\{[^}]*\}'),
-          ''); // Remove any brace patterns that might be widget references
-
-      return sanitized;
-    } catch (e) {
-      debugPrint('Error sanitizing text: $e');
-      return text.trim();
-    }
-  }
-
-  // Get engaging announcement placeholder text (rotates for variety)
-  String _getEngagingAnnouncementText() {
-    final engagingMessages = [
-      // New Features (without version/update mentions)
-      '✨ NEW: Exclusive Features Just Launched! Tap to Discover More • ',
-      '🎉 Latest Features: Explore What\'s New Today • ',
-      '🌟 Discover: Exciting New Content Available Now • ',
-      '💫 Fresh Content: Check Out What\'s Trending • ',
-      
-      // Urgency & FOMO
-      '⏰ Limited Time: Special Offers Ending Soon • ',
-      '🔥 Hot Right Now: Don\'t Miss Out on Exclusive Content • ',
-      '💥 24-Hour Special: Limited Spots Available • ',
-      '⚡ Act Fast: Exclusive Deals for Active Users • ',
-      
-      // Engagement & Community
-      '👥 Join Thousands: Connect with Amazing Creators • ',
-      '🌟 Trending Now: See What Everyone\'s Watching • ',
-      '💎 Premium Content: Unlock Exclusive Experiences • ',
-      '🎯 Discover: Find Your Perfect Match Today • ',
-      
-      // Value Proposition
-      '💸 Earn More: Start Your Creator Journey Now • ',
-      '🏆 Level Up: Unlock New Features & Rewards • ',
-      '🎁 Special Rewards: Claim Your Bonus Today • ',
-      '💯 Top Creators: Learn from the Best • ',
-    ];
-
-    // Rotate messages based on current time (changes every hour)
-    final hour = DateTime.now().hour;
-    final index = hour % engagingMessages.length;
-    return engagingMessages[index];
-  }
-
-
-  // ========== SCROLLING ANNOUNCEMENT BAR ==========
-  Widget _buildAnnouncementBar() {
-    return RepaintBoundary(
-      child: StreamBuilder<List<AnnouncementModel>>(
-        stream: _eventService.getAnnouncementsStream(),
-        builder: (context, announcementSnapshot) {
-          // Show loading state with a placeholder
-          if (announcementSnapshot.connectionState == ConnectionState.waiting) {
-            return Container(
-              height: 30,
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 2),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF69B4), Color(0xFFFF1B7C)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Icon(
-                      Icons.campaign_rounded,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        'Loading announcements...',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
+  // ========== TAB NAVIGATION (Below Top Bar) ==========
+  Widget _buildTabNavigation() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 2, 12, 0),
+      height: 36,
+      child: SingleChildScrollView(
+        controller: _topMenuScrollController,
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Explore Button
+            Semantics(
+              label: 'Explore tab. ${_topTabIndex == 0 ? "Currently selected" : "Tap to switch to explore"}',
+              button: true,
+              selected: _topTabIndex == 0,
+              child: GestureDetector(
+                onTap: () {
+                  _pageController.animateToPage(
+                    0,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.explore,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: _topTabIndex == 0
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: _topTabIndex == 0
+                            ? Colors.black87
+                            : Colors.grey[600],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Handle errors
-          if (announcementSnapshot.hasError) {
-            debugPrint('Announcement bar error: ${announcementSnapshot.error}');
-            return const SizedBox.shrink();
-          }
-
-          final announcements = announcementSnapshot.data ?? [];
-
-          // Get announcement text
-          String announcementText;
-          if (announcements.isEmpty) {
-            debugPrint('No announcements found - showing engaging placeholder');
-            announcementText = _getEngagingAnnouncementText();
-          } else {
-            // Get the first active announcement
-            AnnouncementModel? activeAnnouncement;
-            try {
-              activeAnnouncement = announcements.firstWhere(
-                (a) => a.isActive,
-                orElse: () => announcements.first,
-              );
-            } catch (e) {
-              debugPrint('Error getting announcement: $e');
-              announcementText = _getEngagingAnnouncementText();
-            }
-
-            if (activeAnnouncement == null) {
-              announcementText = _getEngagingAnnouncementText();
-            } else {
-              // Clean the text - remove any extra spaces, null characters, and ensure proper formatting
-              final title = _sanitizeText(activeAnnouncement.title);
-              final description = _sanitizeText(activeAnnouncement.description);
-              announcementText = '$title • $description';
-            }
-          }
-
-          return Container(
-            height: 30,
-            margin: const EdgeInsets.fromLTRB(12, 0, 12, 2),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFF69B4), Color(0xFFFF1B7C)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFF69B4).withValues(alpha: 0.2),
-                  blurRadius: 3,
-                  offset: const Offset(0, 1),
+                    const SizedBox(height: 4),
+                    if (_topTabIndex == 0)
+                      Container(
+                        width: 30,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF1B7C), // pink underline
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            child: Row(
-              children: [
-                // Icon
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(
-                    Icons.campaign_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+
+            const SizedBox(width: 10),
+
+            // Live Button
+            Semantics(
+              label: 'Live streams tab. ${_topTabIndex == 1 ? "Currently selected" : "Tap to switch to live streams"}',
+              button: true,
+              selected: _topTabIndex == 1,
+              child: GestureDetector(
+                onTap: () {
+                  _pageController.animateToPage(
+                    1,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        if (_topTabIndex != 1)
+                          Icon(
+                            Icons.circle,
+                            size: 8,
+                            color: Colors.red,
+                          ),
+                        if (_topTabIndex != 1) const SizedBox(width: 4),
+                        Text(
+                          AppLocalizations.of(context)!.live,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: _topTabIndex == 1
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                            color: _topTabIndex == 1
+                                ? Colors.black87
+                                : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (_topTabIndex == 1)
+                      Container(
+                        width: 30,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF1B7C), // pink underline
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                  ],
                 ),
-                // Scrolling Text
-                Expanded(
-                  child: ClipRect(
-                    clipBehavior: Clip.hardEdge,
-                    child: _ScrollingText(
-                      text: announcementText,
-                      controller: _marqueeController,
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            // Following Button
+            GestureDetector(
+              onTap: () {
+                _pageController.animateToPage(
+                  2,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.following,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: _topTabIndex == 2
+                          ? FontWeight.bold
+                          : FontWeight.w500,
+                      color: _topTabIndex == 2
+                          ? Colors.black87
+                          : Colors.grey[600],
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  if (_topTabIndex == 2)
+                    Container(
+                      width: 30,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF1B7C), // pink underline
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          );
-        },
+
+            const SizedBox(width: 10),
+
+            // New Button
+            GestureDetector(
+              onTap: () {
+                _pageController.animateToPage(
+                  3,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.newHosts,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: _topTabIndex == 3
+                              ? FontWeight.bold
+                              : FontWeight.w500,
+                          color: _topTabIndex == 3
+                              ? Colors.black87
+                              : Colors.grey[600],
+                        ),
+                      ),
+                      if (_topTabIndex != 3) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'NEW',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  if (_topTabIndex == 3)
+                    Container(
+                      width: 30,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF1B7C), // pink underline
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            // Nearby Button
+            GestureDetector(
+              onTap: () {
+                _pageController.animateToPage(
+                  4,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.near_me,
+                        size: 16,
+                        color: Color(0xFFFF1B7C),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Nearby',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: _topTabIndex == 4
+                              ? FontWeight.bold
+                              : FontWeight.w500,
+                          color: _topTabIndex == 4
+                              ? Colors.black87
+                              : Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  if (_topTabIndex == 4)
+                    Container(
+                      width: 30,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF1B7C), // pink underline
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2075,22 +1858,36 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.tv_off, size: 80, color: Colors.grey[400]),
-                    const SizedBox(height: 20),
                     Text(
-                      'No hosts are live right now',
+                      'No live streams available right now.',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                         color: Colors.grey[800],
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Check back later for live streams',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Refresh',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -3081,29 +2878,43 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.tv_off, size: 80, color: Colors.grey[400]),
-                    const SizedBox(height: 20),
                     Text(
-                      'No hosts are live right now',
+                      'No live streams available right now.',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                         color: Colors.grey[800],
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Check back later for live streams',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Refresh',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
               );
             }
-
+            
             return GridView.builder(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -3462,29 +3273,43 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.tv_off, size: 80, color: Colors.grey[400]),
-                    const SizedBox(height: 20),
                     Text(
-                      'No hosts are live right now',
+                      'No live streams available right now.',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                         color: Colors.grey[800],
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Check back later for live streams',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Refresh',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
               );
             }
-
+            
             return GridView.builder(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
