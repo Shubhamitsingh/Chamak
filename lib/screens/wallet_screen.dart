@@ -7,13 +7,11 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'coin_purchase_history_screen.dart';
-import 'payprime_payment_webview_screen.dart';
-import 'upi_payment_selection_screen.dart';
 import '../services/database_service.dart';
 import '../services/gift_service.dart';
 import '../services/coin_service.dart';
-import '../services/payprime_payment_service.dart';
 import '../services/withdrawal_service.dart';
+import '../services/play_store_purchase_service.dart';
 
 class WalletScreen extends StatefulWidget {
   final String phoneNumber;
@@ -35,8 +33,8 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   final DatabaseService _databaseService = DatabaseService();
   final GiftService _giftService = GiftService();
   final CoinService _coinService = CoinService();
-  final PayPrimePaymentService _paymentService = PayPrimePaymentService();
   final WithdrawalService _withdrawalService = WithdrawalService();
+  final PlayStorePurchaseService _playStoreService = PlayStorePurchaseService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Real coin data - fetched from Firestore
@@ -68,6 +66,40 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     
     // Add lifecycle observer for automatic payment checking
     WidgetsBinding.instance.addObserver(this);
+    
+    // Initialize Play Store purchase service
+    _playStoreService.initialize();
+    
+    // Listen to purchase completion
+    _playStoreService.onPurchaseComplete = (productId, success, error) {
+      if (mounted) {
+        // Close loading dialog if open
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {
+          // Dialog might already be closed
+        }
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Purchase successful! Coins added to wallet'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          _loadCoinBalance(); // Refresh balance
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(error ?? 'Purchase failed'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    };
     
     // Setup real-time listeners FIRST (they'll listen for changes)
     _setupRealtimeListener();
@@ -192,6 +224,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     
     // Cancel subscriptions
     _userSubscription?.cancel();
+    
+    // Dispose Play Store service
+    _playStoreService.dispose();
     
     // Reset flags
     _listenersSetup = false;
@@ -1190,7 +1225,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   }
 
   // ========== PAYMENT HANDLERS ==========
-  /// Handle recharge package selection and initiate PayPrime payment
+  /// Handle recharge package selection - Play Store In-App Purchase
   Future<void> _handleRecharge(Map<String, dynamic> package) async {
     if (!mounted) return;
     
@@ -1201,159 +1236,96 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     
     debugPrint('💰 Payment details: ₹$inr for $coins coins');
     
-    try {
-      // Check if user is authenticated
-      final currentUser = _auth.currentUser;
-      if (currentUser == null) {
-        debugPrint('❌ User not authenticated');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please login to continue'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-        return;
-      }
-      
-      debugPrint('✅ User authenticated: ${currentUser.uid}');
-      
-      // Show loading dialog
+    // Check if user is authenticated
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      debugPrint('❌ User not authenticated');
       if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFFFF1B7C),
-            ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to continue'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
           ),
         );
       }
-
-      debugPrint('📞 Calling payment service...');
-      
-      // Initiate payment
-      final result = await _paymentService.initiatePayment(
-        amount: inr.toDouble(),
-        coins: coins,
-        currency: "INR",
+      return;
+    }
+    
+    // Check if Play Store is available
+    if (!_playStoreService.isAvailable) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Play Store billing is not available. Please try again later.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+    
+    // Map coins to product ID
+    final productIdMap = {
+      90: 'coins_90_pack', // Changed from coins_90 (deleted ID can't be reused)
+      550: 'coins_550',
+      1100: 'coins_1100',
+      1700: 'coins_1700',
+      2400: 'coins_2400',
+      3500: 'coins_3500',
+      7500: 'coins_7500',
+      13000: 'coins_13000',
+      28000: 'coins_28000',
+      45000: 'coins_45000',
+      80000: 'coins_80000',
+      175000: 'coins_175000',
+    };
+    
+    final productId = productIdMap[coins];
+    if (productId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Product not found for this package'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+    
+    // Show loading dialog
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFFF1B7C),
+          ),
+        ),
       );
-
-      debugPrint('📥 Payment service response: $result');
-
-      // Close loading dialog
+    }
+    
+    // Initiate purchase
+    final result = await _playStoreService.purchaseProduct(productId);
+    
+    // If purchase initiation failed, close dialog and show error
+    if (result['success'] != true) {
       if (mounted) {
-        Navigator.of(context).pop();
-      }
-
-      if (result['success'] == true) {
-        debugPrint('✅ Payment initiated successfully');
-        debugPrint('   Payment URL: ${result['paymentUrl']}');
-        debugPrint('   Payment ID: ${result['paymentId']}');
-        
-        // Check if we have multiple UPI URLs - show selection screen
-        final upiUrlsRaw = result['upiUrls'];
-        Map<String, String> upiUrls = {};
-        
-        if (upiUrlsRaw != null) {
-          // Convert to Map<String, String> safely
-          if (upiUrlsRaw is Map) {
-            upiUrls = Map<String, String>.from(
-              upiUrlsRaw.map((key, value) => MapEntry(
-                key.toString(),
-                value.toString(),
-              ))
-            );
-          }
-        }
-        
-        final hasMultipleUpiOptions = upiUrls.length > 1;
-        
-        debugPrint('📊 UPI URLs received: ${upiUrls.length} options');
-        debugPrint('   Options: ${upiUrls.keys.join(", ")}');
-        
-        // Navigate to payment screen
-        if (mounted) {
-          bool? success;
-          
-          if (hasMultipleUpiOptions) {
-            // Show UPI selection screen
-            debugPrint('🚀 Showing UPI selection screen...');
-            success = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => UpiPaymentSelectionScreen(
-                  upiUrls: upiUrls,
-                  paymentId: result['paymentId'] as String,
-                  orderId: result['orderId'] as String,
-                  amount: (result['amount'] as num).toDouble(),
-                  coins: result['coins'] as int,
-                ),
-              ),
-            );
-          } else {
-            // Single URL or web URL - go directly to WebView
-            debugPrint('🚀 Navigating to payment WebView...');
-            success = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PayPrimePaymentWebViewScreen(
-                  paymentUrl: result['paymentUrl'] as String,
-                  paymentId: result['paymentId'] as String,
-                  orderId: result['orderId'] as String,
-                  amount: (result['amount'] as num).toDouble(),
-                  coins: result['coins'] as int,
-                ),
-              ),
-            );
-          }
-
-          debugPrint('📊 Payment screen returned: $success');
-
-          // If payment successful, refresh wallet balance
-          // Note: Success dialog is already shown in payment screen
-          // Real-time listener will automatically update the balance
-          if (success == true && mounted) {
-            _loadCoinBalance(); // Refresh to ensure latest balance
-          }
-        }
-      } else {
-        debugPrint('❌ Payment initiation failed: ${result['message']}');
-        // Show error
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Failed to initiate payment'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
-      }
-    } catch (e, stackTrace) {
-      debugPrint('❌ Error in _handleRecharge: $e');
-      debugPrint('📚 Stack trace: $stackTrace');
-      
-      // Close loading dialog if still open
-      if (mounted) {
-        try {
-          Navigator.of(context).pop();
-        } catch (_) {
-          // Dialog might already be closed
-        }
-        
+        Navigator.of(context).pop(); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text(result['message'] ?? 'Failed to initiate purchase'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
     }
+    // If successful, purchase dialog will show and completion will be handled by callback
   }
 
   // ========== DIALOGS ==========

@@ -2,10 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
 import 'home_screen.dart';
 import 'terms_conditions_screen.dart';
 import 'privacy_policy_screen.dart';
+import '../theme/app_colors.dart';
 
 class SetProfileScreen extends StatefulWidget {
   final String phoneNumber;
@@ -26,9 +26,9 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
   final _nicknameController = TextEditingController();
   
   String? _selectedGender;
-  DateTime? _selectedDateOfBirth;
   String? _selectedLanguage;
   bool _isSubmitting = false;
+  String? _nicknameError; // Store validation error
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -80,151 +80,15 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
     return null;
   }
 
-  // Validate age (18+ and max 100)
-  bool _isValidAge(DateTime? date) {
-    if (date == null) return false;
-    final now = DateTime.now();
-    int age = now.year - date.year;
-    // Adjust age if birthday hasn't occurred yet this year
-    if (now.month < date.month || (now.month == date.month && now.day < date.day)) {
-      age--;
-    }
-    if (age < 18) return false;
-    if (age > 100) return false;
-    return true;
+  // Update nickname error on change
+  void _updateNicknameError() {
+    final error = _validateNickname(_nicknameController.text);
+    setState(() {
+      _nicknameError = error;
+    });
   }
 
-  // Show gender selection bottom sheet
-  void _showGenderBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 16),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Select Gender',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 32),
-            // Horizontal Gender Selection
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Row(
-                children: [
-                  // Male Container - Blue
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedGender = 'Male';
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2196F3).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xFF2196F3),
-                            width: _selectedGender == 'Male' ? 2 : 1,
-                          ),
-                        ),
-                        child: const Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.male,
-                              color: Color(0xFF2196F3),
-                              size: 36,
-                            ),
-                            SizedBox(height: 6),
-                            Text(
-                              'Male',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF2196F3),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Female Container - Pink
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedGender = 'Female';
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE91E63).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xFFE91E63),
-                            width: _selectedGender == 'Female' ? 2 : 1,
-                          ),
-                        ),
-                        child: const Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.female,
-                              color: Color(0xFFE91E63),
-                              size: 36,
-                            ),
-                            SizedBox(height: 6),
-                            Text(
-                              'Female',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFFE91E63),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 80),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   // Show language selection bottom sheet (Mother Tongue)
   void _showLanguageBottomSheet() {
@@ -258,7 +122,7 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                 'Select Mother Tongue',
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   color: Colors.black87,
                 ),
               ),
@@ -276,7 +140,7 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected 
-                            ? const Color(0xFFFF1744).withOpacity(0.1)
+                            ? AppColors.secondaryAlt.withOpacity(0.1)
                             : Colors.grey[100],
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -287,7 +151,7 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: isSelected 
-                                ? const Color(0xFFFF1744)
+                                ? AppColors.secondaryAlt
                                 : Colors.grey[600],
                           ),
                         ),
@@ -296,12 +160,13 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                     title: Text(
                       lang,
                       style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        color: isSelected ? const Color(0xFFFF1744) : Colors.black87,
+                        fontSize: 16,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected ? AppColors.secondaryAlt : Colors.black87,
                       ),
                     ),
                     trailing: isSelected 
-                        ? const Icon(Icons.check_circle, color: Color(0xFFFF1744))
+                        ? const Icon(Icons.check_circle, color: AppColors.secondaryAlt)
                         : null,
                     onTap: () {
                       setState(() {
@@ -320,102 +185,18 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
     );
   }
 
-  // Show date picker
-  Future<void> _selectDateOfBirth() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 25)),
-      firstDate: DateTime.now().subtract(const Duration(days: 365 * 100)),
-      lastDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
-      helpText: 'Select Date of Birth',
-      cancelText: 'CANCEL',
-      confirmText: 'OK',
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFF1744), // Pink/Red primary color
-              onPrimary: Colors.white, // White text on primary
-              onSurface: Colors.black87, // Dark text on surface
-              surface: Colors.white, // White background
-              secondary: Color(0xFFFF1744), // Secondary color for selection
-              onSecondary: Colors.white, // White text on secondary
-              error: Color(0xFFFF1744), // Error color
-            ),
-            dialogBackgroundColor: Colors.white,
-            datePickerTheme: DatePickerThemeData(
-              backgroundColor: Colors.white,
-              headerBackgroundColor: const Color(0xFFFF1744), // Pink header
-              headerForegroundColor: Colors.white, // White text in header
-              headerHeadlineStyle: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-              headerHelpStyle: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-              dayStyle: const TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.normal,
-              ),
-              weekdayStyle: const TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.w500,
-              ),
-              yearStyle: const TextStyle(
-                color: Colors.black87,
-                fontSize: 16,
-              ),
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(16)),
-              ),
-              cancelButtonStyle: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFFF1744), // Pink cancel text
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              confirmButtonStyle: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFFF1744), // Pink confirm text
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDateOfBirth = picked;
-      });
-    }
-  }
 
   // Check if form is valid
   bool _isFormValid() {
     final nicknameNotEmpty = _nicknameController.text.isNotEmpty;
     final genderSelected = _selectedGender != null;
-    final dobSelected = _selectedDateOfBirth != null;
     final languageSelected = _selectedLanguage != null;
     final nicknameValid = _validateNickname(_nicknameController.text) == null;
-    final ageValid = _isValidAge(_selectedDateOfBirth);
-    
-    // Debug: uncomment to see validation status
-    // debugPrint('Form validation: nickname=$nicknameNotEmpty, gender=$genderSelected, dob=$dobSelected, language=$languageSelected, nicknameValid=$nicknameValid, ageValid=$ageValid');
     
     return nicknameNotEmpty &&
         genderSelected &&
-        dobSelected &&
         languageSelected &&
-        nicknameValid &&
-        ageValid;
+        nicknameValid;
   }
 
   // Submit form
@@ -443,15 +224,6 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
         return;
       }
 
-      // Format date of birth and calculate age
-      final dobFormatted = DateFormat('yyyy-MM-dd').format(_selectedDateOfBirth!);
-      final now = DateTime.now();
-      int age = now.year - _selectedDateOfBirth!.year;
-      if (now.month < _selectedDateOfBirth!.month || 
-          (now.month == _selectedDateOfBirth!.month && now.day < _selectedDateOfBirth!.day)) {
-        age--;
-      }
-
       // Create or update user profile in Firestore
       // Note: 'language' is mother tongue (spoken language), NOT app UI language
       // App language is controlled from Settings and defaults to English
@@ -460,8 +232,6 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
         'displayName': _nicknameController.text.trim(),
         'nickname': _nicknameController.text.trim(),
         'gender': _selectedGender,
-        'dateOfBirth': dobFormatted,
-        'age': age, // Also save calculated age for edit_profile_screen
         'language': _selectedLanguage, // Mother tongue
         'profileCompleted': true,
         'profileCompletedAt': FieldValue.serverTimestamp(),
@@ -522,8 +292,8 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                         const Text(
                           'Complete Your Profile',
                           style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
                             color: Color(0xFF212121),
                             letterSpacing: -0.5,
                           ),
@@ -574,153 +344,215 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                             ),
                           ),
                           style: const TextStyle(
-                            fontSize: 17,
+                            fontSize: 16,
                             fontWeight: FontWeight.w500,
                             color: Colors.black87,
                           ),
                           validator: _validateNickname,
-                          onChanged: (_) => setState(() {}),
+                          onChanged: (_) {
+                            _updateNicknameError();
+                            setState(() {});
+                          },
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => FocusScope.of(context).unfocus(),
                         ),
                       ),
-                      const SizedBox(height: 16),
-
-                      // Field 2: Gender
-                      GestureDetector(
-                        onTap: _showGenderBottomSheet,
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 12,
-                                spreadRadius: 1,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+                      // Character counter and error message
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, left: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Error message
+                            if (_nicknameError != null)
                               Expanded(
                                 child: Row(
                                   children: [
-                                    Icon(
-                                      Icons.person_outline,
-                                      size: 20,
-                                      color: _selectedGender != null
-                                          ? const Color(0xFFFF1B7C)
-                                          : Colors.grey[600],
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Flexible(
+                                    Icon(Icons.error_outline, 
+                                      size: 16, 
+                                      color: Colors.red[700]),
+                                    const SizedBox(width: 6),
+                                    Expanded(
                                       child: Text(
-                                        _selectedGender ?? 'Select Gender',
+                                        _nicknameError!,
                                         style: TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w500,
-                                          color: _selectedGender != null
-                                              ? Colors.black87
-                                              : Colors.grey,
+                                          color: Colors.red[700], 
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w400,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                size: 16,
-                                color: _selectedGender != null
-                                    ? const Color(0xFFFF1B7C)
+                              )
+                            else
+                              const Spacer(),
+                            // Character counter
+                            Text(
+                              '${_nicknameController.text.length}/20',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _nicknameController.text.length > 20 
+                                    ? Colors.red[700]
                                     : Colors.grey[600],
+                                fontWeight: FontWeight.w500,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 16),
 
-                      // Field 3: Date of Birth
-                      GestureDetector(
-                        onTap: _selectDateOfBirth,
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 12,
-                                spreadRadius: 1,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                      // Field 2: Gender - Inline Dropdown Style
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, bottom: 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.person_outline,
+                                  size: 18,
+                                  color: Colors.grey[700],
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Gender',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today_outlined,
-                                      size: 20,
-                                      color: _selectedDateOfBirth != null
-                                          ? const Color(0xFFFF1B7C)
-                                          : Colors.grey[600],
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Flexible(
-                                      child: Text(
-                                        _selectedDateOfBirth != null
-                                            ? DateFormat('dd MMM yyyy').format(_selectedDateOfBirth!)
-                                            : 'Date of Birth',
-                                        style: TextStyle(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w500,
-                                          color: _selectedDateOfBirth != null
-                                              ? Colors.black87
-                                              : Colors.grey,
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 12,
+                                  spreadRadius: 1,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                // Male Option
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedGender = 'Male';
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: _selectedGender == 'Male'
+                                            ? const Color(0xFF2196F3).withOpacity(0.15)
+                                            : Colors.grey[50],
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: _selectedGender == 'Male'
+                                              ? const Color(0xFF2196F3)
+                                              : Colors.grey[300]!,
+                                          width: _selectedGender == 'Male' ? 2 : 1,
                                         ),
                                       ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.male,
+                                            color: _selectedGender == 'Male'
+                                                ? const Color(0xFF2196F3)
+                                                : Colors.grey[600],
+                                            size: 40,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Male',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: _selectedGender == 'Male'
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                              color: _selectedGender == 'Male'
+                                                  ? const Color(0xFF2196F3)
+                                                  : Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                size: 16,
-                                color: _selectedDateOfBirth != null
-                                    ? const Color(0xFFFF1B7C)
-                                    : Colors.grey[600],
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                // Female Option
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedGender = 'Female';
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: _selectedGender == 'Female'
+                                            ? AppColors.secondaryPink.withOpacity(0.15)
+                                            : Colors.grey[50],
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: _selectedGender == 'Female'
+                                              ? AppColors.secondaryPink
+                                              : Colors.grey[300]!,
+                                          width: _selectedGender == 'Female' ? 2 : 1,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.female,
+                                            color: _selectedGender == 'Female'
+                                                ? AppColors.secondaryPink
+                                                : Colors.grey[600],
+                                            size: 40,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Female',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: _selectedGender == 'Female'
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                              color: _selectedGender == 'Female'
+                                                  ? AppColors.secondaryPink
+                                                  : Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                      if (_selectedDateOfBirth != null && !_isValidAge(_selectedDateOfBirth))
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8, left: 16),
-                          child: Row(
-                            children: [
-                              Icon(Icons.error_outline, size: 16, color: Colors.red[700]),
-                              const SizedBox(width: 6),
-                              Text(
-                                'You must be 18+ years old',
-                                style: TextStyle(color: Colors.red[700], fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
                       const SizedBox(height: 16),
 
-                      // Field 4: Language Selection
+                      // Field 3: Language Selection
                       GestureDetector(
                         onTap: _showLanguageBottomSheet,
                         child: Container(
@@ -748,7 +580,7 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                                       Icons.language_outlined,
                                       size: 20,
                                       color: _selectedLanguage != null
-                                          ? const Color(0xFFFF1B7C)
+                                          ? AppColors.secondary
                                           : Colors.grey[600],
                                     ),
                                     const SizedBox(width: 12),
@@ -756,7 +588,7 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                                       child: Text(
                                         _selectedLanguage ?? 'Select Mother Tongue',
                                         style: TextStyle(
-                                          fontSize: 17,
+                                          fontSize: 16,
                                           fontWeight: FontWeight.w500,
                                           color: _selectedLanguage != null
                                               ? Colors.black87
@@ -771,7 +603,7 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                                 Icons.arrow_forward_ios,
                                 size: 16,
                                 color: _selectedLanguage != null
-                                    ? const Color(0xFFFF1B7C)
+                                    ? AppColors.secondary
                                     : Colors.grey[600],
                               ),
                             ],
@@ -793,11 +625,11 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                   child: ElevatedButton(
                     onPressed: _isFormValid() && !_isSubmitting ? _submitForm : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF1B7C), // Pink
+                      backgroundColor: AppColors.secondary,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.grey[300],
                       elevation: 8,
-                      shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4), // Pink shadow
+                      shadowColor: AppColors.secondary.withValues(alpha: 0.4),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),
@@ -828,15 +660,19 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 20),
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'By continuing, you agree to our ',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 12,
+                      Flexible(
+                        child: Text(
+                          'By continuing, you agree to our ',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                       InkWell(
@@ -848,21 +684,22 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                             ),
                           );
                         },
-                        child: const Text(
+                        child: Text(
                           'Terms',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF04B104),
+                            color: AppColors.secondary,
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
                           ),
                         ),
                       ),
-                      const Text(
+                      Text(
                         ' & ',
                         style: TextStyle(
-                          color: Colors.black54,
+                          color: Colors.black87,
                           fontSize: 12,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                       InkWell(
@@ -874,11 +711,11 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                             ),
                           );
                         },
-                        child: const Text(
+                        child: Text(
                           'Privacy Policy',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF04B104),
+                            color: AppColors.secondary,
                             fontWeight: FontWeight.w600,
                             decoration: TextDecoration.underline,
                           ),

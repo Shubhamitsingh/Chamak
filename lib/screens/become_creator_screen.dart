@@ -733,43 +733,45 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 10, right: 16),
-                    child: Wrap(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'I accept the ',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[700],
-                            height: 1.4,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const TermsAndConditionsScreen(),
+                        Flexible(
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                                height: 1.4,
                               ),
-                            );
-                          },
-                          child: Text(
-                            'Terms & Conditions',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: const Color(0xFFFF1B7C),
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.underline,
-                              height: 1.4,
+                              children: [
+                                const TextSpan(text: 'I accept the '),
+                                WidgetSpan(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const TermsAndConditionsScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      'Terms & Conditions',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: const Color(0xFFFF1B7C),
+                                        fontWeight: FontWeight.w600,
+                                        decoration: TextDecoration.underline,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const TextSpan(text: ' and agree to the platform rules'),
+                              ],
                             ),
-                          ),
-                        ),
-                        Text(
-                          ' and agree to the platform rules',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[700],
-                            height: 1.4,
                           ),
                         ),
                       ],

@@ -9,6 +9,9 @@ import '../screens/wallet_screen.dart';
 import '../screens/chat_list_screen.dart';
 import '../screens/team_messages_screen.dart';
 import '../screens/contact_support_chat_screen.dart';
+import '../screens/agora_live_stream_screen.dart';
+import '../services/agora_token_service.dart';
+import '../services/live_stream_service.dart';
 
 // Top-level function to handle background messages
 @pragma('vm:entry-point')
@@ -122,6 +125,16 @@ class NotificationService {
       enableVibration: true,
     );
 
+    // Live Stream notifications channel
+    const AndroidNotificationChannel liveStreamChannel = AndroidNotificationChannel(
+      'chamak_live_streams', // id
+      'Live Streams', // name
+      description: 'Notifications when hosts go live',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
     await _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -131,6 +144,11 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(walletChannel);
+    
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(liveStreamChannel);
     
     print('✅ Local notifications initialized');
   }
@@ -326,9 +344,23 @@ class NotificationService {
     } else if (notificationType == 'live_stream' || notificationType == 'stream') {
       print('📺 Live stream notification tapped');
       final streamId = data['streamId'] as String?;
-      // Navigate to live stream screen if streamId is provided
-      // Note: You may need to import AgoraLiveStreamScreen and pass streamId
-      print('📺 Stream ID: $streamId (navigation to be implemented based on your stream screen)');
+      final channelName = data['channelName'] as String?;
+      final hostId = data['hostId'] as String?;
+      final hostName = data['hostName'] as String?;
+      
+      if (streamId == null || channelName == null) {
+        print('❌ Missing streamId or channelName in notification data');
+        print('   Data: $data');
+        return;
+      }
+      
+      print('📺 Opening live stream: $streamId');
+      print('   Channel: $channelName');
+      print('   Host: $hostName ($hostId)');
+      
+      // Navigate to live stream screen
+      // Generate token and navigate asynchronously
+      _navigateToLiveStream(navigator, streamId, channelName, hostName ?? 'Host');
     } else {
       print('ℹ️ Unknown notification type: $notificationType, defaulting to home');
       // For unknown types, do nothing (stay on current screen)
@@ -340,15 +372,23 @@ class NotificationService {
     try {
       // Determine notification channel based on type
       final notificationType = message.data['type'] as String?;
-      final channelId = notificationType == 'coin_addition' 
-          ? 'chamak_wallet' 
-          : 'chamak_messages';
-      final channelName = notificationType == 'coin_addition'
-          ? 'Wallet Notifications'
-          : 'Message Notifications';
-      final channelDescription = notificationType == 'coin_addition'
-          ? 'Notifications for wallet updates and coin additions'
-          : 'Notifications for new messages';
+      String channelId;
+      String channelName;
+      String channelDescription;
+      
+      if (notificationType == 'coin_addition' || notificationType == 'wallet') {
+        channelId = 'chamak_wallet';
+        channelName = 'Wallet Notifications';
+        channelDescription = 'Notifications for wallet updates and coin additions';
+      } else if (notificationType == 'live_stream' || notificationType == 'stream') {
+        channelId = 'chamak_live_streams';
+        channelName = 'Live Streams';
+        channelDescription = 'Notifications when hosts go live';
+      } else {
+        channelId = 'chamak_messages';
+        channelName = 'Message Notifications';
+        channelDescription = 'Notifications for new messages';
+      }
 
       final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
         channelId,
@@ -542,6 +582,83 @@ class NotificationService {
       print('✅ FCM Token deleted');
     } catch (e) {
       print('❌ Error deleting FCM token: $e');
+    }
+  }
+
+  // Navigate to live stream screen
+  Future<void> _navigateToLiveStream(
+    NavigatorState navigator,
+    String streamId,
+    String channelName,
+    String hostName,
+  ) async {
+    try {
+      print('📺 Generating token for live stream: $channelName');
+      
+      // Show loading dialog
+      showDialog(
+        context: navigator.context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text('Connecting to $hostName...'),
+            ],
+          ),
+        ),
+      );
+      
+      // Generate token for viewer
+      final tokenService = AgoraTokenService();
+      final token = await tokenService.getAudienceToken(
+        channelName: channelName,
+        uid: 0,
+      );
+      
+      // Join stream
+      final liveStreamService = LiveStreamService();
+      liveStreamService.joinStream(streamId);
+      
+      // Close loading dialog
+      if (navigator.canPop()) {
+        navigator.pop();
+      }
+      
+      // Navigate to live stream screen
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => AgoraLiveStreamScreen(
+            channelName: channelName,
+            token: token,
+            isHost: false,
+            streamId: streamId,
+          ),
+        ),
+      ).then((_) {
+        // Leave stream when screen is closed
+        liveStreamService.leaveStream(streamId);
+      });
+      
+      print('✅ Successfully navigated to live stream');
+    } catch (e) {
+      print('❌ Error navigating to live stream: $e');
+      
+      // Close loading dialog if still open
+      if (navigator.canPop()) {
+        navigator.pop();
+      }
+      
+      // Show error message
+      ScaffoldMessenger.of(navigator.context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to join live stream: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 }

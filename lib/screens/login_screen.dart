@@ -558,15 +558,18 @@ class _LoginScreenState extends State<LoginScreen> {
           Center(
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 20),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                  const Text(
-                    'By continuing, you agree to our ',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 12,
+                  const Flexible(
+                    child: Text(
+                      'By continuing, you agree to our ',
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
                   InkWell(

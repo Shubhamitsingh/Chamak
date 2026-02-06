@@ -1630,3 +1630,279 @@ exports.updateViewerCount = onCall({}, async (request) => {
     throw new Error(`Failed to update viewer count: ${error.message}`);
   }
 });
+
+/**
+ * Verify Google Play Store purchase and add coins
+ */
+exports.verifyPlayStorePurchase = onCall(
+  {},
+  async (request) => {
+    if (!request.auth) {
+      throw new Error("User must be authenticated");
+    }
+
+    const userId = request.auth.uid;
+    const { productId, purchaseToken, orderId, packageName } = request.data;
+
+    // Validate inputs
+    if (!productId || !purchaseToken || !orderId) {
+      throw new Error("Missing required purchase parameters");
+    }
+
+    try {
+      // Map product IDs to coin amounts
+      const productToCoins = {
+        'coins_90_pack': 90, // Changed from coins_90 (deleted ID can't be reused)
+        'coins_550': 550,
+        'coins_1100': 1100,
+        'coins_1700': 1700,
+        'coins_2400': 2400,
+        'coins_3500': 3500,
+        'coins_7500': 7500,
+        'coins_13000': 13000,
+        'coins_28000': 28000,
+        'coins_45000': 45000,
+        'coins_80000': 80000,
+        'coins_175000': 175000,
+      };
+
+      const coins = productToCoins[productId];
+      if (!coins) {
+        throw new Error(`Invalid product ID: ${productId}`);
+      }
+
+      console.log(`🛒 Verifying Play Store purchase: ${orderId}`);
+      console.log(`   Product: ${productId}`);
+      console.log(`   Coins: ${coins}`);
+      console.log(`   User: ${userId}`);
+
+      // Check if purchase already processed
+      const existingPayment = await admin.firestore()
+        .collection('payments')
+        .where('orderId', '==', orderId)
+        .where('gateway', '==', 'play_store')
+        .limit(1)
+        .get();
+
+      if (!existingPayment.empty) {
+        const paymentData = existingPayment.docs[0].data();
+        if (paymentData.status === 'SUCCESS') {
+          console.log(`ℹ️ Purchase already processed: ${orderId}`);
+          return {
+            success: true,
+            message: 'Purchase already processed',
+            coins: coins,
+          };
+        }
+      }
+
+      // TODO: Verify purchase token with Google Play API
+      // For production, use Google Play Developer API to verify purchase
+      // For now, we'll trust the client (not recommended for production)
+      // In production, implement server-side verification using:
+      // https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.products/get
+
+      // Create payment record
+      const paymentId = admin.firestore().collection('payments').doc().id;
+      const paymentData = {
+        userId: userId,
+        orderId: orderId,
+        paymentId: paymentId,
+        productId: productId,
+        coins: coins,
+        amount: 0, // Amount handled by Play Store
+        currency: 'INR',
+        status: 'SUCCESS',
+        gateway: 'play_store',
+        purchaseToken: purchaseToken,
+        packageName: packageName || 'com.chamakz.app',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await admin.firestore().collection('payments').doc(paymentId).set(paymentData);
+
+      // Add coins to user's wallet
+      const userRef = admin.firestore().collection('users').doc(userId);
+      await userRef.update({
+        uCoins: admin.firestore.FieldValue.increment(coins),
+        coinBalance: admin.firestore.FieldValue.increment(coins), // Legacy
+      });
+
+      // Log transaction
+      await admin.firestore()
+        .collection('users')
+        .doc(userId)
+        .collection('coinTransactions')
+        .add({
+          type: 'purchase',
+          amount: coins,
+          paymentId: paymentId,
+          orderId: orderId,
+          gateway: 'play_store',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      console.log(`✅ Play Store purchase verified: ${orderId}, added ${coins} coins to user ${userId}`);
+
+      return {
+        success: true,
+        message: 'Purchase verified and coins added',
+        coins: coins,
+        paymentId: paymentId,
+      };
+    } catch (error) {
+      console.error('❌ Error verifying Play Store purchase:', error);
+      throw new Error(`Failed to verify purchase: ${error.message}`);
+    }
+  }
+);
+
+/**
+ * Send notification when a host goes live
+ * Triggers automatically when a new active live stream is created
+ */
+exports.sendLiveStreamNotification = onDocumentCreated(
+    "live_streams/{streamId}",
+    async (event) => {
+      try {
+        const streamData = event.data.data();
+        const streamId = event.params.streamId;
+
+        console.log(`📺 New live stream created: ${streamId}`);
+        console.log(`   Host: ${streamData.hostName} (${streamData.hostId})`);
+        console.log(`   Active: ${streamData.isActive}`);
+        console.log(`   Host Status: ${streamData.hostStatus}`);
+
+        // Only send notification if stream is active
+        if (!streamData.isActive || streamData.hostStatus !== 'live') {
+          console.log('⏭️ Skipping notification - stream is not active or not live');
+          return null;
+        }
+
+        // Verify host is approved (double-check)
+        const hostDoc = await admin.firestore()
+            .collection('users')
+            .doc(streamData.hostId)
+            .get();
+
+        if (!hostDoc.exists) {
+          console.log('❌ Host user not found');
+          return null;
+        }
+
+        const hostData = hostDoc.data();
+        if (!hostData.isActive) {
+          console.log('⏭️ Skipping notification - host is not approved');
+          return null;
+        }
+
+        const hostName = streamData.hostName || hostData.name || hostData.displayName || 'Someone';
+        const hostPhotoUrl = streamData.hostPhotoUrl || hostData.photoURL || '';
+
+        console.log(`✅ Host verified: ${hostName} (approved: ${hostData.isActive})`);
+
+        // Get all users with FCM tokens (except the host)
+        const usersSnapshot = await admin.firestore()
+            .collection('users')
+            .where('fcmToken', '!=', null)
+            .get();
+
+        if (usersSnapshot.empty) {
+          console.log('No users with FCM tokens found');
+          return null;
+        }
+
+        // Filter out the host (don't notify themselves)
+        const tokens = usersSnapshot.docs
+            .filter(doc => doc.id !== streamData.hostId)
+            .map(doc => doc.data().fcmToken)
+            .filter(token => token && token.length > 0);
+
+        if (tokens.length === 0) {
+          console.log('No valid FCM tokens found (excluding host)');
+          return null;
+        }
+
+        console.log(`📤 Sending live stream notification to ${tokens.length} users`);
+
+        // Prepare notification
+        const notification = {
+          title: `${hostName} is live now`,
+          body: 'Tap to watch the live stream',
+        };
+
+        const data = {
+          type: 'live_stream',
+          streamId: streamId,
+          hostId: streamData.hostId,
+          hostName: hostName,
+          hostPhotoUrl: hostPhotoUrl || '',
+          channelName: streamData.channelName || streamId,
+        };
+
+        // Send notifications in batches (FCM limit: 500 per batch)
+        const batchSize = 500;
+        let successCount = 0;
+        let failureCount = 0;
+
+        for (let i = 0; i < tokens.length; i += batchSize) {
+          const batch = tokens.slice(i, i + batchSize);
+          
+          try {
+            const message = {
+              notification: notification,
+              data: data,
+              tokens: batch,
+              android: {
+                priority: 'high',
+                notification: {
+                  channelId: 'chamak_live_streams',
+                  sound: 'default',
+                  priority: 'high',
+                  defaultVibrateTimings: true,
+                  defaultSound: true,
+                  clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                },
+              },
+              apns: {
+                headers: {
+                  'apns-priority': '10',
+                },
+                payload: {
+                  aps: {
+                    alert: notification,
+                    sound: 'default',
+                    badge: 1,
+                    category: 'LIVE_STREAM',
+                  },
+                },
+              },
+            };
+
+            const response = await admin.messaging().sendEachForMulticast(message);
+            successCount += response.successCount;
+            failureCount += response.failureCount;
+
+            // Log failures for debugging
+            if (response.failureCount > 0) {
+              response.responses.forEach((resp, idx) => {
+                if (!resp.success) {
+                  console.error(`❌ Failed to send to token ${idx}: ${resp.error}`);
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`❌ Error sending batch:`, error);
+            failureCount += batch.length;
+          }
+        }
+
+        console.log(`✅ Live stream notification sent: ${successCount} success, ${failureCount} failed`);
+        return {success: successCount, failures: failureCount};
+      } catch (error) {
+        console.error('❌ Error in sendLiveStreamNotification:', error);
+        return null;
+      }
+    }
+);

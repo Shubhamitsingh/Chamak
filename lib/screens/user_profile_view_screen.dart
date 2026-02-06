@@ -71,11 +71,15 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) return;
 
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
     try {
       final isFollowing = await _followService.isFollowing(currentUserId, widget.user.uid);
       final followersCount = await _followService.getFollowersCount(widget.user.uid);
       final followingCount = await _followService.getFollowingCount(widget.user.uid);
 
+      if (!mounted) return;
       setState(() {
         _isFollowing = isFollowing;
         _followersCount = followersCount;
@@ -84,6 +88,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       });
     } catch (e) {
       debugPrint('❌ Error loading profile data: $e');
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -92,17 +97,20 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) return;
 
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
       if (_isFollowing) {
         await _followService.unfollowUser(currentUserId, widget.user.uid);
+        if (!mounted) return;
         setState(() {
           _isFollowing = false;
           _followersCount--;
         });
       } else {
         await _followService.followUser(currentUserId, widget.user);
+        if (!mounted) return;
         setState(() {
           _isFollowing = true;
           _followersCount++;
@@ -117,7 +125,9 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
         ),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
