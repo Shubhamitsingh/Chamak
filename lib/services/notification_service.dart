@@ -177,12 +177,25 @@ class NotificationService {
       if (_fcmToken != null) {
         print('✅ FCM Token obtained: $_fcmToken');
         
-        // Save token to Firestore in background (non-blocking)
-        // Don't await this to prevent blocking initialization
+        // ✅ CRITICAL FIX: Save token to Firestore
+        // Try to get user ID, and if not available, wait a bit and retry
+        // This handles cases where notification service initializes before user is authenticated
         final userId = FirebaseAuth.instance.currentUser?.uid;
         if (userId != null) {
-          _saveFCMTokenToFirestore(userId, _fcmToken!).catchError((error) {
-            print('⚠️ Error saving FCM token (non-critical): $error');
+          await _saveFCMTokenToFirestore(userId, _fcmToken!);
+        } else {
+          // User not authenticated yet - wait a bit and retry
+          print('⚠️ User not authenticated yet, waiting 2 seconds to retry FCM token save...');
+          Future.delayed(const Duration(seconds: 2), () async {
+            final retryUserId = FirebaseAuth.instance.currentUser?.uid;
+            if (retryUserId != null && _fcmToken != null) {
+              print('✅ Retrying FCM token save for user: $retryUserId');
+              await _saveFCMTokenToFirestore(retryUserId, _fcmToken!).catchError((error) {
+                print('⚠️ Error saving FCM token on retry: $error');
+              });
+            } else {
+              print('⚠️ User still not authenticated after retry, FCM token will be saved on next login');
+            }
           });
         }
       } else {
@@ -196,13 +209,26 @@ class NotificationService {
   // Save FCM token to Firestore
   Future<void> _saveFCMTokenToFirestore(String userId, String token) async {
     try {
-      await _firestore.collection('users').doc(userId).update({
+      // ✅ FIX: Use set() with merge: true instead of update()
+      // This works even if the user document doesn't exist yet (new users)
+      await _firestore.collection('users').doc(userId).set({
         'fcmToken': token,
         'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
       print('✅ FCM Token saved to Firestore');
     } catch (e) {
       print('❌ Error saving FCM token to Firestore: $e');
+      // If set() fails, try update() as fallback (for existing users)
+      try {
+        await _firestore.collection('users').doc(userId).update({
+          'fcmToken': token,
+          'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        });
+        print('✅ FCM Token saved using fallback update()');
+      } catch (fallbackError) {
+        print('❌ Fallback also failed: $fallbackError');
+        // Don't throw - FCM token save failure shouldn't break the app
+      }
     }
   }
 

@@ -138,7 +138,7 @@ void main() async {
     ),
   );
   
-  // Listen to auth state changes to handle logout scenarios
+  // Listen to auth state changes to handle logout scenarios and FCM token updates
   FirebaseAuth.instance.authStateChanges().listen((User? user) {
     if (user == null) {
       // User logged out - this will be handled by navigation in screens
@@ -149,11 +149,25 @@ void main() async {
       debugPrint('🔐 Auth state changed: User logged in - ${user.uid}');
       // Set user ID in Crashlytics
       CrashlyticsService.setUserId(user.uid);
+      
+      // ✅ CRITICAL FIX: Ensure FCM token is saved when user logs in
+      // This handles new users and users who login after app restart
+      // Re-initialize notification service to get and save FCM token
+      NotificationService().initialize().catchError((error) {
+        debugPrint('⚠️ Error re-initializing notification service after login: $error');
+        CrashlyticsService.logError(
+          error,
+          StackTrace.current,
+          context: 'Notification service re-initialization failed after login',
+          fatal: false,
+        );
+      });
     }
   });
   
   // Initialize Notification Service in background (non-blocking)
   // This allows the app to show UI immediately while notifications initialize
+  // Note: This will also run when user is already logged in (app restart)
   NotificationService().initialize().catchError((error) {
     debugPrint('⚠️ Notification service initialization error: $error');
     // Log to Crashlytics

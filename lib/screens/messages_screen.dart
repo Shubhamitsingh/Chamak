@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import '../models/chat_model.dart';
+import '../models/team_message_model.dart';
 import '../services/chat_service.dart';
 import '../services/database_service.dart';
 import '../services/team_message_service.dart';
@@ -154,8 +155,61 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return StreamBuilder<int>(
       stream: _teamMessageService.getUnreadTeamMessagesCount(),
       builder: (context, snapshot) {
+        // Handle errors
+        if (snapshot.hasError) {
+          debugPrint('❌ [CHAMAKZ TEAM] Error getting unread count: ${snapshot.error}');
+          debugPrint('❌ [CHAMAKZ TEAM] Error details: ${snapshot.error.toString()}');
+          
+          // Show error state but still allow navigation
+          return _buildChamakzTeamItem(
+            unreadCount: 0,
+            hasUnread: false,
+            lastMessage: 'Error loading messages',
+            hasError: true,
+          );
+        }
+        
+        // Handle loading
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildChamakzTeamItem(
+            unreadCount: 0,
+            hasUnread: false,
+            lastMessage: 'Loading...',
+            hasError: false,
+          );
+        }
+        
         final unreadCount = snapshot.data ?? 0;
         final hasUnread = unreadCount > 0;
+        
+        // Get last message preview
+        return StreamBuilder<TeamMessageModel?>(
+          stream: _teamMessageService.getTeamMessagesStream().map((messages) => messages.isNotEmpty ? messages.first : null),
+          builder: (context, messageSnapshot) {
+            String lastMessageText = 'Official messages from team';
+            if (messageSnapshot.hasData && messageSnapshot.data != null) {
+              final message = messageSnapshot.data!.message;
+              lastMessageText = message.length > 40 ? '${message.substring(0, 40)}...' : message;
+            }
+            
+            return _buildChamakzTeamItem(
+              unreadCount: unreadCount,
+              hasUnread: hasUnread,
+              lastMessage: lastMessageText,
+              hasError: false,
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  Widget _buildChamakzTeamItem({
+    required int unreadCount,
+    required bool hasUnread,
+    required String lastMessage,
+    required bool hasError,
+  }) {
 
         return Material(
           color: Colors.transparent,
@@ -215,11 +269,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                'Official messages from team',
+                                lastMessage,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: hasUnread ? Colors.black87 : Colors.grey[600],
+                                  color: hasError 
+                                      ? Colors.red[600]
+                                      : hasUnread 
+                                          ? Colors.black87 
+                                          : Colors.grey[600],
                                   fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
                                   fontSize: 14,
                                 ),
@@ -281,8 +339,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
             ),
           ),
         );
-      },
-    );
   }
 
   // ========== SEARCH BAR ==========
@@ -374,54 +430,102 @@ class _MessagesScreenState extends State<MessagesScreen> {
                        lastMessage.contains(_searchQuery);
               }).toList();
 
-        // Build list with Chamakz Team as first chat item (always scrollable)
-        // Calculate total items: Chamakz Team (1) + chats + empty state if needed
-        final hasChats = filteredChats.isNotEmpty;
-        final totalItems = hasChats 
-            ? filteredChats.length + 1  // Chamakz Team + chats
-            : (_searchQuery.isEmpty ? 1 : 2); // Chamakz Team only, or + empty message if searching
-        
-        return ListView.builder(
-          padding: EdgeInsets.zero,
-          physics: const AlwaysScrollableScrollPhysics(), // ✅ Ensure scrolling is always enabled
-          itemCount: totalItems,
-          itemBuilder: (context, index) {
-            // First item (index 0) is always Chamakz Team chat item
-            if (index == 0) {
-              return _buildChamakzTeamChatItem();
-            }
+        // Check if there are team messages from admin
+        // Chamakz Team should ALWAYS show if admin has sent messages (official messages)
+        return StreamBuilder<List<TeamMessageModel>>(
+          stream: _teamMessageService.getTeamMessagesStream(),
+          builder: (context, teamMessagesSnapshot) {
+            // Check if team messages exist (handle loading state)
+            final hasTeamMessages = teamMessagesSnapshot.hasData && 
+                                    teamMessagesSnapshot.data != null && 
+                                    teamMessagesSnapshot.data!.isNotEmpty;
             
-            // If no chats and searching, show empty message at index 1
-            if (!hasChats && _searchQuery.isNotEmpty && index == 1) {
-              return Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/images/chat.png',
-                        width: 64,
-                        height: 64,
+            // If still loading team messages and no chats, show loading or Chamakz Team
+            final isLoadingTeamMessages = teamMessagesSnapshot.connectionState == ConnectionState.waiting;
+            
+            final hasChats = filteredChats.isNotEmpty;
+            
+            // ✅ ALWAYS show Chamakz Team if admin has sent messages (official messages)
+            // Even if there are no other user chats, Chamakz Team should be visible
+            // Show Chamakz Team if: team messages exist OR if there are chats OR while loading (to avoid flicker)
+            final showChamakzTeam = hasTeamMessages || hasChats || (isLoadingTeamMessages && !hasChats);
+            
+            // Only show empty state if we're sure there are NO team messages AND NO chats
+            if (!hasChats && !hasTeamMessages && !isLoadingTeamMessages) {
+              // No chats AND no team messages (and not loading) - show empty state
+              if (_searchQuery.isNotEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/images/chat.png',
+                          width: 64,
+                          height: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No messages found',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset('assets/images/chat.png', width: 80, height: 80, color: Colors.grey[300]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No messages yet',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Search for users to start chatting',
+                      style: TextStyle(
+                        fontSize: 14,
                         color: Colors.grey[400],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No messages found',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               );
             }
             
-            // Other items are regular chat messages (adjust index by -1)
-            final chat = filteredChats[index - 1];
-            return _buildMessageTileFromChat(chat);
+            // ✅ Show Chamakz Team if there are team messages OR if there are chats
+            // Calculate total items: Chamakz Team (always show if team messages exist or while loading) + chats
+            final totalItems = (showChamakzTeam ? 1 : 0) + filteredChats.length;
+            
+            return ListView.builder(
+              padding: EdgeInsets.zero,
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: totalItems,
+              itemBuilder: (context, index) {
+                // First item (index 0) is Chamakz Team chat item (if should show)
+                if (showChamakzTeam && index == 0) {
+                  return _buildChamakzTeamChatItem();
+                }
+                
+                // Other items are regular chat messages (adjust index by -1 if Chamakz Team is shown)
+                final chatIndex = showChamakzTeam ? index - 1 : index;
+                final chat = filteredChats[chatIndex];
+                return _buildMessageTileFromChat(chat);
+              },
+            );
           },
         );
       },

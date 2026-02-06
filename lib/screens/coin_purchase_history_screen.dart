@@ -432,32 +432,32 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     DateTime? completedAt,
   }) {
     final dateTime = createdAt ?? DateTime.now();
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+            decoration: BoxDecoration(
         color: const Color(0xFF2A2A2A), // Light grey container
         borderRadius: BorderRadius.circular(12),
-      ),
+            ),
       child: Row(
-        children: [
+              children: [
           // Coin Icon with Sparkles
           Stack(
             alignment: Alignment.center,
-            children: [
-              Image.asset(
-                'assets/images/coin3.png',
+                      children: [
+                        Image.asset(
+                          'assets/images/coin3.png',
                 width: 40,
                 height: 40,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.monetization_on,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.monetization_on,
                     size: 40,
-                    color: Color(0xFFFFB800),
-                  );
-                },
-              ),
+                              color: Color(0xFFFFB800),
+                            );
+                          },
+                        ),
               // Sparkle effects
               Positioned(
                 top: -2,
@@ -466,8 +466,8 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                   Icons.auto_awesome,
                   size: 8,
                   color: Colors.amber[300],
-                ),
-              ),
+                          ),
+                        ),
               Positioned(
                 top: 2,
                 left: -2,
@@ -475,10 +475,10 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                   Icons.auto_awesome,
                   size: 6,
                   color: Colors.amber[200],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
           const SizedBox(width: 16),
           // Description and Date
           Expanded(
@@ -494,13 +494,13 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                    Text(
                   DateFormat('MM/dd/yyyy, hh:mm a').format(dateTime),
-                  style: TextStyle(
+                      style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[400],
-                  ),
-                ),
+                      ),
+                    ),
               ],
             ),
           ),
@@ -527,29 +527,29 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+            decoration: BoxDecoration(
         color: const Color(0xFF2A2A2A), // Light grey container
         borderRadius: BorderRadius.circular(12),
-      ),
+            ),
       child: Row(
-        children: [
+              children: [
           // Coin Icon with Sparkles
           Stack(
             alignment: Alignment.center,
-            children: [
-              Image.asset(
-                'assets/images/coin3.png',
+                  children: [
+                        Image.asset(
+                          'assets/images/coin3.png',
                 width: 40,
                 height: 40,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.monetization_on,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.monetization_on,
                     size: 40,
-                    color: Color(0xFFFFB800),
-                  );
-                },
-              ),
+                              color: Color(0xFFFFB800),
+                            );
+                          },
+                        ),
               // Sparkle effects
               Positioned(
                 top: -2,
@@ -558,8 +558,8 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                   Icons.auto_awesome,
                   size: 8,
                   color: Colors.amber[300],
-                ),
-              ),
+                          ),
+                        ),
               Positioned(
                 top: 2,
                 left: -2,
@@ -567,34 +567,34 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                   Icons.auto_awesome,
                   size: 6,
                   color: Colors.amber[200],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
           const SizedBox(width: 16),
           // Description and Date
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+                  children: [
+                    Text(
                   'Video Call',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     color: Colors.white,
-                  ),
-                ),
+                      ),
+                    ),
                 const SizedBox(height: 4),
-                Text(
+                    Text(
                   DateFormat('MM/dd/yyyy, hh:mm a').format(dateTime),
-                  style: TextStyle(
+                      style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[400],
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
           ),
           // Amount on Right (Red for negative)
           Text(
@@ -625,29 +625,29 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
     
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+            decoration: BoxDecoration(
         color: const Color(0xFF2A2A2A), // Light grey container
         borderRadius: BorderRadius.circular(12),
-      ),
+            ),
       child: Row(
-        children: [
+              children: [
           // Coin Icon with Sparkles
           Stack(
             alignment: Alignment.center,
-            children: [
-              Image.asset(
-                'assets/images/coin3.png',
+                  children: [
+                        Image.asset(
+                          'assets/images/coin3.png',
                 width: 40,
                 height: 40,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.monetization_on,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.monetization_on,
                     size: 40,
-                    color: Color(0xFFFFB800),
-                  );
-                },
-              ),
+                              color: Color(0xFFFFB800),
+                            );
+                          },
+                        ),
               // Sparkle effects
               Positioned(
                 top: -2,
@@ -656,8 +656,8 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                   Icons.auto_awesome,
                   size: 8,
                   color: Colors.amber[300],
-                ),
-              ),
+                          ),
+                        ),
               Positioned(
                 top: 2,
                 left: -2,
@@ -665,13 +665,13 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                   Icons.auto_awesome,
                   size: 6,
                   color: Colors.amber[200],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
           const SizedBox(width: 16),
           // Description and Date
-          Expanded(
+                    Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -679,25 +679,25 @@ class _CoinPurchaseHistoryScreenState extends State<CoinPurchaseHistoryScreen> {
                   description,
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w500,
                     color: Colors.white,
-                  ),
+                        ),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                 const SizedBox(height: 4),
                 Text(
                   DateFormat('MM/dd/yyyy, hh:mm a').format(dateTime),
-                  style: TextStyle(
+                          style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[400],
-                  ),
-                ),
-              ],
-            ),
+                        ),
+                      ),
+                    ],
+                    ),
           ),
           // Amount on Right (Red for negative)
-          Text(
+                    Text(
             '-${NumberFormat.decimalPattern().format(coins)}',
             style: const TextStyle(
               fontSize: 16,

@@ -198,24 +198,24 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.error_outline, size: 60, color: Colors.red[400]),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Error Loading Transactions',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Error Loading Transactions',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                             color: Colors.white,
-                          ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Unable to load transaction history. Please try again later.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Unable to load transaction history. Please try again later.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
                             color: Colors.grey[400],
-                          ),
                         ),
+                      ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: () {
@@ -360,15 +360,15 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             : Icons.currency_bitcoin_rounded;
 
     return InkWell(
-      onTap: request.paymentProofURL != null
-          ? () => _showPaymentProof(request.paymentProofURL!)
-          : null,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
+        onTap: request.paymentProofURL != null
+            ? () => _showPaymentProof(request.paymentProofURL!)
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
+          decoration: BoxDecoration(
           color: const Color(0xFF2A2A2A), // Light grey container
-          borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
@@ -378,7 +378,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               decoration: BoxDecoration(
                 color: statusColor.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(10),
-              ),
+          ),
               child: Icon(
                 methodIcon,
                 color: statusColor,
@@ -388,19 +388,19 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             const SizedBox(width: 16),
             // Description and Date
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                   Row(
-                    children: [
-                      Text(
+                        children: [
+                          Text(
                         'Withdrawal',
-                        style: const TextStyle(
+                            style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
+                              color: Colors.white,
+                            ),
+                          ),
                       const SizedBox(width: 8),
                       // Status Badge
                       Container(
@@ -423,19 +423,19 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                    ],
-                  ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                   const SizedBox(height: 4),
-                  Text(
+                                    Text(
                     '${request.withdrawalMethod} • ${_formatDate(request.requestDate)}',
-                    style: TextStyle(
+                                      style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[400],
-                    ),
+                                    ),
                   ),
-                  if (request.paymentProofURL != null) ...[
+                if (request.paymentProofURL != null) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -455,10 +455,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         ),
                       ],
                     ),
-                  ],
                 ],
-              ),
+              ],
             ),
+          ),
             // Amount on Right
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,

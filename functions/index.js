@@ -1772,11 +1772,20 @@ exports.sendLiveStreamNotification = onDocumentCreated(
         console.log(`📺 New live stream created: ${streamId}`);
         console.log(`   Host: ${streamData.hostName} (${streamData.hostId})`);
         console.log(`   Active: ${streamData.isActive}`);
-        console.log(`   Host Status: ${streamData.hostStatus}`);
+        console.log(`   Host Status: ${streamData.hostStatus || 'undefined'}`);
 
-        // Only send notification if stream is active
-        if (!streamData.isActive || streamData.hostStatus !== 'live') {
-          console.log('⏭️ Skipping notification - stream is not active or not live');
+        // ✅ FIX: Only check isActive (primary check)
+        // hostStatus might not be set yet when document is first created
+        // If isActive is true, we should send notification
+        if (!streamData.isActive) {
+          console.log('⏭️ Skipping notification - stream is not active');
+          return null;
+        }
+
+        // ✅ FIX: Only skip if hostStatus is explicitly 'ended'
+        // If hostStatus is undefined/null or 'live', proceed with notification
+        if (streamData.hostStatus === 'ended') {
+          console.log('⏭️ Skipping notification - host status is ended');
           return null;
         }
 
@@ -1809,15 +1818,22 @@ exports.sendLiveStreamNotification = onDocumentCreated(
             .get();
 
         if (usersSnapshot.empty) {
-          console.log('No users with FCM tokens found');
+          console.log('No users found in database');
           return null;
         }
 
-        // Filter out the host (don't notify themselves)
+        // ✅ FIX: Filter users with valid FCM tokens (excluding host)
+        // This ensures we get all users with tokens, even if query doesn't work perfectly
         const tokens = usersSnapshot.docs
-            .filter(doc => doc.id !== streamData.hostId)
-            .map(doc => doc.data().fcmToken)
-            .filter(token => token && token.length > 0);
+            .filter(doc => {
+              const userData = doc.data();
+              const hasToken = userData.fcmToken && 
+                              typeof userData.fcmToken === 'string' && 
+                              userData.fcmToken.length > 0;
+              const isNotHost = doc.id !== streamData.hostId;
+              return hasToken && isNotHost;
+            })
+            .map(doc => doc.data().fcmToken);
 
         if (tokens.length === 0) {
           console.log('No valid FCM tokens found (excluding host)');

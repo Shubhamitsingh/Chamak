@@ -96,16 +96,16 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF1B7C)))
           : Column(
-              children: [
+        children: [
                 // Dark Content Section - Scrollable
-                Expanded(
+          Expanded(
                   child: Container(
                     decoration: const BoxDecoration(
                       color: Color(0xFF1A1A1A), // Dark background
                     ),
                     child: SingleChildScrollView(
-                      child: Column(
-                        children: [
+                    child: Column(
+                      children: [
                           const SizedBox(height: 24),
                           
                           // Progress Steps Indicator
@@ -140,27 +140,27 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                   child: SafeArea(
                     top: false,
                     child: _buildGoLiveButton(),
-                  ),
-                ),
-              ],
-            ),
+                          ),
+                        ),
+                      ],
+                    ),
     );
   }
 
   // Progress Steps - Compact Design
   Widget _buildProgressSteps() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Step 1 - Active
           Column(
-            children: [
-              Container(
+                      children: [
+                        Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
+                          decoration: BoxDecoration(
                   color: const Color(0xFFFF1B7C),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 3),
@@ -170,20 +170,20 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                       blurRadius: 10,
                       spreadRadius: 1,
                       offset: const Offset(0, 3),
-                    ),
+                          ),
                   ],
-                ),
+                        ),
                 child: const Center(
                   child: Text(
                     '1',
-                    style: TextStyle(
+                          style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                     ),
                   ),
-                ),
-              ),
               const SizedBox(height: 6),
               const Text(
                 'Rules',
@@ -192,57 +192,57 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ),
+                              ),
+                            ),
+                          ],
+                        ),
           // Connector Line - Enhanced Design
-          Expanded(
-            child: Container(
+                            Expanded(
+                    child: Container(
               height: 2,
               margin: const EdgeInsets.only(bottom: 35),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
                     const Color(0xFFFF1B7C).withValues(alpha: 0.4),
                     Colors.grey[300]!,
                     Colors.grey[200]!,
-                  ],
+                          ],
                   stops: const [0.0, 0.3, 1.0],
                 ),
                 borderRadius: BorderRadius.circular(1),
-              ),
-            ),
-          ),
+                        ),
+                        ),
+                      ),
           // Step 2 - Next
           Column(
-            children: [
-              Container(
+                        children: [
+                          Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
+                            decoration: BoxDecoration(
                   color: Colors.grey[300],
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 3),
-                ),
-                child: const Icon(
+                            ),
+                            child: const Icon(
                   Icons.live_tv,
                   color: Colors.white,
                   size: 20,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
                 'Go Live',
-                style: TextStyle(
+                                  style: TextStyle(
                   color: Colors.grey[400],
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ),
+                                  ),
+                                ),
+                              ],
+                            ),
         ],
       ),
     );
@@ -270,9 +270,9 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
             blurRadius: 12,
             spreadRadius: 1,
             offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+                          ),
+                        ],
+                      ),
       child: Stack(
         children: [
           // Background Circle with gradient
@@ -299,9 +299,9 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
               userId: userId,
               radius: 67,
             ),
-          ),
-        ],
-      ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -320,8 +320,8 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
               color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
               width: 1.5,
             ),
-            boxShadow: [
-              BoxShadow(
+                          boxShadow: [
+                            BoxShadow(
                 color: const Color(0xFFFF1B7C).withValues(alpha: 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 6),
@@ -329,12 +329,12 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
               ),
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
+                              blurRadius: 12,
                 offset: const Offset(0, 3),
                 spreadRadius: 0,
-              ),
-            ],
-          ),
+                            ),
+                          ],
+                        ),
           child: Column(
             children: [
               Row(
@@ -353,8 +353,8 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
                         height: 1.3,
                         letterSpacing: 0.1,
                       ),
@@ -448,9 +448,9 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.2,
-                  ),
                 ),
               ),
+            ),
             ],
           ),
           const SizedBox(height: 16),
@@ -491,52 +491,52 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
+            children: [
+              Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(
+                decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                 colors: [
                   const Color(0xFFFF1B7C).withValues(alpha: 0.15),
                   const Color(0xFFFF1B7C).withValues(alpha: 0.08),
                 ],
-              ),
+                ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
                 width: 1,
               ),
-            ),
-            child: Icon(
-              icon,
+                ),
+                child: Icon(
+                  icon,
               color: const Color(0xFFFF1B7C),
               size: 22,
-            ),
+                ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
+          Text(
+            title,
+            style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.1,
-                  ),
-                ),
+            ),
+          ),
                 const SizedBox(height: 5),
-                Text(
-                  description,
-                  style: TextStyle(
+          Text(
+            description,
+            style: TextStyle(
                     color: Colors.grey[400],
                     fontSize: 12,
-                    height: 1.4,
+              height: 1.4,
                     letterSpacing: 0.05,
                   ),
                 ),

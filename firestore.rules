@@ -41,8 +41,10 @@ service cloud.firestore {
       // Users can create their own profile
       // BUT cannot set coin fields OR isActive field (admin-only)
       // Users can only set isActive to false or leave it undefined
+      // ✅ FIX: Allow creating document with FCM token fields (for notification service)
       allow create: if request.auth != null && request.auth.uid == userId
-        && !request.resource.data.keys().hasAny(['uCoins', 'coins', 'cCoins'])
+        && (!request.resource.data.keys().hasAny(['uCoins', 'coins', 'cCoins']) // No coin fields
+            || request.resource.data.keys().hasOnly(['fcmToken', 'fcmTokenUpdatedAt'])) // OR only FCM token fields
         && (!('isActive' in request.resource.data) 
              || request.resource.data.isActive == false);
       
@@ -51,16 +53,22 @@ service cloud.firestore {
       // Allow uCoins updates for call deductions (decrements only - FieldValue.increment with negative value)
       // Users can update followersCount on any user's profile (for follow/unfollow)
       // Admins can update any user's profile including coin fields and isActive
+      // ✅ FIX: Handle case where document doesn't exist yet (resource.data might be null)
+      // Also allow FCM token updates (fcmToken, fcmTokenUpdatedAt) without restrictions
       allow update: if (request.auth != null && request.auth.uid == userId
-        // Prevent users from updating their own isActive field (admin-only)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isActive'])
-        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'cCoins'])
-            || (request.resource.data.diff(resource.data).affectedKeys().hasAny(['uCoins']) 
-                && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'cCoins'])
-                && request.resource.data.uCoins is int
-                && resource.data.uCoins is int
-                && request.resource.data.uCoins < resource.data.uCoins))) // Allow uCoins decrement for calls
+        // Allow FCM token updates (common case - no restrictions needed)
+        && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken', 'fcmTokenUpdatedAt'])
+            // OR allow other updates with restrictions
+            || (resource.data != null // Document must exist for other updates
+                && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isActive'])
+                && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'cCoins'])
+                    || (request.resource.data.diff(resource.data).affectedKeys().hasAny(['uCoins']) 
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['coins', 'cCoins'])
+                        && request.resource.data.uCoins is int
+                        && resource.data.uCoins is int
+                        && request.resource.data.uCoins < resource.data.uCoins))))) // Allow uCoins decrement for calls
         || (request.auth != null 
+          && resource.data != null // Document must exist for followersCount update
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount']))
         || isAdmin(); // Admins can update everything including isActive
       

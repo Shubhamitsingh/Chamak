@@ -951,18 +951,18 @@ class _HomeScreenState extends State<HomeScreen>
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
-      child: Stack(
-          children: [
-            Column(
-              children: [
+        child: Stack(
+            children: [
+              Column(
+                children: [
                 // Status bar spacer to push content below status bar
                 Container(
                   height: MediaQuery.of(context).padding.top,
                   color: const Color(0xFFFF1B7C), // App theme pink
                 ),
-                if (!_isLiveReelsFullScreen) _buildTopBar(),
+                  if (!_isLiveReelsFullScreen) _buildTopBar(),
                 if (!_isLiveReelsFullScreen) _buildTabNavigation(),
-                Expanded(
+                  Expanded(
                     child: ClipRect(
                       child: PageView.builder(
                         controller: _pageController,
@@ -998,33 +998,33 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
-            if (_isLiveReelsFullScreen)
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: _navigateToExploreTab,
+              if (_isLiveReelsFullScreen)
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: _navigateToExploreTab,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
         ),
       );
   }
@@ -1290,265 +1290,265 @@ class _HomeScreenState extends State<HomeScreen>
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 2, 12, 0),
       height: 36,
-      child: SingleChildScrollView(
-        controller: _topMenuScrollController,
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Explore Button
-            Semantics(
-              label: 'Explore tab. ${_topTabIndex == 0 ? "Currently selected" : "Tap to switch to explore"}',
-              button: true,
-              selected: _topTabIndex == 0,
-              child: GestureDetector(
-                onTap: () {
-                  _pageController.animateToPage(
-                    0,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                },
-                child: Column(
+              child: SingleChildScrollView(
+                controller: _topMenuScrollController,
+                scrollDirection: Axis.horizontal,
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      AppLocalizations.of(context)!.explore,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: _topTabIndex == 0
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: _topTabIndex == 0
-                            ? Colors.black87
-                            : Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (_topTabIndex == 0)
-                      Container(
-                        width: 30,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF1B7C), // pink underline
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 10),
-
-            // Live Button
-            Semantics(
-              label: 'Live streams tab. ${_topTabIndex == 1 ? "Currently selected" : "Tap to switch to live streams"}',
-              button: true,
-              selected: _topTabIndex == 1,
-              child: GestureDetector(
-                onTap: () {
-                  _pageController.animateToPage(
-                    1,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        if (_topTabIndex != 1)
-                          Icon(
-                            Icons.circle,
-                            size: 8,
-                            color: Colors.red,
-                          ),
-                        if (_topTabIndex != 1) const SizedBox(width: 4),
-                        Text(
-                          AppLocalizations.of(context)!.live,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: _topTabIndex == 1
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                            color: _topTabIndex == 1
-                                ? Colors.black87
-                                : Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    if (_topTabIndex == 1)
-                      Container(
-                        width: 30,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF1B7C), // pink underline
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 10),
-
-            // Following Button
-            GestureDetector(
-              onTap: () {
-                _pageController.animateToPage(
-                  2,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.following,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: _topTabIndex == 2
-                          ? FontWeight.bold
-                          : FontWeight.w500,
-                      color: _topTabIndex == 2
-                          ? Colors.black87
-                          : Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (_topTabIndex == 2)
-                    Container(
-                      width: 30,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF1B7C), // pink underline
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 10),
-
-            // New Button
-            GestureDetector(
-              onTap: () {
-                _pageController.animateToPage(
-                  3,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.newHosts,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: _topTabIndex == 3
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                          color: _topTabIndex == 3
-                              ? Colors.black87
-                              : Colors.grey[600],
-                        ),
-                      ),
-                      if (_topTabIndex != 3) ...[
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'NEW',
+                    // Explore Button
+                    Semantics(
+                      label: 'Explore tab. ${_topTabIndex == 0 ? "Currently selected" : "Tap to switch to explore"}',
+                      button: true,
+                      selected: _topTabIndex == 0,
+                      child: GestureDetector(
+                        onTap: () {
+                          _pageController.animateToPage(
+                            0,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        },
+                        child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context)!.explore,
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontWeight: _topTabIndex == 0
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: _topTabIndex == 0
+                                  ? Colors.black87
+                                  : Colors.grey[600],
                             ),
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  if (_topTabIndex == 3)
-                    Container(
-                      width: 30,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF1B7C), // pink underline
-                        borderRadius: BorderRadius.circular(2),
+                          const SizedBox(height: 4),
+                          if (_topTabIndex == 0)
+                            Container(
+                              width: 30,
+                              height: 3,
+                              decoration: BoxDecoration(
+                          color: const Color(0xFFFF1B7C), // pink underline
+                                borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                ],
-              ),
-            ),
+                    ),
 
             const SizedBox(width: 10),
 
-            // Nearby Button
-            GestureDetector(
-              onTap: () {
-                _pageController.animateToPage(
-                  4,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.near_me,
-                        size: 16,
-                        color: Color(0xFFFF1B7C),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Nearby',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: _topTabIndex == 4
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                          color: _topTabIndex == 4
-                              ? Colors.black87
-                              : Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  if (_topTabIndex == 4)
-                    Container(
-                      width: 30,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF1B7C), // pink underline
-                        borderRadius: BorderRadius.circular(2),
+                    // Live Button
+                    Semantics(
+                      label: 'Live streams tab. ${_topTabIndex == 1 ? "Currently selected" : "Tap to switch to live streams"}',
+                      button: true,
+                      selected: _topTabIndex == 1,
+                      child: GestureDetector(
+                        onTap: () {
+                          _pageController.animateToPage(
+                            1,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        },
+                        child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              if (_topTabIndex != 1)
+                                Icon(
+                                  Icons.circle,
+                                  size: 8,
+                                  color: Colors.red,
+                                ),
+                              if (_topTabIndex != 1) const SizedBox(width: 4),
+                              Text(
+                                AppLocalizations.of(context)!.live,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: _topTabIndex == 1
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _topTabIndex == 1
+                                      ? Colors.black87
+                                      : Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          if (_topTabIndex == 1)
+                            Container(
+                              width: 30,
+                              height: 3,
+                              decoration: BoxDecoration(
+                          color: const Color(0xFFFF1B7C), // pink underline
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                ],
-              ),
-            ),
-          ],
-        ),
+                    ),
+
+            const SizedBox(width: 10),
+
+                    // Following Button
+                    GestureDetector(
+                      onTap: () {
+                        _pageController.animateToPage(
+                          2,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context)!.following,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: _topTabIndex == 2
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: _topTabIndex == 2
+                                  ? Colors.black87
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (_topTabIndex == 2)
+                            Container(
+                              width: 30,
+                              height: 3,
+                              decoration: BoxDecoration(
+                        color: const Color(0xFFFF1B7C), // pink underline
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+            const SizedBox(width: 10),
+
+                    // New Button
+                    GestureDetector(
+                      onTap: () {
+                        _pageController.animateToPage(
+                          3,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                AppLocalizations.of(context)!.newHosts,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: _topTabIndex == 3
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _topTabIndex == 3
+                                      ? Colors.black87
+                                      : Colors.grey[600],
+                                ),
+                              ),
+                              if (_topTabIndex != 3) ...[
+                                const SizedBox(width: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'NEW',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          if (_topTabIndex == 3)
+                            Container(
+                              width: 30,
+                              height: 3,
+                              decoration: BoxDecoration(
+                        color: const Color(0xFFFF1B7C), // pink underline
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+            const SizedBox(width: 10),
+
+                    // Nearby Button
+                    GestureDetector(
+                      onTap: () {
+                        _pageController.animateToPage(
+                          4,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.near_me,
+                                size: 16,
+                                color: Color(0xFFFF1B7C),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Nearby',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: _topTabIndex == 4
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _topTabIndex == 4
+                                      ? Colors.black87
+                                      : Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          if (_topTabIndex == 4)
+                            Container(
+                              width: 30,
+                              height: 3,
+                              decoration: BoxDecoration(
+                        color: const Color(0xFFFF1B7C), // pink underline
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
       ),
     );
   }
@@ -1846,20 +1846,21 @@ class _HomeScreenState extends State<HomeScreen>
               }
             }
             
-            // Show ONLY live hosts (real-time availability)
-            final sortedHosts = [...liveHosts];
-            debugPrint('📊 [EXPLORE] Showing ${liveHosts.length} live hosts only (${nonLiveHosts.length} offline hosts hidden)');
+            // Show ALL hosts, but prioritize live hosts at the top
+            // Live hosts first, then offline hosts
+            final sortedHosts = [...liveHosts, ...nonLiveHosts];
+            debugPrint('📊 [EXPLORE] Showing ${liveHosts.length} live hosts + ${nonLiveHosts.length} offline hosts = ${sortedHosts.length} total');
             
-            // Show empty state if no hosts are live
+            // Show empty state if no hosts at all
             if (sortedHosts.isEmpty) {
-              debugPrint('⚠️ [EXPLORE] No live hosts available');
+              debugPrint('⚠️ [EXPLORE] No hosts available');
               if (!mounted) return const SizedBox.shrink();
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'No live streams available right now.',
+                      'No hosts available right now.',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -1884,7 +1885,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       child: const Text(
                         'Refresh',
-                        style: TextStyle(
+                      style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -2175,30 +2176,34 @@ class _HomeScreenState extends State<HomeScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Live Badge & Viewers (Top)
+                            // Live/Offline Badge & Viewers (Top)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
+                                // Show LIVE badge if live, OFFLINE badge if offline
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 8,
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.red,
+                                    color: isLive ? Colors.red : Colors.grey[600]!,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.circle,
-                                        size: 6,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 4),
+                                      if (isLive)
+                                        const Icon(
+                                          Icons.circle,
+                                          size: 6,
+                                          color: Colors.white,
+                                        ),
+                                      if (isLive) const SizedBox(width: 4),
                                       Text(
-                                        AppLocalizations.of(context)!.liveLabel,
+                                        isLive 
+                                            ? AppLocalizations.of(context)!.liveLabel
+                                            : 'OFFLINE',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
@@ -2208,39 +2213,41 @@ class _HomeScreenState extends State<HomeScreen>
                                     ],
                                   ),
                                 ),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.3),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.remove_red_eye,
-                                            color: Colors.white,
-                                            size: 10,
-                                          ),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            _formatViewers(viewers),
-                                            style: const TextStyle(
+                                // Show viewers count only when live
+                                if (isLive)
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              Colors.black.withValues(alpha: 0.3),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.remove_red_eye,
                                               color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
+                                              size: 10,
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              _formatViewers(viewers),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
+                                    ],
+                                  ),
                               ],
                             ),
 
@@ -2497,30 +2504,34 @@ class _HomeScreenState extends State<HomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Live Badge & Viewers (Top)
+                        // Live/Offline Badge & Viewers (Top)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
+                            // Show LIVE badge if live, OFFLINE badge if offline
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.red,
+                                color: isLive ? Colors.red : Colors.grey[600]!,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
-                                    Icons.circle,
-                                    size: 6,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 4),
+                                  if (isLive)
+                                    const Icon(
+                                      Icons.circle,
+                                      size: 6,
+                                      color: Colors.white,
+                                    ),
+                                  if (isLive) const SizedBox(width: 4),
                                   Text(
-                                    AppLocalizations.of(context)!.liveLabel,
+                                    isLive 
+                                        ? AppLocalizations.of(context)!.liveLabel
+                                        : 'OFFLINE',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -2530,38 +2541,40 @@ class _HomeScreenState extends State<HomeScreen>
                                 ],
                               ),
                             ),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.remove_red_eye,
-                                        color: Colors.white,
-                                        size: 10,
-                                      ),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        _formatViewers(viewers),
-                                        style: const TextStyle(
+                            // Show viewers count only when live
+                            if (isLive)
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.remove_red_eye,
                                           color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
+                                          size: 10,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          _formatViewers(viewers),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
                           ],
                         ),
 
@@ -2867,11 +2880,12 @@ class _HomeScreenState extends State<HomeScreen>
               }
             }
             
-            // Show ONLY live hosts (real-time availability)
-            final sortedHosts = [...liveHosts];
-            debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live hosts only (${nonLiveHosts.length} offline hosts hidden)');
+            // Show ALL hosts, but prioritize live hosts at the top
+            // Live hosts first, then offline hosts
+            final sortedHosts = [...liveHosts, ...nonLiveHosts];
+            debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live hosts + ${nonLiveHosts.length} offline hosts = ${sortedHosts.length} total');
             
-            // Show empty state if no hosts are live
+            // Show empty state if no hosts at all
             if (sortedHosts.isEmpty) {
               if (!mounted) return const SizedBox.shrink();
               return Center(
@@ -2879,7 +2893,7 @@ class _HomeScreenState extends State<HomeScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'No live streams available right now.',
+                      'No hosts available right now.',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -2904,7 +2918,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       child: const Text(
                         'Refresh',
-                        style: TextStyle(
+                      style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -2914,7 +2928,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               );
             }
-            
+
             return GridView.builder(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -3262,11 +3276,12 @@ class _HomeScreenState extends State<HomeScreen>
               }
             }
             
-            // Show ONLY live hosts (real-time availability)
-            final sortedHosts = [...liveHosts];
-            debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live hosts only (${nonLiveHosts.length} offline hosts hidden)');
+            // Show ALL hosts, but prioritize live hosts at the top
+            // Live hosts first, then offline hosts
+            final sortedHosts = [...liveHosts, ...nonLiveHosts];
+            debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live hosts + ${nonLiveHosts.length} offline hosts = ${sortedHosts.length} total');
             
-            // Show empty state if no hosts are live
+            // Show empty state if no hosts at all
             if (sortedHosts.isEmpty) {
               if (!mounted) return const SizedBox.shrink();
               return Center(
@@ -3274,7 +3289,7 @@ class _HomeScreenState extends State<HomeScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'No live streams available right now.',
+                      'No hosts available right now.',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -3299,7 +3314,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       child: const Text(
                         'Refresh',
-                        style: TextStyle(
+                      style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -3309,7 +3324,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               );
             }
-            
+
             return GridView.builder(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

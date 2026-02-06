@@ -622,34 +622,39 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   height: 52,
-                  child: ElevatedButton(
-                    onPressed: _isFormValid() && !_isSubmitting ? _submitForm : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey[300],
-                      elevation: 8,
-                      shadowColor: AppColors.secondary.withValues(alpha: 0.4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                  child: Semantics(
+                    label: 'Submit profile information',
+                    button: true,
+                    enabled: _isFormValid() && !_isSubmitting,
+                    child: ElevatedButton(
+                      onPressed: _isFormValid() && !_isSubmitting ? _submitForm : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        elevation: 8,
+                        shadowColor: AppColors.secondary.withValues(alpha: 0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                       ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Text(
+                              'Submit',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : const Text(
-                            'Submit',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                   ),
                 ),
               ),
@@ -690,7 +695,6 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                             fontSize: 12,
                             color: AppColors.secondary,
                             fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
                           ),
                         ),
                       ),
@@ -717,7 +721,6 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
                             fontSize: 12,
                             color: AppColors.secondary,
                             fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
                           ),
                         ),
                       ),

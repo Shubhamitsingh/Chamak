@@ -16,6 +16,7 @@ import '../services/database_service.dart';
 import '../widgets/call_request_dialog.dart';
 import 'user_profile_view_screen.dart';
 import 'private_call_screen.dart';
+import 'wallet_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -1387,20 +1388,27 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       Navigator.pop(context); // Close loading
       
-      String errorMessage = 'Failed to start video call. Please try again.';
+      // Show themed dialog for insufficient balance
       if (e.toString().contains('Insufficient')) {
-        errorMessage = e.toString().replaceAll('Exception: ', '');
+        final errorMessage = e.toString().replaceAll('Exception: ', '');
+        _showInsufficientBalanceDialog(errorMessage);
       } else if (e.toString().contains('timeout')) {
-        errorMessage = 'Request timed out. Please check your connection.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Request timed out. Please check your connection.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start video call. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
     }
   }
 
@@ -1475,6 +1483,301 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       debugPrint('❌ Error rejecting call: $e');
     }
+  }
+
+  // Show insufficient balance dialog - Matching Telegram/Play Store rating popup style
+  void _showInsufficientBalanceDialog(String errorMessage) {
+    if (!mounted) return;
+    
+    // Extract balance from error message
+    final balanceMatch = RegExp(r'Your balance: (\d+) coins').firstMatch(errorMessage);
+    final currentBalance = balanceMatch?.group(1) ?? '0';
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: FadeInDown(
+          duration: const Duration(milliseconds: 400),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 280),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with gradient and wallet icon (matching Telegram popup)
+                _buildInsufficientBalanceHeader(),
+                
+                // Content box (matching Telegram popup)
+                _buildInsufficientBalanceContent(currentBalance),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Build header for insufficient balance dialog
+  Widget _buildInsufficientBalanceHeader() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFF1B7C), // Pink
+            Color(0xFF9C27B0), // Purple
+          ],
+        ),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Wallet icon on the left
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+          // Title - truly centered
+          const Text(
+            'Insufficient Balance',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
+          ),
+          // Close icon on the right
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(
+                Icons.close_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build content for insufficient balance dialog
+  Widget _buildInsufficientBalanceContent(String currentBalance) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(16),
+          bottomRight: Radius.circular(16),
+        ),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Message with icon (matching Telegram popup)
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF1B7C).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: Color(0xFFFF1B7C),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Low Balance',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 6),
+          
+          // Description text
+          Text(
+            'You need at least 300 coins to start a video call.',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[700],
+              height: 1.3,
+            ),
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Balance display
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.grey[300]!,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.account_balance_wallet,
+                  color: Color(0xFFFF1B7C),
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Balance: $currentBalance coins',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[800],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 10),
+          
+          // Benefits list (compact)
+          _buildRechargeBenefits(),
+          
+          const SizedBox(height: 10),
+          
+          // Recharge button (matching Telegram Join button style)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Navigate to wallet screen
+                final currentUser = FirebaseAuth.instance.currentUser;
+                if (currentUser != null && mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WalletScreen(
+                        phoneNumber: currentUser.phoneNumber ?? '',
+                        isHost: false,
+                      ),
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF1B7C), // Pink (matching app theme)
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 2,
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_circle_outline, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'Recharge Wallet',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build recharge benefits list (compact)
+  Widget _buildRechargeBenefits() {
+    final benefits = [
+      {'emoji': '💰', 'text': 'Instant recharge'},
+      {'emoji': '🎁', 'text': 'Bonus offers'},
+      {'emoji': '💎', 'text': 'Unlimited calls'},
+    ];
+
+    return Column(
+      children: benefits.map((benefit) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            children: [
+              Text(
+                benefit['emoji']!,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  benefit['text']!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[800],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
   }
 
   // Show options bottom sheet
@@ -1802,29 +2105,30 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       Navigator.pop(context); // Close loading
 
-      String errorMessage = 'Failed to send gift. Please try again.';
+      // Show themed dialog for insufficient balance
       if (e.toString().contains('Insufficient')) {
-        errorMessage = e.toString().replaceAll('Exception: ', '');
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Expanded(child: Text(errorMessage)),
-              ],
+        final errorMessage = e.toString().replaceAll('Exception: ', '');
+        _showInsufficientBalanceDialog(errorMessage);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text('Failed to send gift. Please try again.')),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+          );
+        }
       }
     }
   }
