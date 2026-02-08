@@ -2,7 +2,7 @@
  * Firebase Cloud Functions for Chamak App - Notification System
  */
 
-const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/v2/firestore");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onCall, onRequest} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
@@ -1759,6 +1759,152 @@ exports.verifyPlayStorePurchase = onCall(
 );
 
 /**
+ * Auto-sync approved hosts to approvedHosts collection
+ * Triggers when admin sets isActive=true in users collection
+ * This creates a separate collection for fast queries on home page
+ */
+exports.syncApprovedHosts = onDocumentCreated(
+    "users/{userId}",
+    async (event) => {
+      try {
+        const userData = event.data.data();
+        const userId = event.params.userId;
+        
+        console.log(`🔄 [syncApprovedHosts] New user created: ${userId}`);
+        console.log(`   isActive: ${userData.isActive}`);
+        
+        // Only sync if user is approved (isActive = true means user is a host)
+        if (userData.isActive === true) {
+          console.log(`✅ [syncApprovedHosts] Adding approved host to approvedHosts: ${userId}`);
+          
+          await admin.firestore()
+              .collection('approvedHosts')
+              .doc(userId)
+              .set({
+                userId: userId,
+                hostName: userData.displayName || userData.name || 'Host',
+                hostPhotoUrl: userData.photoURL || '',
+                displayName: userData.displayName || userData.name || 'Host',
+                language: userData.language || '',
+                country: userData.country || '',
+                level: userData.level || 1,
+                approvedAt: userData.hostApprovedAt || admin.firestore.FieldValue.serverTimestamp(),
+                approvedBy: userData.approvedBy || 'admin',
+                isActive: true,
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+                followersCount: userData.followersCount || 0,
+                followingCount: userData.followingCount || 0,
+                gender: userData.gender || '',
+              }, { merge: true });
+          
+          console.log(`✅ [syncApprovedHosts] Added to approvedHosts: ${userId}`);
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('❌ Error in syncApprovedHosts (onCreate):', error);
+        return null;
+      }
+    }
+);
+
+/**
+ * Auto-sync approved hosts when user document is updated
+ * Triggers when admin changes isActive field
+ */
+exports.syncApprovedHostsUpdate = onDocumentUpdated(
+    "users/{userId}",
+    async (event) => {
+      try {
+        const before = event.data.before.data();
+        const after = event.data.after.data();
+        const userId = event.params.userId;
+        
+        console.log(`🔄 [syncApprovedHosts] User ${userId} updated`);
+        console.log(`   Before: isActive=${before.isActive}`);
+        console.log(`   After: isActive=${after.isActive}`);
+        
+        // Case 1: User approved (isActive changed from false to true)
+        if (!before.isActive && after.isActive) {
+          console.log(`✅ [syncApprovedHosts] User approved: ${userId}`);
+          console.log(`   isActive: ${before.isActive} → ${after.isActive}`);
+          
+          await admin.firestore()
+              .collection('approvedHosts')
+              .doc(userId)
+              .set({
+                userId: userId,
+                hostName: after.displayName || after.name || 'Host',
+                hostPhotoUrl: after.photoURL || '',
+                displayName: after.displayName || after.name || 'Host',
+                language: after.language || '',
+                country: after.country || '',
+                level: after.level || 1,
+                approvedAt: after.hostApprovedAt || admin.firestore.FieldValue.serverTimestamp(),
+                approvedBy: after.approvedBy || 'admin',
+                isActive: true,
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+                followersCount: after.followersCount || 0,
+                followingCount: after.followingCount || 0,
+                gender: after.gender || '',
+              }, { merge: true });
+          
+          console.log(`✅ [syncApprovedHosts] Added to approvedHosts: ${userId}`);
+          return null;
+        }
+        
+        // Case 2: User removed (isActive changed from true to false)
+        if (before.isActive && !after.isActive) {
+          console.log(`❌ [syncApprovedHosts] User removed: ${userId}`);
+          
+          // Mark as inactive (don't delete, keep history)
+          await admin.firestore()
+              .collection('approvedHosts')
+              .doc(userId)
+              .update({
+                isActive: false,
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+              });
+          
+          console.log(`✅ [syncApprovedHosts] Marked as inactive in approvedHosts: ${userId}`);
+          return null;
+        }
+        
+        // Case 3: User data updated (keep approvedHosts in sync)
+        if (after.isActive && before.isActive) {
+          console.log(`🔄 [syncApprovedHosts] Updating user data: ${userId}`);
+          
+          // Update approvedHosts with latest data
+          await admin.firestore()
+              .collection('approvedHosts')
+              .doc(userId)
+              .update({
+                hostName: after.displayName || after.name || 'Host',
+                hostPhotoUrl: after.photoURL || '',
+                displayName: after.displayName || after.name || 'Host',
+                language: after.language || '',
+                country: after.country || '',
+                level: after.level || 1,
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+                followersCount: after.followersCount || 0,
+                followingCount: after.followingCount || 0,
+              });
+          
+          console.log(`✅ [syncApprovedHosts] Updated approvedHosts: ${userId}`);
+          return null;
+        }
+        
+        // No action needed
+        console.log(`⏭️ [syncApprovedHosts] No sync needed for: ${userId}`);
+        return null;
+      } catch (error) {
+        console.error('❌ Error in syncApprovedHosts (onUpdate):', error);
+        return null;
+      }
+    }
+);
+
+/**
  * Send notification when a host goes live
  * Triggers automatically when a new active live stream is created
  */
@@ -1842,10 +1988,24 @@ exports.sendLiveStreamNotification = onDocumentCreated(
 
         console.log(`📤 Sending live stream notification to ${tokens.length} users`);
 
+        // Prepare romantic notification messages
+        const romanticMessages = [
+          `💕 ${hostName} is waiting for you! Join now and make their day special 💕`,
+          `✨ ${hostName} is live! Come and show your love ✨`,
+          `💖 ${hostName} wants to connect with you! Join the live stream 💖`,
+          `🌹 ${hostName} is live now! Don't miss this special moment 🌹`,
+          `💝 ${hostName} is online! Come and make them smile 💝`,
+          `💗 ${hostName} is live! Your presence will make them happy 💗`,
+          `💞 ${hostName} is waiting! Join now and spread the love 💞`,
+        ];
+
+        // Select random romantic message
+        const randomMessage = romanticMessages[Math.floor(Math.random() * romanticMessages.length)];
+
         // Prepare notification
         const notification = {
           title: `${hostName} is live now`,
-          body: 'Tap to watch the live stream',
+          body: randomMessage,
         };
 
         const data = {
@@ -1919,6 +2079,228 @@ exports.sendLiveStreamNotification = onDocumentCreated(
       } catch (error) {
         console.error('❌ Error in sendLiveStreamNotification:', error);
         return null;
+      }
+    }
+);
+
+/**
+ * ✅ NEW: Handle live stream updates (when stream ends or status changes)
+ * Triggers automatically when a live stream document is updated
+ * This ensures proper cleanup and status updates
+ */
+exports.handleLiveStreamUpdate = onDocumentUpdated(
+    "live_streams/{streamId}",
+    async (event) => {
+      try {
+        const before = event.data.before.data();
+        const after = event.data.after.data();
+        const streamId = event.params.streamId;
+        const hostId = after.hostId || before.hostId;
+
+        console.log(`🔄 Live stream updated: ${streamId}`);
+        console.log(`   Host: ${after.hostName || before.hostName} (${hostId})`);
+        console.log(`   Before: isActive=${before.isActive}, hostStatus=${before.hostStatus || 'undefined'}`);
+        console.log(`   After: isActive=${after.isActive}, hostStatus=${after.hostStatus || 'undefined'}`);
+
+        // Case 1: Stream ended (isActive changed from true to false)
+        if (before.isActive === true && after.isActive === false) {
+          console.log(`🛑 Stream ended: ${streamId}`);
+          console.log(`   Host: ${hostId}`);
+          
+          // Optional: Update approvedHosts collection to mark host as offline
+          // This is optional since home screen queries live_streams directly
+          // But it can help with faster queries if needed
+          try {
+            if (hostId) {
+              await admin.firestore()
+                  .collection('approvedHosts')
+                  .doc(hostId)
+                  .update({
+                    isLive: false,
+                    lastStreamEndedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+                  });
+              console.log(`✅ Updated approvedHosts for host ${hostId} - marked as offline`);
+            }
+          } catch (error) {
+            console.error(`⚠️ Error updating approvedHosts (non-critical): ${error.message}`);
+            // Don't fail the function if this update fails
+          }
+          
+          return null;
+        }
+
+        // Case 2: Stream started (isActive changed from false to true)
+        if (before.isActive === false && after.isActive === true) {
+          console.log(`✅ Stream started: ${streamId}`);
+          console.log(`   Host: ${hostId}`);
+          
+          // Optional: Update approvedHosts collection to mark host as live
+          try {
+            if (hostId) {
+              await admin.firestore()
+                  .collection('approvedHosts')
+                  .doc(hostId)
+                  .update({
+                    isLive: true,
+                    lastStreamStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+                  });
+              console.log(`✅ Updated approvedHosts for host ${hostId} - marked as live`);
+            }
+          } catch (error) {
+            console.error(`⚠️ Error updating approvedHosts (non-critical): ${error.message}`);
+            // Don't fail the function if this update fails
+          }
+          
+          return null;
+        }
+
+        // Case 3: Stream status changed (hostStatus changed)
+        if (before.hostStatus !== after.hostStatus) {
+          console.log(`🔄 Stream status changed: ${streamId}`);
+          console.log(`   Status: ${before.hostStatus} → ${after.hostStatus}`);
+          
+          // If stream ended via hostStatus change
+          if (after.hostStatus === 'ended' && after.isActive === true) {
+            console.log(`⚠️ Stream marked as ended but isActive is still true - this shouldn't happen`);
+            // Don't auto-fix here - let scheduled cleanup handle it
+          }
+          
+          return null;
+        }
+
+        // Case 4: Heartbeat update (lastHeartbeat changed)
+        if (before.lastHeartbeat !== after.lastHeartbeat) {
+          // Just log - no action needed for heartbeat updates
+          console.log(`💓 Heartbeat updated for stream: ${streamId}`);
+          return null;
+        }
+
+        // No significant change detected
+        console.log(`⏭️ No significant change detected for stream: ${streamId}`);
+        return null;
+      } catch (error) {
+        console.error('❌ Error in handleLiveStreamUpdate:', error);
+        return null;
+      }
+    }
+);
+
+/**
+ * One-time migration function: Migrate all existing approved hosts to approvedHosts collection
+ * This can be called from Firebase Console or via HTTP call
+ * 
+ * Usage:
+ * 1. Call from Firebase Console: Functions → migrateApprovedHosts → Test
+ * 2. Or call via HTTP: POST to the function URL
+ * 
+ * This function:
+ * 1. Finds all users with isHost=true AND isActive=true
+ * 2. Adds them to approvedHosts collection
+ * 3. Denormalizes essential fields for fast queries
+ */
+exports.migrateApprovedHosts = onCall(
+    {},
+    async (request) => {
+      try {
+        console.log('🚀 Starting migration of approved hosts...');
+        
+        // Get all users with isActive=true (approved users = hosts)
+        let usersSnapshot;
+        try {
+          usersSnapshot = await admin.firestore()
+            .collection('users')
+            .where('isActive', '==', true)
+            .get();
+        } catch (indexError) {
+          console.log('⚠️ Index error, fetching all users and filtering...');
+          const allUsersSnapshot = await admin.firestore()
+            .collection('users')
+            .get();
+          
+          // Filter in code
+          usersSnapshot = {
+            docs: allUsersSnapshot.docs.filter(doc => {
+              const data = doc.data();
+              return data.isActive === true;
+            }),
+            empty: false,
+            size: 0,
+          };
+          usersSnapshot.size = usersSnapshot.docs.length;
+        }
+        
+        if (usersSnapshot.empty || usersSnapshot.docs.length === 0) {
+          console.log('⚠️ No approved hosts found to migrate');
+          return {
+            success: true,
+            message: 'No approved hosts found to migrate',
+            migrated: 0,
+          };
+        }
+        
+        console.log(`📊 Found ${usersSnapshot.docs.length} approved hosts to migrate`);
+        
+        let count = 0;
+        let batchCount = 0;
+        let batch = admin.firestore().batch();
+        
+        for (const userDoc of usersSnapshot.docs) {
+          const userData = userDoc.data();
+          const userId = userDoc.id;
+          
+          // Add to approvedHosts collection
+          const approvedHostRef = admin.firestore()
+            .collection('approvedHosts')
+            .doc(userId);
+          
+          batch.set(approvedHostRef, {
+            userId: userId,
+            hostName: userData.displayName || userData.name || 'Host',
+            hostPhotoUrl: userData.photoURL || '',
+            displayName: userData.displayName || userData.name || 'Host',
+            language: userData.language || '',
+            country: userData.country || '',
+            level: userData.level || 1,
+            approvedAt: userData.hostApprovedAt || admin.firestore.FieldValue.serverTimestamp(),
+            approvedBy: userData.approvedBy || 'migration',
+            isActive: true,
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+            followersCount: userData.followersCount || 0,
+            followingCount: userData.followingCount || 0,
+            gender: userData.gender || '',
+          }, { merge: true });
+          
+          count++;
+          batchCount++;
+          
+          // Commit in batches of 500 (Firestore limit)
+          if (batchCount >= 500) {
+            await batch.commit();
+            console.log(`✅ Migrated ${count} hosts...`);
+            batchCount = 0;
+            // Create new batch for next iteration
+            batch = admin.firestore().batch();
+          }
+        }
+        
+        // Commit remaining
+        if (batchCount > 0) {
+          await batch.commit();
+        }
+        
+        console.log(`✅ Migration complete! Migrated ${count} approved hosts to approvedHosts collection`);
+        console.log('💡 The Cloud Function will now keep this collection in sync automatically');
+        
+        return {
+          success: true,
+          message: `Successfully migrated ${count} approved hosts to approvedHosts collection`,
+          migrated: count,
+        };
+      } catch (error) {
+        console.error('❌ Migration error:', error);
+        throw new Error(`Migration failed: ${error.message}`);
       }
     }
 );

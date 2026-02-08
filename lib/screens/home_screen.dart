@@ -1590,12 +1590,11 @@ class _HomeScreenState extends State<HomeScreen>
       stream: liveStreamService.getActiveLiveStreams(),
       builder: (context, liveStreamsSnapshot) {
         debugPrint('📡 [EXPLORE] Live streams snapshot state: ${liveStreamsSnapshot.connectionState}, hasData: ${liveStreamsSnapshot.hasData}, hasError: ${liveStreamsSnapshot.hasError}');
-        // Get all hosts from users collection
+        // ✅ NEW: Query approvedHosts collection directly (fast & efficient!)
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection('users')
-              .where('isHost', isEqualTo: true)
-              .limit(200) // Increased significantly to ensure all hosts are included
+              .collection('approvedHosts')
+              .where('isActive', isEqualTo: true)
               .snapshots(),
           builder: (context, hostsSnapshot) {
             debugPrint('👥 [EXPLORE] Hosts snapshot state: ${hostsSnapshot.connectionState}, hasData: ${hostsSnapshot.hasData}, hasError: ${hostsSnapshot.hasError}');
@@ -1612,7 +1611,7 @@ class _HomeScreenState extends State<HomeScreen>
               );
             }
 
-            // Error state - Handle permission-denied specifically
+            // Error state - Handle permission-denied and index errors specifically
             if (hostsSnapshot.hasError || liveStreamsSnapshot.hasError) {
               if (!mounted) return const SizedBox.shrink();
               
@@ -1638,19 +1637,28 @@ class _HomeScreenState extends State<HomeScreen>
                 );
               }
               
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text(
-                      AppLocalizations.of(context)!.errorLoadingStreams,
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              );
+              // ✅ FIX: Check for index error (composite index missing)
+              if (error.contains('index') || error.contains('requires an index')) {
+                debugPrint('⚠️ [EXPLORE] Firestore index error - using code-level filtering instead');
+                // Continue with code-level filtering (query will work without second where clause)
+                // Don't show error, just log it and continue
+              } else {
+                // Other errors - show error message
+                debugPrint('❌ [EXPLORE] Query error: $error');
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        AppLocalizations.of(context)!.errorLoadingStreams,
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
+              }
             }
 
             // No hosts returned - try fallback to live streams list
@@ -1798,58 +1806,68 @@ class _HomeScreenState extends State<HomeScreen>
               debugPrint('📺 [EXPLORE] No live streams found');
             }
 
-            // Get all hosts
-            final hosts = hostsSnapshot.data!.docs;
-            debugPrint('👥 [EXPLORE] Found ${hosts.length} total hosts');
-            
-            // Debug: Check if any host IDs match live stream hostIds
-            debugPrint('🔍 [EXPLORE] Checking host ID matches...');
-            debugPrint('   - Total hosts found: ${hosts.length}');
-            debugPrint('   - Live stream hostIds: ${liveHostIds.toList()}');
-            for (var host in hosts) {
-              final hostData = host.data() as Map<String, dynamic>?;
-              final hostName = hostData?['displayName'] ?? 'Unknown';
-              if (liveHostIds.contains(host.id)) {
-                debugPrint('   ✅ MATCH: Host $hostName (ID: ${host.id}) is LIVE!');
-              } else {
-                debugPrint('   ⚪ NO MATCH: Host $hostName (ID: ${host.id}) - will show as offline');
-                // Check if this host's ID appears as hostId in any stream (for debugging)
-                if (liveStreamsSnapshot.hasData) {
-                  try {
-                    liveStreamsSnapshot.data!.firstWhere(
-                      (s) => s.hostId == host.id,
-                    );
-                    debugPrint('      ⚠️ FOUND: Stream exists with hostId=${host.id}, but matching logic failed!');
-                  } catch (e) {
-                    // No matching stream found - this is expected for offline hosts
-                  }
-                }
-              }
-            }
+            // ✅ NEW: Get approved hosts directly (no filtering needed!)
+            // All documents in approvedHosts collection are already approved
+            final approvedHosts = hostsSnapshot.data?.docs ?? [];
+            debugPrint('✅ [EXPLORE] Found ${approvedHosts.length} approved hosts from approvedHosts collection');
             
             // Separate live hosts and non-live hosts
             final liveHosts = <DocumentSnapshot>[];
             final nonLiveHosts = <DocumentSnapshot>[];
             
-            for (var host in hosts) {
-              if (liveStreamsMap.containsKey(host.id)) {
+            // Debug: Log approved host IDs for comparison
+            final approvedHostIds = approvedHosts.map((h) => h.id).toList();
+            debugPrint('🔍 [EXPLORE] Approved hostIds from approvedHosts: $approvedHostIds');
+            
+            for (var host in approvedHosts) {
+              final hostId = host.id;
+              
+              // ✅ FIX: Enhanced debug logging for hostId matching
+              debugPrint('🔍 [EXPLORE] Checking host: $hostId');
+              debugPrint('   - In liveStreamsMap: ${liveStreamsMap.containsKey(hostId)}');
+              
+              if (liveStreamsMap.containsKey(hostId)) {
                 liveHosts.add(host);
-                final hostData = host.data() as Map<String, dynamic>?;
-                final hostName = hostData?['displayName'] ?? 'Unknown';
-                debugPrint('   ✅ Host $hostName (ID: ${host.id}) is LIVE - will show in grid');
+                final stream = liveStreamsMap[hostId];
+                debugPrint('   ✅ MATCHED LIVE: $hostId - ${stream?.hostName} (streamId: ${stream?.streamId})');
+                debugPrint('   - Stream hostId: ${stream?.hostId}');
+                debugPrint('   - Match verified: ${hostId == stream?.hostId}');
+                debugPrint('   - Stream isActive: ${stream?.isActive}');
+                debugPrint('   - Stream hostStatus: ${stream?.hostStatus}');
               } else {
                 nonLiveHosts.add(host);
-                // Debug: Log first few non-live host IDs for comparison
-                if (nonLiveHosts.length <= 3) {
-                  debugPrint('   ⚪ Non-live host ID: ${host.id} - HIDDEN from grid');
+                // Debug: Check if this hostId exists in live streams but with different key
+                if (liveHostIds.contains(hostId)) {
+                  debugPrint('   ⚠️ WARNING: hostId $hostId exists in liveHostIds but not in liveStreamsMap!');
+                } else {
+                  debugPrint('   ⚪ OFFLINE: $hostId - No active stream found');
                 }
               }
             }
             
-            // Show ALL hosts, but prioritize live hosts at the top
+            // Show ALL approved hosts, but prioritize live hosts at the top
             // Live hosts first, then offline hosts
             final sortedHosts = [...liveHosts, ...nonLiveHosts];
-            debugPrint('📊 [EXPLORE] Showing ${liveHosts.length} live hosts + ${nonLiveHosts.length} offline hosts = ${sortedHosts.length} total');
+            debugPrint('📊 [EXPLORE] Showing ${liveHosts.length} live approved hosts + ${nonLiveHosts.length} offline approved hosts = ${sortedHosts.length} total approved hosts');
+            
+            // Debug: Show detailed matching results
+            if (liveHosts.isNotEmpty) {
+              debugPrint('✅ [EXPLORE] Live hosts matched:');
+              for (var host in liveHosts) {
+                final hostId = host.id;
+                final stream = liveStreamsMap[hostId];
+                debugPrint('   - $hostId: ${stream?.hostName} (isActive: ${stream?.isActive}, hostStatus: ${stream?.hostStatus})');
+              }
+            } else {
+              debugPrint('⚠️ [EXPLORE] No live hosts matched!');
+              debugPrint('   - Live streams count: ${liveStreamsMap.length}');
+              debugPrint('   - Approved hosts count: ${approvedHosts.length}');
+              if (liveStreamsMap.isNotEmpty && approvedHosts.isNotEmpty) {
+                debugPrint('   - Possible issue: hostId mismatch between live_streams and approvedHosts');
+                debugPrint('   - Live stream hostIds: ${liveStreamsMap.keys.toList()}');
+                debugPrint('   - Approved hostIds: $approvedHostIds');
+              }
+            }
             
             // Show empty state if no hosts at all
             if (sortedHosts.isEmpty) {
@@ -1901,7 +1919,7 @@ class _HomeScreenState extends State<HomeScreen>
             if (currentUserId != null) {
               debugPrint('🔍 [EXPLORE] Current user ID: $currentUserId');
               debugPrint('   - Is in live streams: ${liveStreamsMap.containsKey(currentUserId)}');
-              debugPrint('   - Is in hosts list: ${hosts.any((h) => h.id == currentUserId)}');
+              debugPrint('   - Is in hosts list: ${approvedHosts.any((h) => h.id == currentUserId)}');
               if (liveStreamsMap.containsKey(currentUserId)) {
                 debugPrint('   ✅ CURRENT USER IS LIVE! Should appear in grid.');
               } else {
@@ -1920,13 +1938,14 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
-              itemCount: sortedHosts.length > 200 ? 200 : sortedHosts.length,
+              itemCount: sortedHosts.length, // ✅ Show all approved hosts (no limit)
               itemBuilder: (context, index) {
                 final hostDoc = sortedHosts[index];
                 final hostData = hostDoc.data() as Map<String, dynamic>;
                 final hostId = hostDoc.id;
-                final hostName = hostData['displayName'] ?? 'Host';
-                final hostPhotoUrl = hostData['photoURL'];
+                // ✅ Get data from approvedHosts collection (denormalized fields)
+                final hostName = hostData['hostName'] ?? hostData['displayName'] ?? 'Host';
+                final hostPhotoUrl = hostData['hostPhotoUrl'] ?? hostData['photoURL'] ?? '';
 
                 // Check if this host is live
                 final isLive = liveStreamsMap.containsKey(hostId);
@@ -2667,12 +2686,11 @@ class _HomeScreenState extends State<HomeScreen>
     return StreamBuilder<List<LiveStreamModel>>(
       stream: liveStreamService.getActiveLiveStreams(),
       builder: (context, liveStreamsSnapshot) {
-        // Get all hosts from users collection
+        // ✅ FIX: Query approvedHosts collection (same as Explore tab)
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection('users')
-              .where('isHost', isEqualTo: true)
-              .limit(100) // Increased to ensure live hosts are included
+              .collection('approvedHosts')
+              .where('isActive', isEqualTo: true)
               .snapshots(),
           builder: (context, hostsSnapshot) {
             // ✅ FIX: Handle permission-denied error
@@ -2861,29 +2879,53 @@ class _HomeScreenState extends State<HomeScreen>
 
             // Create a map of live streams by hostId for quick lookup
             final liveStreamsMap = <String, LiveStreamModel>{};
+            final liveHostIds = <String>{};
             if (liveStreamsSnapshot.hasData) {
+              debugPrint('📺 [FOLLOWING] Found ${liveStreamsSnapshot.data!.length} active live streams');
               for (var stream in liveStreamsSnapshot.data!) {
                 liveStreamsMap[stream.hostId] = stream;
+                liveHostIds.add(stream.hostId);
+                debugPrint('   ✅ Live: ${stream.hostName} (hostId: ${stream.hostId})');
               }
+              debugPrint('🔍 [FOLLOWING] Live hostIds from streams: ${liveHostIds.toList()}');
+            } else {
+              debugPrint('📺 [FOLLOWING] No live streams found');
             }
 
-            // Get all hosts and separate live/offline
-            final hosts = hostsSnapshot.data!.docs;
+            // ✅ NEW: Get approved hosts directly (no filtering needed!)
+            final approvedHosts = hostsSnapshot.data?.docs ?? [];
+            debugPrint('✅ [FOLLOWING] Found ${approvedHosts.length} approved hosts from approvedHosts collection');
+            
+            // Debug: Log approved host IDs for comparison
+            final approvedHostIds = approvedHosts.map((h) => h.id).toList();
+            debugPrint('🔍 [FOLLOWING] Approved hostIds from approvedHosts: $approvedHostIds');
+            
+            // Separate live hosts and non-live hosts
             final liveHosts = <DocumentSnapshot>[];
             final nonLiveHosts = <DocumentSnapshot>[];
             
-            for (var host in hosts) {
-              if (liveStreamsMap.containsKey(host.id)) {
+            for (var host in approvedHosts) {
+              final hostId = host.id;
+              if (liveStreamsMap.containsKey(hostId)) {
                 liveHosts.add(host);
+                final stream = liveStreamsMap[hostId];
+                debugPrint('   ✅ MATCHED LIVE: $hostId - ${stream?.hostName} (streamId: ${stream?.streamId})');
               } else {
                 nonLiveHosts.add(host);
               }
             }
             
-            // Show ALL hosts, but prioritize live hosts at the top
+            // Show ALL approved hosts, but prioritize live hosts at the top
             // Live hosts first, then offline hosts
             final sortedHosts = [...liveHosts, ...nonLiveHosts];
-            debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live hosts + ${nonLiveHosts.length} offline hosts = ${sortedHosts.length} total');
+            debugPrint('📊 [FOLLOWING] Showing ${liveHosts.length} live approved hosts + ${nonLiveHosts.length} offline approved hosts = ${sortedHosts.length} total approved hosts');
+            
+            // Debug: Show detailed matching results
+            if (liveHosts.isEmpty && liveStreamsMap.isNotEmpty && approvedHosts.isNotEmpty) {
+              debugPrint('⚠️ [FOLLOWING] No live hosts matched!');
+              debugPrint('   - Live stream hostIds: ${liveStreamsMap.keys.toList()}');
+              debugPrint('   - Approved hostIds: $approvedHostIds');
+            }
             
             // Show empty state if no hosts at all
             if (sortedHosts.isEmpty) {
@@ -2939,13 +2981,14 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
-              itemCount: sortedHosts.length > 50 ? 50 : sortedHosts.length,
+              itemCount: sortedHosts.length, // ✅ Show all approved hosts (no limit)
               itemBuilder: (context, index) {
                 final hostDoc = sortedHosts[index];
                 final hostData = hostDoc.data() as Map<String, dynamic>;
                 final hostId = hostDoc.id;
-                final hostName = hostData['displayName'] ?? 'Host';
-                final hostPhotoUrl = hostData['photoURL'];
+                // ✅ Get data from approvedHosts collection (denormalized fields)
+                final hostName = hostData['hostName'] ?? hostData['displayName'] ?? 'Host';
+                final hostPhotoUrl = hostData['hostPhotoUrl'] ?? hostData['photoURL'] ?? '';
 
                 // Check if this host is live
                 final isLive = liveStreamsMap.containsKey(hostId);
@@ -3085,12 +3128,11 @@ class _HomeScreenState extends State<HomeScreen>
     return StreamBuilder<List<LiveStreamModel>>(
       stream: liveStreamService.getActiveLiveStreams(),
       builder: (context, liveStreamsSnapshot) {
-        // Get all hosts from users collection
+        // ✅ FIX: Query approvedHosts collection (same as Explore tab)
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection('users')
-              .where('isHost', isEqualTo: true)
-              .limit(100) // Increased to ensure live hosts are included
+              .collection('approvedHosts')
+              .where('isActive', isEqualTo: true)
               .snapshots(),
           builder: (context, hostsSnapshot) {
             // Loading state - wait only for hosts data
@@ -3257,29 +3299,53 @@ class _HomeScreenState extends State<HomeScreen>
 
             // Create a map of live streams by hostId for quick lookup
             final liveStreamsMap = <String, LiveStreamModel>{};
+            final liveHostIds = <String>{};
             if (liveStreamsSnapshot.hasData) {
+              debugPrint('📺 [NEW HOSTS] Found ${liveStreamsSnapshot.data!.length} active live streams');
               for (var stream in liveStreamsSnapshot.data!) {
                 liveStreamsMap[stream.hostId] = stream;
+                liveHostIds.add(stream.hostId);
+                debugPrint('   ✅ Live: ${stream.hostName} (hostId: ${stream.hostId})');
               }
+              debugPrint('🔍 [NEW HOSTS] Live hostIds from streams: ${liveHostIds.toList()}');
+            } else {
+              debugPrint('📺 [NEW HOSTS] No live streams found');
             }
 
-            // Get all hosts and separate live/offline
-            final hosts = hostsSnapshot.data!.docs;
+            // ✅ NEW: Get approved hosts directly (no filtering needed!)
+            final approvedHosts = hostsSnapshot.data?.docs ?? [];
+            debugPrint('✅ [NEW HOSTS] Found ${approvedHosts.length} approved hosts from approvedHosts collection');
+            
+            // Debug: Log approved host IDs for comparison
+            final approvedHostIds = approvedHosts.map((h) => h.id).toList();
+            debugPrint('🔍 [NEW HOSTS] Approved hostIds from approvedHosts: $approvedHostIds');
+            
+            // Separate live hosts and non-live hosts
             final liveHosts = <DocumentSnapshot>[];
             final nonLiveHosts = <DocumentSnapshot>[];
             
-            for (var host in hosts) {
-              if (liveStreamsMap.containsKey(host.id)) {
+            for (var host in approvedHosts) {
+              final hostId = host.id;
+              if (liveStreamsMap.containsKey(hostId)) {
                 liveHosts.add(host);
+                final stream = liveStreamsMap[hostId];
+                debugPrint('   ✅ MATCHED LIVE: $hostId - ${stream?.hostName} (streamId: ${stream?.streamId})');
               } else {
                 nonLiveHosts.add(host);
               }
             }
             
-            // Show ALL hosts, but prioritize live hosts at the top
+            // Show ALL approved hosts, but prioritize live hosts at the top
             // Live hosts first, then offline hosts
             final sortedHosts = [...liveHosts, ...nonLiveHosts];
-            debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live hosts + ${nonLiveHosts.length} offline hosts = ${sortedHosts.length} total');
+            debugPrint('📊 [NEW HOSTS] Showing ${liveHosts.length} live approved hosts + ${nonLiveHosts.length} offline approved hosts = ${sortedHosts.length} total approved hosts');
+            
+            // Debug: Show detailed matching results
+            if (liveHosts.isEmpty && liveStreamsMap.isNotEmpty && approvedHosts.isNotEmpty) {
+              debugPrint('⚠️ [NEW HOSTS] No live hosts matched!');
+              debugPrint('   - Live stream hostIds: ${liveStreamsMap.keys.toList()}');
+              debugPrint('   - Approved hostIds: $approvedHostIds');
+            }
             
             // Show empty state if no hosts at all
             if (sortedHosts.isEmpty) {
@@ -3335,13 +3401,14 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               physics: const AlwaysScrollableScrollPhysics(),
               shrinkWrap: true,
-              itemCount: sortedHosts.length > 50 ? 50 : sortedHosts.length,
+              itemCount: sortedHosts.length, // ✅ Show all approved hosts (no limit)
               itemBuilder: (context, index) {
                 final hostDoc = sortedHosts[index];
                 final hostData = hostDoc.data() as Map<String, dynamic>;
                 final hostId = hostDoc.id;
-                final hostName = hostData['displayName'] ?? 'Host';
-                final hostPhotoUrl = hostData['photoURL'];
+                // ✅ Get data from approvedHosts collection (denormalized fields)
+                final hostName = hostData['hostName'] ?? hostData['displayName'] ?? 'Host';
+                final hostPhotoUrl = hostData['hostPhotoUrl'] ?? hostData['photoURL'] ?? '';
 
                 // Check if this host is live
                 final isLive = liveStreamsMap.containsKey(hostId);

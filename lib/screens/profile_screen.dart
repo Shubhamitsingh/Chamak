@@ -992,11 +992,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (!mounted) return;
                         _stopAutoScroll(); // Stop slider when navigating
                         try {
-                          // Get host status from user document data
-                          bool isHost = false;
+                          // Get approval status from user document data (isActive = host)
+                          bool isActive = false;
                           if (userCoinSnapshot.hasData && userCoinSnapshot.data!.exists) {
                             final userData = userCoinSnapshot.data!.data() as Map<String, dynamic>?;
-                            isHost = userData?['isHost'] ?? false;
+                            isActive = userData?['isActive'] ?? false;
                           }
                           
                           Navigator.push(
@@ -1004,7 +1004,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             MaterialPageRoute(
                               builder: (context) => WalletScreen(
                                 phoneNumber: widget.phoneNumber,
-                                isHost: isHost,
+                                isHost: isActive, // Keep parameter name for compatibility
                               ),
                             ),
                           ).then((_) {

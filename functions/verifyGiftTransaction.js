@@ -67,10 +67,8 @@ exports.verifyAndProcessGift = functions.https.onCall(async (data, context) => {
         uCoins: admin.firestore.FieldValue.increment(-uCoinCost)
       });
       
-      // Update receiver: add C Coins
-      transaction.update(receiverRef, {
-        cCoins: admin.firestore.FieldValue.increment(cCoinsToGive)
-      });
+      // NOTE: Do NOT update users.cCoins - earnings collection is SINGLE SOURCE OF TRUTH
+      // Earnings will be updated below in earnings collection
       
       // Create gift record
       const giftRef = db.collection('gifts').doc();

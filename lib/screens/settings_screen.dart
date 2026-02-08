@@ -231,7 +231,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    '${AppLocalizations.of(context)!.appVersion} 1.0.7',
+                    '${AppLocalizations.of(context)!.appVersion} 1.1.8',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[500],

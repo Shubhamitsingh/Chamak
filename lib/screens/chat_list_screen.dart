@@ -713,7 +713,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               // Initialize with defaults
                               int userLevel = 1;
                               int hostLevel = 1;
-                              bool isHost = false;
+                              bool isActive = false;
                               
                               // Real-time update: Get level from Firestore stream
                               if (userSnapshot.hasData && userSnapshot.data!.exists) {
@@ -721,12 +721,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                 // Get both userLevel and hostLevel - updates in real-time
                                 userLevel = (userData?['userLevel'] ?? userData?['level'] ?? 1) as int;
                                 hostLevel = (userData?['hostLevel'] ?? userData?['level'] ?? 1) as int;
-                                isHost = userData?['isHost'] ?? false;
+                                isActive = userData?['isActive'] ?? false;
                               }
                               
-                              // Show level for all users: hostLevel if host, userLevel if regular user
+                              // Show level for all users: hostLevel if approved, userLevel if regular user
                               // This updates in real-time when Firestore data changes
-                              final displayLevel = isHost ? hostLevel : userLevel;
+                              final displayLevel = isActive ? hostLevel : userLevel;
                               // Always show level badge for all users (real-time)
                               final shouldShowLevel = true;
                               

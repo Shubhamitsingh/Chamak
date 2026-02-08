@@ -246,17 +246,17 @@ class _ChatScreenState extends State<ChatScreen> {
                                 .snapshots(),
                             builder: (context, userSnapshot) {
                               int hostLevel = 1;
-                              bool isHost = false;
+                              bool isActive = false;
                               
                               if (userSnapshot.hasData && userSnapshot.data!.exists) {
                                 final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
                                 // Get hostLevel - try hostLevel first, then level, default to 1
                                 hostLevel = userData?['hostLevel'] ?? userData?['level'] ?? 1;
-                                isHost = userData?['isHost'] ?? false;
+                                isActive = userData?['isActive'] ?? false;
                               }
                               
-                              // Show level badge if user is a host (isHost = true)
-                              final shouldShowLevel = isHost;
+                              // Show level badge if user is approved (isActive = true means host)
+                              final shouldShowLevel = isActive;
                               
                               return Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -1612,37 +1612,6 @@ class _ChatScreenState extends State<ChatScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Message with icon (matching Telegram popup)
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF1B7C).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(
-                  Icons.info_outline_rounded,
-                  color: Color(0xFFFF1B7C),
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Low Balance',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 6),
-          
           // Description text
           Text(
             'You need at least 300 coins to start a video call.',

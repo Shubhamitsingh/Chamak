@@ -283,12 +283,14 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       }
       
       // Send heartbeat to keep stream alive
-      _liveStreamService.keepStreamAlive(widget.streamId!).catchError((error) {
+      _liveStreamService.keepStreamAlive(widget.streamId!).then((_) {
+        debugPrint('💓 ✅ Heartbeat sent successfully for stream: ${widget.streamId}');
+      }).catchError((error) {
         debugPrint('❌ Error sending heartbeat: $error');
+        debugPrint('   Stream ID: ${widget.streamId}');
+        debugPrint('   ⚠️ This will cause stream to disappear after 3 minutes if heartbeat fails!');
         // Don't cancel timer on error - keep trying
       });
-      
-      debugPrint('💓 Heartbeat sent for stream: ${widget.streamId}');
     });
   }
   
@@ -491,11 +493,10 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
     ));
     
-    // Enable video immediately for host
-    if (widget.isHost) {
-      await _engine.enableVideo();
-      debugPrint('✅ Video enabled during initialization');
-    }
+    // ✅ FIX: Enable video for BOTH host and viewers
+    // Viewers need video enabled to RECEIVE remote video streams
+    await _engine.enableVideo();
+    debugPrint('✅ Video enabled during initialization (host and viewers)');
   }
 
   // Get user-friendly error message from Agora error code
@@ -640,6 +641,25 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
           // Hosts should only see their own video, not other users' videos
           if (mounted && !widget.isHost) {
             setState(() => _remoteUid = remoteUid);
+            
+            // ✅ FIX: Explicitly enable remote video/audio streams
+            // Even though autoSubscribeVideo is true, sometimes needs explicit enabling
+            Future.delayed(const Duration(milliseconds: 100), () async {
+              try {
+                await _engine.muteRemoteVideoStream(uid: remoteUid, mute: false);
+                await _engine.muteRemoteAudioStream(uid: remoteUid, mute: false);
+                debugPrint('✅ Enabled remote video/audio for UID: $remoteUid');
+                
+                // Force UI update to show video
+                if (mounted) {
+                  setState(() {
+                    // Force rebuild to display video
+                  });
+                }
+              } catch (e) {
+                debugPrint('❌ Error enabling remote video: $e');
+              }
+            });
           }
         },
         onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {

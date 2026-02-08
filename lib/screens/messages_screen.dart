@@ -555,7 +555,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         // Initialize level values
         int userLevel = 1;
         int hostLevel = 1;
-        bool isHost = false;
+        bool isActive = false;
         
         // Real-time update: StreamBuilder automatically rebuilds when Firestore data changes
         if (userSnapshot.hasData && userSnapshot.data!.exists) {
@@ -569,16 +569,16 @@ class _MessagesScreenState extends State<MessagesScreen> {
           // Get levels - updates in real-time when Firestore data changes
           userLevel = (userData?['userLevel'] ?? userData?['level'] ?? 1) as int;
           hostLevel = (userData?['hostLevel'] ?? userData?['level'] ?? 1) as int;
-          isHost = userData?['isHost'] ?? false;
+          isActive = userData?['isActive'] ?? false;
         } else {
           // Fallback to cached data if Firestore fetch fails
           otherUserName = chat.participantNames[otherUserId] ?? 'Unknown User';
           otherUserImage = chat.participantImages[otherUserId];
         }
         
-        // Show level for all users: hostLevel if host, userLevel if regular user
+        // Show level for all users: hostLevel if approved, userLevel if regular user
         // This value updates automatically when Firestore stream emits new data
-        final displayLevel = isHost ? hostLevel : userLevel;
+        final displayLevel = isActive ? hostLevel : userLevel;
         // Always show level badge (for all users) - real-time updates
         final shouldShowLevel = true;
     

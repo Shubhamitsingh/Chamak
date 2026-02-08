@@ -363,16 +363,23 @@ class LiveStreamService {
                   
                   if (heartbeatTime != null) {
                     final heartbeatAge = now.difference(heartbeatTime);
-                    // If heartbeat is within last 3 minutes, stream is actively live
-                    if (heartbeatAge.inMinutes <= 3) {
+                    // ✅ FIX: Relaxed heartbeat filtering - 5 minutes window (was 3 minutes)
+                    // Only filter out if heartbeat is VERY old (10+ minutes)
+                    if (heartbeatAge.inMinutes <= 5) {
                       isRealTimeActive = true;
                       print('   ✅ Stream ${doc.id} has recent heartbeat (${heartbeatAge.inMinutes} min ago) - REAL-TIME ACTIVE');
-                    } else {
-                      print('   ❌ Filtering out: ${doc.id} - heartbeat too old (${heartbeatAge.inMinutes} min ago) - NOT real-time');
+                    } else if (heartbeatAge.inMinutes > 10) {
+                      // Only filter out if heartbeat is VERY old (10+ minutes) - stream likely ended
+                      print('   ❌ Filtering out: ${doc.id} - heartbeat too old (${heartbeatAge.inMinutes} min ago) - STREAM LIKELY ENDED');
                       _markStreamAsInactive(doc.id).catchError((e) {
                         print('   ⚠️ Could not mark stream inactive (permission error expected): $e');
                       });
-                      return null; // Filter out - not real-time active
+                      return null; // Filter out - stream likely ended
+                    } else {
+                      // Heartbeat between 5-10 minutes - might be temporary network issue
+                      // Still show stream (better UX than hiding active streams)
+                      isRealTimeActive = true;
+                      print('   ⚠️ Stream ${doc.id} has old heartbeat (${heartbeatAge.inMinutes} min ago) - but still showing (might be network issue)');
                     }
                   }
                 } catch (e) {
@@ -395,14 +402,14 @@ class LiveStreamService {
                     return null; // Filter out immediately - stream is ended
                   }
                   
-                  // REAL-TIME: Only show streams that started within last 2 minutes (more aggressive)
-                  // This ensures only hosts actively streaming RIGHT NOW are shown
-                  // Reduced from 5 minutes to 2 minutes for better real-time accuracy
-                  if (difference.inMinutes <= 2 && now.isAfter(startedAt)) {
+                  // REAL-TIME: Show streams that started within last 10 minutes (if no heartbeat)
+                  // This gives more time for heartbeat to catch up while still filtering out old streams
+                  // Increased from 2 minutes to 10 minutes to prevent active streams from disappearing
+                  if (difference.inMinutes <= 10 && now.isAfter(startedAt)) {
                     isRealTimeActive = true;
-                    print('   ✅ Stream ${doc.id} started ${difference.inMinutes} min ago - REAL-TIME ACTIVE (no heartbeat)');
-                  } else if (difference.inMinutes > 2) {
-                    // Stream started more than 2 minutes ago - not real-time active
+                    print('   ✅ Stream ${doc.id} started ${difference.inMinutes} min ago - REAL-TIME ACTIVE (no heartbeat, within 10 min)');
+                  } else if (difference.inMinutes > 10) {
+                    // Stream started more than 10 minutes ago - not real-time active
                     print('   ❌ Filtering out: ${doc.id} - started ${difference.inMinutes} min ago - NOT real-time active');
                     _markStreamAsInactive(doc.id).catchError((e) {
                       print('   ⚠️ Could not mark stream inactive (permission error expected): $e');
@@ -418,6 +425,13 @@ class LiveStreamService {
                   // If we can't parse startedAt, don't filter - keep the stream
                   isRealTimeActive = true;
                 }
+              }
+              
+              // FALLBACK: If stream is marked as active and has no endedAt, keep it
+              // This prevents filtering out active streams due to timing issues
+              if (!isRealTimeActive && isActive == true && endedAt == null && hostStatus != 'ended') {
+                print('   ⚠️ Stream ${doc.id} is active but no recent heartbeat/startedAt - keeping as fallback');
+                isRealTimeActive = true; // Keep stream if it's marked as active
               }
               
               // If no heartbeat AND no startedAt, filter out (invalid stream)

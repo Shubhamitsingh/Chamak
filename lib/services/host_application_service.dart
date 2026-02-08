@@ -179,11 +179,10 @@ class HostApplicationService {
         rethrow;
       }
 
-      // Update user document to set isHost = true and isActive = true
+      // Update user document to set isActive = true (approved = host)
       debugPrint('🔄 [approveApplication] Updating users document for: ${application.userId}');
       try {
         await _firestore.collection('users').doc(application.userId).update({
-          'isHost': true,
           'isActive': true,
           'hostApprovedAt': FieldValue.serverTimestamp(),
           'hostApplicationId': applicationId,

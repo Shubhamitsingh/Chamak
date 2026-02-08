@@ -296,12 +296,10 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
 
   // ========== CONVERSION CARD (White Card Overlapping) ==========
   Widget _buildConversionCard() {
-    // Calculate USD: 1000 C Coins = ? USD
-    // 1 C Coin = ₹0.04, so 1000 C Coins = ₹40
-    // ₹40 / 82 (USD rate) = $0.488 ≈ $0.49
-    // But reference shows $2.148, so using that rate: 1000 coins = $2.148 means 1 coin = $0.002148
-    final usdRate = 2.148 / 1000; // Based on reference image
-    final conversionUSD = 1000 * usdRate;
+    // Calculate USD: 1000 C Coins = $0.05
+    // 1 C Coin = $0.05 / 1000 = $0.00005
+    final usdRate = 0.05 / 1000; // 1000 coins = $0.05
+    final conversionUSD = 1000 * usdRate; // Should be 0.05
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -398,8 +396,8 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   // ========== WITHDRAWAL INPUT SECTION ==========
   Widget _buildWithdrawalInputSection() {
     // Calculate USD equivalent using same rate as conversion card
-    // 1000 coins = $2.148, so 1 coin = $0.002148
-    final usdRatePerCoin = 2.148 / 1000;
+    // 1000 coins = $0.05, so 1 coin = $0.00005
+    final usdRatePerCoin = 0.05 / 1000;
     double usdEquivalent = 0.0;
     if (_amountController.text.isNotEmpty) {
       final coinAmount = int.tryParse(_amountController.text) ?? 0;

@@ -220,7 +220,6 @@ class SearchService {
     try {
       return _firestore
           .collection('users')
-          .where('isHost', isEqualTo: true)
           .where('isActive', isEqualTo: true)
           .snapshots()
           .map((snapshot) {
