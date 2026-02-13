@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:Chamak/generated/l10n/app_localizations.dart';
+import '../providers/language_provider.dart';
 import 'performance_dashboard_screen.dart';
 import '../services/cache_service.dart';
 import '../widgets/clear_cache_dialog.dart';
@@ -70,62 +73,67 @@ class _GeneralScreenState extends State<GeneralScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'General',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    // Listen to language changes to rebuild when language changes
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              AppLocalizations.of(context)!.general,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: ListView(
-        children: [
-          // Performance
-          _buildSettingItem(
-            title: 'Performance',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PerformanceDashboardScreen(),
-                ),
-              );
-            },
+          body: ListView(
+            children: [
+              // Performance
+              _buildSettingItem(
+                title: 'Performance',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PerformanceDashboardScreen(),
+                    ),
+                  );
+                },
+              ),
+              
+              // Clear Cache
+              _buildSettingItem(
+                title: 'Clear Cache',
+                subtitle: _isLoadingCacheSize ? 'Calculating...' : _cacheSize,
+                onTap: _showClearCacheDialog,
+              ),
+              
+              // How to use Chamakz
+              _buildSettingItem(
+                title: 'How to use Chamakz',
+                onTap: () {
+                  // TODO: Navigate to How to use Chamakz screen or show guide
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('How to use Chamakz guide coming soon'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-          
-          // Clear Cache
-          _buildSettingItem(
-            title: 'Clear Cache',
-            subtitle: _isLoadingCacheSize ? 'Calculating...' : _cacheSize,
-            onTap: _showClearCacheDialog,
-          ),
-          
-          // How to use Chamakz
-          _buildSettingItem(
-            title: 'How to use Chamakz',
-            onTap: () {
-              // TODO: Navigate to How to use Chamakz screen or show guide
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('How to use Chamakz guide coming soon'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

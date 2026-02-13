@@ -17,15 +17,18 @@ import '../widgets/call_request_dialog.dart';
 import 'user_profile_view_screen.dart';
 import 'private_call_screen.dart';
 import 'wallet_screen.dart';
+import 'home_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
   final UserModel otherUser;
+  final bool shouldNavigateToChatListOnBack; // If true, navigate to ChatListScreen on back instead of popping
 
   const ChatScreen({
     super.key,
     required this.chatId,
     required this.otherUser,
+    this.shouldNavigateToChatListOnBack = false, // Default: normal back behavior
   });
 
   @override
@@ -46,6 +49,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _currentCallRequestId;
   bool _isCallRequestPending = false; // Track if call request is pending
   bool _isCallRejected = false; // Track if call was rejected
+  bool _isRequestingPermissions = false; // Prevent multiple simultaneous permission requests
   StreamSubscription<List<CallRequestModel>>? _incomingCallSubscription;
   StreamSubscription<CallRequestModel?>? _callStatusSubscription;
 
@@ -170,10 +174,54 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _handleBackNavigation() {
+    // If shouldNavigateToChatListOnBack is true, navigate to ChatListScreen instead of popping
+    if (widget.shouldNavigateToChatListOnBack) {
+      // Pop ChatScreen first
+      Navigator.of(context).pop();
+      
+      // Pop Profile screen if it exists
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      
+      // Pop Search screen if it exists
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      
+      // Now we should be back at HomeScreen
+      // Pop until we reach HomeScreen (first route)
+      Navigator.popUntil(context, (route) {
+        return route.isFirst; // Stop at HomeScreen
+      });
+      
+      // After popping to HomeScreen, switch to Messages tab (index 3)
+      // Use a post-frame callback to ensure HomeScreen is ready
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Call static method to switch HomeScreen to Messages tab
+        HomeScreen.switchToMessagesTab();
+      });
+    } else {
+      // Normal back behavior
+      Navigator.pop(context);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: !widget.shouldNavigateToChatListOnBack, // Prevent default pop if we need custom navigation
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        // Handle Android back button
+        if (widget.shouldNavigateToChatListOnBack) {
+          _handleBackNavigation();
+        } else {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -184,7 +232,7 @@ class _ChatScreenState extends State<ChatScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87, size: 22), // Slightly smaller icon
           padding: EdgeInsets.zero, // Remove default padding
           constraints: const BoxConstraints(), // Remove default constraints
-          onPressed: () => Navigator.pop(context),
+          onPressed: _handleBackNavigation,
         ),
         title: InkWell(
           onTap: () {
@@ -427,7 +475,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 return ListView.builder(
                   controller: _scrollController,
                   reverse: true, // Show newest messages at bottom
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 16 + MediaQuery.of(context).padding.bottom + 80, // Add space for input field (SafeArea + padding + input height)
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
@@ -438,12 +491,18 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-
-          // Message Input - Compact & Dynamic Design
-          SafeArea(
+          ],
+        ),
+        // Message Input - Compact & Dynamic Design (Positioned at bottom)
+        Positioned(
+          left: 8,
+          right: 8,
+          bottom: 8,
+          child: SafeArea(
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha:0.05),
@@ -455,8 +514,8 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.only(
                 left: 12,
                 right: 12,
-                top: 8,
-                bottom: 12,
+                top: 6,
+                bottom: 8,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -465,8 +524,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   Expanded(
                     child: Container(
                       constraints: const BoxConstraints(
-                        minHeight: 40,
-                        maxHeight: 100, // Dynamic height limit
+                        minHeight: 36,
+                        maxHeight: 80, // Dynamic height limit
                       ),
                       decoration: BoxDecoration(
                         color: _containsDigitsWarning ? Colors.red[50] : Colors.grey[100],
@@ -485,7 +544,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ? Icons.warning_amber_rounded 
                                   : Icons.shield_outlined,
                               color: _containsDigitsWarning ? Colors.red : Colors.grey[500],
-                              size: 18,
+                              size: 16,
                             ),
                           ),
                           // TextField
@@ -510,7 +569,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 4,
-                                  vertical: 10,
+                                  vertical: 8,
                                 ),
                               ),
                               maxLines: 4,
@@ -528,8 +587,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
                   // Gift Icon Button
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFFFFB800), Color(0xFFFFD700)],
@@ -549,18 +608,18 @@ class _ChatScreenState extends State<ChatScreen> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: _showGiftPopup,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(18),
                         child: Center(
                           child: Image.asset(
                             'assets/images/gift-box.png',
-                            width: 22,
-                            height: 22,
+                            width: 20,
+                            height: 20,
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
                               return const Icon(
                                 Icons.card_giftcard_rounded,
                                 color: Colors.white,
-                                size: 22,
+                                size: 20,
                               );
                             },
                           ),
@@ -573,8 +632,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
                   // Send Button - Compact & Modern
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: _containsDigitsWarning ? Colors.grey[400] : const Color(0xFFFF1B7C), // App theme color
                       shape: BoxShape.circle,
@@ -596,7 +655,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Icon(
                           _containsDigitsWarning ? Icons.block : Icons.send_rounded,
                           color: Colors.white,
-                          size: 22,
+                          size: 20,
                         ),
                       ),
                     ),
@@ -605,8 +664,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
           
           // Call request popup (top-left side, similar to live stream screen)
           if (_isCallRequestPending)
@@ -624,6 +682,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: _buildCallRejectedPopup(),
             ),
         ],
+      ),
       ),
     );
   }
@@ -1182,10 +1241,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // Initiate video call from chat screen
   Future<void> _initiateVideoCall() async {
+    // Prevent multiple simultaneous calls
+    if (_isRequestingPermissions) {
+      return; // Already processing, ignore duplicate calls
+    }
+
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           const SnackBar(
             content: Text('Please login to start a video call'),
             backgroundColor: Colors.red,
@@ -1198,7 +1262,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // Check if calling yourself
     if (currentUser.uid == widget.otherUser.uid) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           const SnackBar(
             content: Text('You cannot call yourself'),
             backgroundColor: Colors.red,
@@ -1208,40 +1272,93 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    // Request permissions
+    // Request permissions with safety checks
     if (!mounted) return;
-    final cameraStatus = await Permission.camera.request();
-    final micStatus = await Permission.microphone.request();
+    
+    // Set flag to prevent multiple simultaneous requests
+    setState(() {
+      _isRequestingPermissions = true;
+    });
 
-    if (cameraStatus.isDenied || micStatus.isDenied) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Camera and microphone permissions are required for video calls'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+    try {
+      // Check current permission status first
+      final cameraStatusBefore = await Permission.camera.status;
+      final micStatusBefore = await Permission.microphone.status;
+
+      // Request permissions in parallel (as recommended by permission_handler)
+      // This prevents "A request for permissions is already running" error
+      PermissionStatus cameraStatus;
+      PermissionStatus micStatus;
+
+      if (cameraStatusBefore.isGranted && micStatusBefore.isGranted) {
+        // Both already granted, no need to request
+        cameraStatus = cameraStatusBefore;
+        micStatus = micStatusBefore;
+      } else {
+        // Request both permissions simultaneously using Future.wait
+        // This is the recommended approach to avoid conflicts
+        final permissions = await Future.wait([
+          cameraStatusBefore.isGranted 
+              ? Future.value(cameraStatusBefore)
+              : Permission.camera.request(),
+          micStatusBefore.isGranted
+              ? Future.value(micStatusBefore)
+              : Permission.microphone.request(),
+        ]);
+        cameraStatus = permissions[0];
+        micStatus = permissions[1];
       }
-      return;
-    }
 
-    if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Please enable camera and microphone permissions in app settings'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'Settings',
-              textColor: Colors.white,
-              onPressed: () => openAppSettings(),
+      if (cameraStatus.isDenied || micStatus.isDenied) {
+        if (mounted) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            const SnackBar(
+              content: Text('Camera and microphone permissions are required for video calls'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
             ),
+          );
+        }
+        return;
+      }
+
+      if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
+        if (mounted) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            SnackBar(
+              content: const Text('Please enable camera and microphone permissions in app settings'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'Settings',
+                textColor: Colors.white,
+                onPressed: () => openAppSettings(),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    } catch (e) {
+      // Handle permission request errors gracefully
+      debugPrint('Error requesting permissions: $e');
+      if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(
+            content: Text('Unable to request permissions. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
           ),
         );
       }
       return;
+    } finally {
+      // Reset flag in finally block to ensure it's always reset
+      if (mounted) {
+        setState(() {
+          _isRequestingPermissions = false;
+        });
+      }
     }
 
     // Show loading
@@ -1718,23 +1835,32 @@ class _ChatScreenState extends State<ChatScreen> {
     final benefits = [
       {'emoji': '💰', 'text': 'Instant recharge'},
       {'emoji': '🎁', 'text': 'Bonus offers'},
-      {'emoji': '💎', 'text': 'Unlimited calls'},
+      {'text': 'Unlimited calls', 'isCall': true},
     ];
 
     return Column(
       children: benefits.map((benefit) {
+        final isCall = benefit['isCall'] == true;
+        final text = benefit['text'] as String;
         return Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             children: [
-              Text(
-                benefit['emoji']!,
-                style: const TextStyle(fontSize: 16),
-              ),
+              if (isCall)
+                const Icon(
+                  Icons.call,
+                  size: 16,
+                  color: Color(0xFFFF1B7C),
+                )
+              else
+                Text(
+                  benefit['emoji'] as String,
+                  style: const TextStyle(fontSize: 16),
+                ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  benefit['text']!,
+                  text,
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.grey[800],

@@ -56,33 +56,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          AppLocalizations.of(context)!.settings,
-          style: const TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    // Listen to language changes to rebuild when language changes
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              AppLocalizations.of(context)!.settings,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: Column(
-          children: [
-          Expanded(
-            child: ListView(
-          children: [
-                // 1. General
-                _buildSettingItem(
-                  title: 'General',
+          body: Column(
+              children: [
+              Expanded(
+                child: ListView(
+              children: [
+                    // 1. General
+                    _buildSettingItem(
+                      title: AppLocalizations.of(context)!.general,
                   onTap: () {
                     try {
                       Navigator.push(
@@ -96,10 +99,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
-                // 2. Language
-                _buildSettingItem(
-                  title: AppLocalizations.of(context)!.language,
-                  subtitle: Provider.of<LanguageProvider>(context).currentLanguageNativeName,
+                    // 2. Language
+                    _buildSettingItem(
+                      title: AppLocalizations.of(context)!.language,
+                      subtitle: languageProvider.currentLanguageNativeName,
                   onTap: () {
                     try {
                       Navigator.push(
@@ -113,10 +116,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
-                // 3. Account Security (moved up from position 4)
-                _buildSettingItem(
-                  title: AppLocalizations.of(context)!.accountSecurity,
-                  subtitle: AppLocalizations.of(context)!.phonePasswordAccountSettings,
+                    // 3. Account Security (moved up from position 4)
+                    _buildSettingItem(
+                      title: AppLocalizations.of(context)!.accountSecurity,
+                      subtitle: AppLocalizations.of(context)!.phonePasswordAccountSettings,
                   onTap: () {
                     if (_phoneNumber == null || _userId == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -143,9 +146,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
-                // 4. Notification (moved down from position 3)
-                _buildSettingItem(
-                  title: AppLocalizations.of(context)!.notification,
+                    // 4. Notification (moved down from position 3)
+                    _buildSettingItem(
+                      title: AppLocalizations.of(context)!.notification,
                   onTap: () {
                     try {
                       Navigator.push(
@@ -159,9 +162,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
-                // 5. About Us
-                _buildSettingItem(
-                  title: AppLocalizations.of(context)!.aboutUs,
+                    // 5. About Us
+                    _buildSettingItem(
+                      title: AppLocalizations.of(context)!.aboutUs,
                   onTap: () {
                     try {
                       Navigator.push(
@@ -175,9 +178,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
-                // 6. Policy (consolidated Privacy Policy & Terms & Conditions)
-                _buildSettingItem(
-                  title: 'Policy',
+                    // 6. Policy (consolidated Privacy Policy & Terms & Conditions)
+                    _buildSettingItem(
+                      title: AppLocalizations.of(context)!.policy,
                   onTap: () {
                     try {
                       Navigator.push(
@@ -191,9 +194,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
-                // 7. Feedback
-                _buildSettingItem(
-                  title: AppLocalizations.of(context)!.feedback,
+                    // 7. Feedback
+                    _buildSettingItem(
+                      title: AppLocalizations.of(context)!.feedback,
                   onTap: () {
                     try {
                       Navigator.push(
@@ -207,43 +210,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                 ),
-          ],
-        ),
-      ),
-          
-          // Fixed App Name and Version at Bottom
-          Container(
-            padding: const EdgeInsets.only(top: 30, bottom: 50),
-        child: Column(
-          children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Chamakz',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    '${AppLocalizations.of(context)!.appVersion} 1.1.8',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
               ],
             ),
+          ),
+              
+              // Fixed App Name and Version at Bottom
+              Container(
+                padding: const EdgeInsets.only(top: 30, bottom: 50),
+            child: Column(
+              children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Chamakz',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        '${AppLocalizations.of(context)!.appVersion} 1.1.8',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+                ),
+              ],
             ),
-          ],
-        ),
+        );
+      },
     );
   }
 

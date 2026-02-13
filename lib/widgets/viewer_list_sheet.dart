@@ -165,148 +165,47 @@ class ViewerListSheet extends StatelessWidget {
                     }
                     debugPrint('📋 Viewer item: $viewerId, timestamp: $timestamp');
 
-                    return FutureBuilder<UserModel?>(
-                      future: _getUserDataWithFallback(databaseService, viewerId),
+                    // Real-time user data using StreamBuilder (not FutureBuilder) for instant updates
+                    return StreamBuilder<DocumentSnapshot>(
+                      stream: firestore
+                          .collection('users')
+                          .doc(viewerId)
+                          .snapshots(),
                       builder: (context, userSnapshot) {
-                        final userModel = userSnapshot.data;
-                        // Use displayName, name getter, or phoneNumber as fallback - never show raw ID
-                        String displayName = 'User';
-                        if (userModel != null) {
-                          if (userModel.displayName != null && userModel.displayName!.isNotEmpty) {
-                            displayName = userModel.displayName!;
-                          } else {
-                            displayName = userModel.name;
+                        UserModel? userModel;
+                        
+                        // Try to parse user data from stream
+                        if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                          try {
+                            userModel = UserModel.fromFirestore(userSnapshot.data!);
+                          } catch (e) {
+                            debugPrint('⚠️ Error parsing user data for $viewerId: $e');
+                            userModel = null; // Will use fallback below
                           }
                         }
-                        final profilePicture = userModel?.profileImage;
-                        final gender = userModel?.gender;
-                        // Use userModel userId if available, otherwise fallback to viewerId
-                        final userIdForStatus = userModel?.userId ?? viewerId;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey.shade200,
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              // Profile picture
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: (profilePicture != null && profilePicture.isNotEmpty)
-                                    ? Image.network(
-                                        profilePicture.toString(),
-                                        width: 40,
-                                        height: 40,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return Container(
-                                            width: 40,
-                                            height: 40,
-                                            color: Colors.grey[800],
-                                            child: const Icon(
-                                              Icons.person,
-                                              color: Colors.grey,
-                                              size: 24,
-                                            ),
-                                          );
-                                        },
-                                      )
-                                    : Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[800],
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.person,
-                                          color: Colors.grey,
-                                          size: 24,
-                                        ),
-                                      ),
-                              ),
-                              const SizedBox(width: 12),
-                              
-                              // User name
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          displayName,
-                                          style: const TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.normal,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        if (gender != null && gender.isNotEmpty) ...[
-                                          const SizedBox(width: 6),
-                                          Icon(
-                                            gender.toLowerCase() == 'male' || gender.toLowerCase() == 'm'
-                                                ? Icons.male
-                                                : gender.toLowerCase() == 'female' || gender.toLowerCase() == 'f'
-                                                    ? Icons.female
-                                                    : Icons.transgender,
-                                            color: gender.toLowerCase() == 'male' || gender.toLowerCase() == 'm'
-                                                ? Colors.blue
-                                                : gender.toLowerCase() == 'female' || gender.toLowerCase() == 'f'
-                                                    ? Colors.pink
-                                                    : Colors.purple,
-                                            size: 16,
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    if (timestamp != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _formatJoinTime(timestamp.toDate()),
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              
-                              // Real-time online indicator (only shows green for online)
-                              StreamBuilder<String>(
-                                stream: onlineStatusService.getUserStatusStream(userIdForStatus),
-                                builder: (context, statusSnapshot) {
-                                  final status = statusSnapshot.data ?? 'offline';
-                                  
-                                  // Only show indicator if online
-                                  if (status == 'online') {
-                                    return Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: Colors.green, // Green for online only
-                                        shape: BoxShape.circle,
-                                      ),
-                                    );
-                                  }
-                                  
-                                  // Offline - no indicator
-                                  return const SizedBox.shrink();
-                                },
-                              ),
-                            ],
-                          ),
+                        
+                        // If user data not available from stream, try fallback (one-time fetch)
+                        if (userModel == null) {
+                          return FutureBuilder<UserModel?>(
+                            future: _getUserDataWithFallback(databaseService, viewerId),
+                            builder: (context, fallbackSnapshot) {
+                              final fallbackUser = fallbackSnapshot.data;
+                              return _buildViewerListItem(
+                                userModel: fallbackUser,
+                                viewerId: viewerId,
+                                timestamp: timestamp,
+                                onlineStatusService: onlineStatusService,
+                              );
+                            },
+                          );
+                        }
+                        
+                        // User data available - build item with real-time data
+                        return _buildViewerListItem(
+                          userModel: userModel,
+                          viewerId: viewerId,
+                          timestamp: timestamp,
+                          onlineStatusService: onlineStatusService,
                         );
                       },
                     );
@@ -314,6 +213,170 @@ class ViewerListSheet extends StatelessWidget {
                 );
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build viewer list item (extracted for reuse with real-time updates)
+  Widget _buildViewerListItem({
+    required UserModel? userModel,
+    required String viewerId,
+    required Timestamp? timestamp,
+    required OnlineStatusService onlineStatusService,
+  }) {
+    // Use displayName, name getter, or phoneNumber as fallback - never show raw ID
+    String displayName = 'User';
+    if (userModel != null) {
+      if (userModel.displayName != null && userModel.displayName!.isNotEmpty) {
+        displayName = userModel.displayName!;
+      } else {
+        displayName = userModel.name;
+      }
+    }
+    final profilePicture = userModel?.profileImage;
+    final gender = userModel?.gender;
+    // Use userModel userId if available, otherwise fallback to viewerId
+    final userIdForStatus = userModel?.userId ?? viewerId;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Profile picture
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: (profilePicture != null && profilePicture.isNotEmpty)
+                ? Image.network(
+                    profilePicture.toString(),
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 40,
+                        height: 40,
+                        color: Colors.grey[800],
+                        child: const Icon(
+                          Icons.person,
+                          color: Colors.grey,
+                          size: 24,
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.grey,
+                      size: 24,
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          
+          // User name
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.normal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (gender != null && gender.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Icon(
+                        gender.toLowerCase() == 'male' || gender.toLowerCase() == 'm'
+                            ? Icons.male
+                            : gender.toLowerCase() == 'female' || gender.toLowerCase() == 'f'
+                                ? Icons.female
+                                : Icons.transgender,
+                        color: gender.toLowerCase() == 'male' || gender.toLowerCase() == 'm'
+                            ? Colors.blue
+                            : gender.toLowerCase() == 'female' || gender.toLowerCase() == 'f'
+                                ? Colors.pink
+                                : Colors.purple,
+                        size: 16,
+                      ),
+                    ],
+                  ],
+                ),
+                if (timestamp != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatJoinTime(timestamp.toDate()),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          
+          // Real-time status indicator (Live=red, Online=green, Offline=none)
+          StreamBuilder<bool>(
+            stream: onlineStatusService.getUserLiveStatusStream(userIdForStatus),
+            builder: (context, liveSnapshot) {
+              final isLive = liveSnapshot.data ?? false;
+              
+              return StreamBuilder<String>(
+                stream: onlineStatusService.getUserStatusStream(userIdForStatus),
+                builder: (context, statusSnapshot) {
+                  final status = statusSnapshot.data ?? 'offline';
+                  final isOnline = status == 'online';
+                  
+                  // Priority: LIVE (red) > ONLINE (green) > OFFLINE (no indicator)
+                  Color? indicatorColor;
+                  
+                  if (isLive) {
+                    // LIVE - Red dot
+                    indicatorColor = Colors.red;
+                  } else if (isOnline) {
+                    // ONLINE - Green dot
+                    indicatorColor = Colors.green;
+                  } else {
+                    // OFFLINE - No indicator
+                    return const SizedBox.shrink();
+                  }
+                  
+                  return Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: indicatorColor,
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),

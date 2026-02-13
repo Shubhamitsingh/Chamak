@@ -1240,4 +1240,189 @@ class AppLocalizationsEn extends AppLocalizations {
   String qrCodeSavedYouEarned(int coins) {
     return 'QR code saved! You earned $coins coins!';
   }
+
+  @override
+  String get becomeACreator => 'Become a Creator';
+
+  @override
+  String get applyToBecomeCreator => 'Apply to become a creator';
+
+  @override
+  String get applyToBecomeHostAndEarnMore =>
+      'Apply to become a host and earn more';
+
+  @override
+  String get applicationApprovedTapToView =>
+      'Application Approved ✅ - Tap to view';
+
+  @override
+  String get applicationRejectedTapToReapply =>
+      'Application Rejected ❌ - Tap to reapply';
+
+  @override
+  String get applicationUnderReviewTapToCheckStatus =>
+      'Application under review - Tap to check status';
+
+  @override
+  String get applicationStatus => 'Application Status';
+
+  @override
+  String applicationStatusWithStatus(String status) {
+    return 'Application status: $status';
+  }
+
+  @override
+  String get errorLoadingUserData => 'Error loading user data';
+
+  @override
+  String get pleaseLoginAgain => 'Please login again';
+
+  @override
+  String get pleaseAcceptTermsAndConditions =>
+      'Please accept the Terms & Conditions to continue';
+
+  @override
+  String get pleaseSelectDateOfBirth => 'Please select your date of birth';
+
+  @override
+  String get mustBe18YearsOld =>
+      'You must be at least 18 years old to become a creator';
+
+  @override
+  String get failedToSubmitApplication =>
+      'Failed to submit application. Please try again.';
+
+  @override
+  String get personalInformation => 'Personal Information';
+
+  @override
+  String get userID => 'User ID';
+
+  @override
+  String get username => 'Username';
+
+  @override
+  String get notSet => 'Not set';
+
+  @override
+  String get dateOfBirth => 'Date of Birth';
+
+  @override
+  String get selectYourDateOfBirth => 'Select your date of birth';
+
+  @override
+  String get emailOptional => 'Email (Optional)';
+
+  @override
+  String get emailPlaceholder => 'your@email.com';
+
+  @override
+  String get pleaseEnterValidEmail => 'Please enter a valid email address';
+
+  @override
+  String get socialMediaLinksOptional => 'Social Media Links (Optional)';
+
+  @override
+  String get instagram => 'Instagram';
+
+  @override
+  String get instagramPlaceholder => '@username';
+
+  @override
+  String get tiktok => 'TikTok';
+
+  @override
+  String get youtube => 'YouTube';
+
+  @override
+  String get channelURL => 'Channel URL';
+
+  @override
+  String get benefitsOfBecomingCreator => 'Benefits of Becoming a Creator';
+
+  @override
+  String get benefitsOfBecomingCreatorDescription =>
+      '• Earn 100% of your earnings\n• No middleman, no commission\n• Direct approval process\n• Start streaming immediately\n• No Broker • Full Earnings';
+
+  @override
+  String get iAcceptThe => 'I accept the ';
+
+  @override
+  String get andAgreeToPlatformRules => ' and agree to the platform rules';
+
+  @override
+  String get submitApplication => 'Submit Application';
+
+  @override
+  String get applicationRejected => 'Application Rejected';
+
+  @override
+  String reason(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String get applicationNotApprovedCanReapply =>
+      'Your application was not approved. You can reapply after reviewing our guidelines.';
+
+  @override
+  String get applicationSubmitted => 'Application Submitted!';
+
+  @override
+  String get underReview => 'Under Review';
+
+  @override
+  String get applicationApproved => 'Application Approved!';
+
+  @override
+  String get applicationRejectedTitle => 'Application Rejected';
+
+  @override
+  String get requestSubmittedSuccessfully =>
+      'Your request has been submitted successfully. Please wait 24-78 hours for review.';
+
+  @override
+  String get applicationBeingReviewed =>
+      'Your application is currently being reviewed by our team. We will notify you once a decision has been made.';
+
+  @override
+  String get applicationApprovedCongratulations =>
+      'Congratulations! Your application has been approved. You can now start streaming and earning!';
+
+  @override
+  String get applicationNotApprovedAtThisTime =>
+      'Your application was not approved at this time.';
+
+  @override
+  String get applicationNotApprovedCanReapplyAfterReview =>
+      'Your application was not approved at this time. You can reapply after reviewing our guidelines.';
+
+  @override
+  String get backToProfile => 'Back to Profile';
+
+  @override
+  String get startStreaming => 'Start Streaming';
+
+  @override
+  String get reapply => 'Reapply';
+
+  @override
+  String get noApplicationFound => 'No Application Found';
+
+  @override
+  String get noApplicationSubmittedYet =>
+      'You haven\'t submitted an application yet.';
+
+  @override
+  String get errorLoadingApplicationStatus =>
+      'Error loading application status';
+
+  @override
+  String get general => 'General';
+
+  @override
+  String get policy => 'Policy';
+
+  @override
+  String get childSafety => 'Child Safety';
 }

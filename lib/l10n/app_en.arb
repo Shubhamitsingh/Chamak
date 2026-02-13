@@ -488,6 +488,75 @@
         "type": "int"
       }
     }
-  }
+  },
+  "becomeACreator": "Become a Creator",
+  "applyToBecomeCreator": "Apply to become a creator",
+  "applyToBecomeHostAndEarnMore": "Apply to become a host and earn more",
+  "applicationApprovedTapToView": "Application Approved ✅ - Tap to view",
+  "applicationRejectedTapToReapply": "Application Rejected ❌ - Tap to reapply",
+  "applicationUnderReviewTapToCheckStatus": "Application under review - Tap to check status",
+  "applicationStatus": "Application Status",
+  "applicationStatusWithStatus": "Application status: {status}",
+  "@applicationStatusWithStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "errorLoadingUserData": "Error loading user data",
+  "pleaseLoginAgain": "Please login again",
+  "pleaseAcceptTermsAndConditions": "Please accept the Terms & Conditions to continue",
+  "pleaseSelectDateOfBirth": "Please select your date of birth",
+  "mustBe18YearsOld": "You must be at least 18 years old to become a creator",
+  "failedToSubmitApplication": "Failed to submit application. Please try again.",
+  "personalInformation": "Personal Information",
+  "userID": "User ID",
+  "username": "Username",
+  "notSet": "Not set",
+  "dateOfBirth": "Date of Birth",
+  "selectYourDateOfBirth": "Select your date of birth",
+  "emailOptional": "Email (Optional)",
+  "emailPlaceholder": "your@email.com",
+  "pleaseEnterValidEmail": "Please enter a valid email address",
+  "socialMediaLinksOptional": "Social Media Links (Optional)",
+  "instagram": "Instagram",
+  "instagramPlaceholder": "@username",
+  "tiktok": "TikTok",
+  "youtube": "YouTube",
+  "channelURL": "Channel URL",
+  "benefitsOfBecomingCreator": "Benefits of Becoming a Creator",
+  "benefitsOfBecomingCreatorDescription": "• Earn 100% of your earnings\n• No middleman, no commission\n• Direct approval process\n• Start streaming immediately\n• No Broker • Full Earnings",
+  "iAcceptThe": "I accept the ",
+  "andAgreeToPlatformRules": " and agree to the platform rules",
+  "submitApplication": "Submit Application",
+  "applicationRejected": "Application Rejected",
+  "reason": "Reason: {reason}",
+  "@reason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "applicationNotApprovedCanReapply": "Your application was not approved. You can reapply after reviewing our guidelines.",
+  "applicationSubmitted": "Application Submitted!",
+  "underReview": "Under Review",
+  "applicationApproved": "Application Approved!",
+  "applicationRejectedTitle": "Application Rejected",
+  "requestSubmittedSuccessfully": "Your request has been submitted successfully. Please wait 24-78 hours for review.",
+  "applicationBeingReviewed": "Your application is currently being reviewed by our team. We will notify you once a decision has been made.",
+  "applicationApprovedCongratulations": "Congratulations! Your application has been approved. You can now start streaming and earning!",
+  "applicationNotApprovedAtThisTime": "Your application was not approved at this time.",
+  "applicationNotApprovedCanReapplyAfterReview": "Your application was not approved at this time. You can reapply after reviewing our guidelines.",
+  "backToProfile": "Back to Profile",
+  "startStreaming": "Start Streaming",
+  "reapply": "Reapply",
+  "noApplicationFound": "No Application Found",
+  "noApplicationSubmittedYet": "You haven't submitted an application yet.",
+  "errorLoadingApplicationStatus": "Error loading application status",
+  "general": "General",
+  "policy": "Policy",
+  "childSafety": "Child Safety"
 }
 

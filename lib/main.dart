@@ -1,7 +1,7 @@
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+// Removed google_fonts import - using bundled fonts from assets/fonts/
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -262,8 +262,9 @@ class LiveVibeApp extends StatelessWidget {
         seedColor: const Color(0xFF6C63FF),
         brightness: Brightness.light,
       ),
-      // Load Google Fonts asynchronously to prevent blocking startup
-      textTheme: GoogleFonts.poppinsTextTheme(baseTextTheme),
+      // Use bundled Poppins fonts from assets/fonts/
+      fontFamily: 'Poppins', // Set default font family for entire app
+      textTheme: baseTextTheme.apply(fontFamily: 'Poppins'), // Apply Poppins to all text styles
       scaffoldBackgroundColor: Colors.white, // White background to prevent cream flash
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

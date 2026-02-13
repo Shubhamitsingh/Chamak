@@ -9,6 +9,7 @@ import '../models/user_model.dart';
 import '../models/host_application_model.dart';
 import 'terms_and_conditions_screen.dart';
 import 'creator_application_status_screen.dart';
+import '../generated/l10n/app_localizations.dart';
 
 class BecomeCreatorScreen extends StatefulWidget {
   final String phoneNumber;
@@ -113,8 +114,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
 
     if (!_termsAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please accept the Terms & Conditions to continue'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.pleaseAcceptTermsAndConditions),
           backgroundColor: Colors.orange,
         ),
       );
@@ -123,8 +124,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
 
     if (_selectedDateOfBirth == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select your date of birth'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.pleaseSelectDateOfBirth),
           backgroundColor: Colors.orange,
         ),
       );
@@ -135,8 +136,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
     final age = DateTime.now().difference(_selectedDateOfBirth!).inDays ~/ 365;
     if (age < 18) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You must be at least 18 years old to become a creator'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.mustBe18YearsOld),
           backgroundColor: Colors.red,
         ),
       );
@@ -212,8 +213,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
           }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to submit application. Please try again.'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.failedToSubmitApplication),
               backgroundColor: Colors.red,
             ),
           );
@@ -257,9 +258,9 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
             onPressed: () => Navigator.pop(context),
           ),
-          title: const Text(
-            'Become a Creator',
-            style: TextStyle(
+          title: Text(
+            AppLocalizations.of(context)!.becomeACreator,
+            style: const TextStyle(
               color: Colors.black87,
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -286,8 +287,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: const Center(
-          child: Text('Error loading user data'),
+        body: Center(
+          child: Text(AppLocalizations.of(context)!.errorLoadingUserData),
         ),
       );
     }
@@ -304,8 +305,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: const Center(
-          child: Text('Please login again'),
+        body: Center(
+          child: Text(AppLocalizations.of(context)!.pleaseLoginAgain),
         ),
       );
     }
@@ -431,9 +432,9 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Application Rejected',
-                            style: TextStyle(
+                          Text(
+                            AppLocalizations.of(context)!.applicationRejected,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.red,
@@ -442,8 +443,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                           const SizedBox(height: 4),
                           Text(
                             rejectionReason != null && rejectionReason.isNotEmpty
-                                ? 'Reason: $rejectionReason'
-                                : 'Your application was not approved. You can reapply after reviewing our guidelines.',
+                                ? AppLocalizations.of(context)!.reason(rejectionReason)
+                                : AppLocalizations.of(context)!.applicationNotApprovedCanReapply,
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.red[800],
@@ -457,9 +458,9 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                 ),
               ),
             ],
-            const Text(
-              'Personal Information',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.personalInformation,
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -469,7 +470,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
 
             // User ID (Read-only)
             _buildReadOnlyField(
-              label: 'User ID',
+              label: AppLocalizations.of(context)!.userID,
               value: IdGeneratorService.getDisplayId(_currentUser!.numericUserId),
               icon: Icons.badge_outlined,
             ),
@@ -478,8 +479,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
 
             // Username (Read-only)
             _buildReadOnlyField(
-              label: 'Username',
-              value: _currentUser!.displayName ?? 'Not set',
+              label: AppLocalizations.of(context)!.username,
+              value: _currentUser!.displayName ?? AppLocalizations.of(context)!.notSet,
               icon: Icons.person_outline,
             ),
 
@@ -487,7 +488,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
 
             // Phone Number (Read-only)
             _buildReadOnlyField(
-              label: 'Phone Number',
+              label: AppLocalizations.of(context)!.phoneNumber,
               value: _currentUser!.phoneNumber,
               icon: Icons.phone_outlined,
             ),
@@ -522,7 +523,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Date of Birth',
+                            AppLocalizations.of(context)!.dateOfBirth,
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey[600],
@@ -532,7 +533,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                           Text(
                             _selectedDateOfBirth != null
                                 ? DateFormat('dd/MM/yyyy').format(_selectedDateOfBirth!)
-                                : 'Select your date of birth',
+                                : AppLocalizations.of(context)!.selectYourDateOfBirth,
                             style: TextStyle(
                               fontSize: 14,
                               color: _selectedDateOfBirth == null
@@ -561,8 +562,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                labelText: 'Email (Optional)',
-                hintText: 'your@email.com',
+                labelText: AppLocalizations.of(context)!.emailOptional,
+                hintText: AppLocalizations.of(context)!.emailPlaceholder,
                 prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFFFF1B7C), size: 20),
                 filled: true,
                 fillColor: Colors.grey[50],
@@ -583,7 +584,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
               validator: (value) {
                 if (value != null && value.isNotEmpty) {
                   if (!value.contains('@') || !value.contains('.')) {
-                    return 'Please enter a valid email address';
+                    return AppLocalizations.of(context)!.pleaseEnterValidEmail;
                   }
                 }
                 return null;
@@ -593,9 +594,9 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
             const SizedBox(height: 14),
 
             // Social Media Links (Optional)
-            const Text(
-              'Social Media Links (Optional)',
-              style: TextStyle(
+            Text(
+              AppLocalizations.of(context)!.socialMediaLinksOptional,
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -607,8 +608,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
             TextFormField(
               controller: _instagramController,
               decoration: InputDecoration(
-                labelText: 'Instagram',
-                hintText: '@username',
+                labelText: AppLocalizations.of(context)!.instagram,
+                hintText: AppLocalizations.of(context)!.instagramPlaceholder,
                 prefixIcon: const Icon(Icons.camera_alt_outlined, color: Color(0xFFFF1B7C), size: 20),
                 filled: true,
                 fillColor: Colors.grey[50],
@@ -634,8 +635,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
             TextFormField(
               controller: _tiktokController,
               decoration: InputDecoration(
-                labelText: 'TikTok',
-                hintText: '@username',
+                labelText: AppLocalizations.of(context)!.tiktok,
+                hintText: AppLocalizations.of(context)!.instagramPlaceholder,
                 prefixIcon: const Icon(Icons.music_note_outlined, color: Color(0xFFFF1B7C), size: 20),
                 filled: true,
                 fillColor: Colors.grey[50],
@@ -661,8 +662,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
             TextFormField(
               controller: _youtubeController,
               decoration: InputDecoration(
-                labelText: 'YouTube',
-                hintText: 'Channel URL',
+                labelText: AppLocalizations.of(context)!.youtube,
+                hintText: AppLocalizations.of(context)!.channelURL,
                 prefixIcon: const Icon(Icons.play_circle_outline, color: Color(0xFFFF1B7C), size: 20),
                 filled: true,
                 fillColor: Colors.grey[50],
@@ -690,9 +691,9 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Benefits of Becoming a Creator',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)!.benefitsOfBecomingCreator,
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
@@ -700,11 +701,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '• Earn 100% of your earnings\n'
-                    '• No middleman, no commission\n'
-                    '• Direct approval process\n'
-                    '• Start streaming immediately\n'
-                    '• No Broker • Full Earnings',
+                    AppLocalizations.of(context)!.benefitsOfBecomingCreatorDescription,
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[800],
@@ -745,7 +742,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                                 height: 1.4,
                               ),
                               children: [
-                                const TextSpan(text: 'I accept the '),
+                                TextSpan(text: AppLocalizations.of(context)!.iAcceptThe),
                                 WidgetSpan(
                                   child: GestureDetector(
                                     onTap: () {
@@ -758,7 +755,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                                       );
                                     },
                                     child: Text(
-                                      'Terms & Conditions',
+                                      AppLocalizations.of(context)!.termsConditions,
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: const Color(0xFFFF1B7C),
@@ -769,7 +766,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                                     ),
                                   ),
                                 ),
-                                const TextSpan(text: ' and agree to the platform rules'),
+                                TextSpan(text: AppLocalizations.of(context)!.andAgreeToPlatformRules),
                               ],
                             ),
                           ),
@@ -810,10 +807,10 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(
-                          'Submit Application',
+                      : Text(
+                          AppLocalizations.of(context)!.submitApplication,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.3,

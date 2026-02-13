@@ -7,11 +7,6 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
 import 'app_localizations_hi.dart';
-import 'app_localizations_kn.dart';
-import 'app_localizations_ml.dart';
-import 'app_localizations_mr.dart';
-import 'app_localizations_ta.dart';
-import 'app_localizations_te.dart';
 
 // ignore_for_file: type=lint
 
@@ -100,12 +95,7 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('hi'),
-    Locale('kn'),
-    Locale('ml'),
-    Locale('mr'),
-    Locale('ta'),
-    Locale('te')
+    Locale('hi')
   ];
 
   /// No description provided for @appTitle.
@@ -2423,6 +2413,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'QR code saved! You earned {coins} coins!'**
   String qrCodeSavedYouEarned(int coins);
+
+  /// No description provided for @becomeACreator.
+  ///
+  /// In en, this message translates to:
+  /// **'Become a Creator'**
+  String get becomeACreator;
+
+  /// No description provided for @applyToBecomeCreator.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply to become a creator'**
+  String get applyToBecomeCreator;
+
+  /// No description provided for @applyToBecomeHostAndEarnMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply to become a host and earn more'**
+  String get applyToBecomeHostAndEarnMore;
+
+  /// No description provided for @applicationApprovedTapToView.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Approved ✅ - Tap to view'**
+  String get applicationApprovedTapToView;
+
+  /// No description provided for @applicationRejectedTapToReapply.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Rejected ❌ - Tap to reapply'**
+  String get applicationRejectedTapToReapply;
+
+  /// No description provided for @applicationUnderReviewTapToCheckStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Application under review - Tap to check status'**
+  String get applicationUnderReviewTapToCheckStatus;
+
+  /// No description provided for @applicationStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Status'**
+  String get applicationStatus;
+
+  /// No description provided for @applicationStatusWithStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Application status: {status}'**
+  String applicationStatusWithStatus(String status);
+
+  /// No description provided for @errorLoadingUserData.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading user data'**
+  String get errorLoadingUserData;
+
+  /// No description provided for @pleaseLoginAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Please login again'**
+  String get pleaseLoginAgain;
+
+  /// No description provided for @pleaseAcceptTermsAndConditions.
+  ///
+  /// In en, this message translates to:
+  /// **'Please accept the Terms & Conditions to continue'**
+  String get pleaseAcceptTermsAndConditions;
+
+  /// No description provided for @pleaseSelectDateOfBirth.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select your date of birth'**
+  String get pleaseSelectDateOfBirth;
+
+  /// No description provided for @mustBe18YearsOld.
+  ///
+  /// In en, this message translates to:
+  /// **'You must be at least 18 years old to become a creator'**
+  String get mustBe18YearsOld;
+
+  /// No description provided for @failedToSubmitApplication.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to submit application. Please try again.'**
+  String get failedToSubmitApplication;
+
+  /// No description provided for @personalInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Information'**
+  String get personalInformation;
+
+  /// No description provided for @userID.
+  ///
+  /// In en, this message translates to:
+  /// **'User ID'**
+  String get userID;
+
+  /// No description provided for @username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get username;
+
+  /// No description provided for @notSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get notSet;
+
+  /// No description provided for @dateOfBirth.
+  ///
+  /// In en, this message translates to:
+  /// **'Date of Birth'**
+  String get dateOfBirth;
+
+  /// No description provided for @selectYourDateOfBirth.
+  ///
+  /// In en, this message translates to:
+  /// **'Select your date of birth'**
+  String get selectYourDateOfBirth;
+
+  /// No description provided for @emailOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Email (Optional)'**
+  String get emailOptional;
+
+  /// No description provided for @emailPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'your@email.com'**
+  String get emailPlaceholder;
+
+  /// No description provided for @pleaseEnterValidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid email address'**
+  String get pleaseEnterValidEmail;
+
+  /// No description provided for @socialMediaLinksOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Social Media Links (Optional)'**
+  String get socialMediaLinksOptional;
+
+  /// No description provided for @instagram.
+  ///
+  /// In en, this message translates to:
+  /// **'Instagram'**
+  String get instagram;
+
+  /// No description provided for @instagramPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'@username'**
+  String get instagramPlaceholder;
+
+  /// No description provided for @tiktok.
+  ///
+  /// In en, this message translates to:
+  /// **'TikTok'**
+  String get tiktok;
+
+  /// No description provided for @youtube.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube'**
+  String get youtube;
+
+  /// No description provided for @channelURL.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel URL'**
+  String get channelURL;
+
+  /// No description provided for @benefitsOfBecomingCreator.
+  ///
+  /// In en, this message translates to:
+  /// **'Benefits of Becoming a Creator'**
+  String get benefitsOfBecomingCreator;
+
+  /// No description provided for @benefitsOfBecomingCreatorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'• Earn 100% of your earnings\n• No middleman, no commission\n• Direct approval process\n• Start streaming immediately\n• No Broker • Full Earnings'**
+  String get benefitsOfBecomingCreatorDescription;
+
+  /// No description provided for @iAcceptThe.
+  ///
+  /// In en, this message translates to:
+  /// **'I accept the '**
+  String get iAcceptThe;
+
+  /// No description provided for @andAgreeToPlatformRules.
+  ///
+  /// In en, this message translates to:
+  /// **' and agree to the platform rules'**
+  String get andAgreeToPlatformRules;
+
+  /// No description provided for @submitApplication.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Application'**
+  String get submitApplication;
+
+  /// No description provided for @applicationRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Rejected'**
+  String get applicationRejected;
+
+  /// No description provided for @reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String reason(String reason);
+
+  /// No description provided for @applicationNotApprovedCanReapply.
+  ///
+  /// In en, this message translates to:
+  /// **'Your application was not approved. You can reapply after reviewing our guidelines.'**
+  String get applicationNotApprovedCanReapply;
+
+  /// No description provided for @applicationSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Submitted!'**
+  String get applicationSubmitted;
+
+  /// No description provided for @underReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Under Review'**
+  String get underReview;
+
+  /// No description provided for @applicationApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Approved!'**
+  String get applicationApproved;
+
+  /// No description provided for @applicationRejectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Application Rejected'**
+  String get applicationRejectedTitle;
+
+  /// No description provided for @requestSubmittedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Your request has been submitted successfully. Please wait 24-78 hours for review.'**
+  String get requestSubmittedSuccessfully;
+
+  /// No description provided for @applicationBeingReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your application is currently being reviewed by our team. We will notify you once a decision has been made.'**
+  String get applicationBeingReviewed;
+
+  /// No description provided for @applicationApprovedCongratulations.
+  ///
+  /// In en, this message translates to:
+  /// **'Congratulations! Your application has been approved. You can now start streaming and earning!'**
+  String get applicationApprovedCongratulations;
+
+  /// No description provided for @applicationNotApprovedAtThisTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Your application was not approved at this time.'**
+  String get applicationNotApprovedAtThisTime;
+
+  /// No description provided for @applicationNotApprovedCanReapplyAfterReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Your application was not approved at this time. You can reapply after reviewing our guidelines.'**
+  String get applicationNotApprovedCanReapplyAfterReview;
+
+  /// No description provided for @backToProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Profile'**
+  String get backToProfile;
+
+  /// No description provided for @startStreaming.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Streaming'**
+  String get startStreaming;
+
+  /// No description provided for @reapply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reapply'**
+  String get reapply;
+
+  /// No description provided for @noApplicationFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No Application Found'**
+  String get noApplicationFound;
+
+  /// No description provided for @noApplicationSubmittedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t submitted an application yet.'**
+  String get noApplicationSubmittedYet;
+
+  /// No description provided for @errorLoadingApplicationStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading application status'**
+  String get errorLoadingApplicationStatus;
+
+  /// No description provided for @general.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get general;
+
+  /// No description provided for @policy.
+  ///
+  /// In en, this message translates to:
+  /// **'Policy'**
+  String get policy;
+
+  /// No description provided for @childSafety.
+  ///
+  /// In en, this message translates to:
+  /// **'Child Safety'**
+  String get childSafety;
 }
 
 class _AppLocalizationsDelegate
@@ -2435,15 +2755,8 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) => <String>[
-        'en',
-        'hi',
-        'kn',
-        'ml',
-        'mr',
-        'ta',
-        'te'
-      ].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'hi'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -2456,16 +2769,6 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsEn();
     case 'hi':
       return AppLocalizationsHi();
-    case 'kn':
-      return AppLocalizationsKn();
-    case 'ml':
-      return AppLocalizationsMl();
-    case 'mr':
-      return AppLocalizationsMr();
-    case 'ta':
-      return AppLocalizationsTa();
-    case 'te':
-      return AppLocalizationsTe();
   }
 
   throw FlutterError(

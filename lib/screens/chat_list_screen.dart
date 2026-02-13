@@ -583,6 +583,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final unreadCount = chat.getUnreadCount(_currentUserId!);
     final hasUnread = unreadCount > 0;
 
+    // Safety check: If otherUserId is empty or null, return a fallback widget
+    if (otherUserId.isEmpty) {
+      return const SizedBox.shrink(); // Return empty widget if user ID is invalid
+    }
+
     // Clean design - NO containers, NO borders, NO decorations
     return InkWell(
       onTap: () async {
@@ -627,10 +632,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
               Stack(
                 children: [
                   StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(otherUserId)
-                        .snapshots(),
+                    stream: otherUserId.isNotEmpty
+                        ? FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(otherUserId)
+                            .snapshots()
+                        : Stream<DocumentSnapshot>.empty(), // Empty stream if userId is invalid
                     builder: (context, userSnapshot) {
                       // Get real-time profile image from Firestore
                       String profileImage = otherUserImage; // Fallback to cached
@@ -660,30 +667,46 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       );
                     },
                   ),
-                  // Real-time online indicator (only shows green for online)
+                  // Real-time status indicator (Live=red, Online=green, Offline=none)
                   Positioned(
                     bottom: 2,
                     right: 2,
-                    child: StreamBuilder<String>(
-                      stream: _onlineStatusService.getUserStatusStream(otherUserId),
-                      builder: (context, snapshot) {
-                        final status = snapshot.data ?? 'offline';
+                    child: StreamBuilder<bool>(
+                      stream: _onlineStatusService.getUserLiveStatusStream(otherUserId),
+                      builder: (context, liveSnapshot) {
+                        final isLive = liveSnapshot.data ?? false;
                         
-                        // Only show indicator if online
-                        if (status == 'online') {
-                          return Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF04B104), // Green for online
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                          );
-                        }
-                        
-                        // Offline - no indicator
-                        return const SizedBox.shrink();
+                        return StreamBuilder<String>(
+                          stream: _onlineStatusService.getUserStatusStream(otherUserId),
+                          builder: (context, onlineSnapshot) {
+                            final onlineStatus = onlineSnapshot.data ?? 'offline';
+                            final isOnline = onlineStatus == 'online';
+                            
+                            // Priority: LIVE (red) > ONLINE (green) > OFFLINE (no indicator)
+                            Color? indicatorColor;
+                            
+                            if (isLive) {
+                              // LIVE - Red dot
+                              indicatorColor = Colors.red;
+                            } else if (isOnline) {
+                              // ONLINE - Green dot
+                              indicatorColor = const Color(0xFF04B104); // Green
+                            } else {
+                              // OFFLINE - No indicator
+                              return const SizedBox.shrink();
+                            }
+                            
+                            return Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: indicatorColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                            );
+                          },
+                        );
                       },
                     ),
                   ),
@@ -705,10 +728,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         Expanded(
                           child: StreamBuilder<DocumentSnapshot>(
                             key: ValueKey('user_level_$otherUserId'), // Ensure proper real-time updates
-                            stream: FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(otherUserId)
-                                .snapshots(),
+                            stream: otherUserId.isNotEmpty
+                                ? FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(otherUserId)
+                                    .snapshots()
+                                : Stream<DocumentSnapshot>.empty(), // Empty stream if userId is invalid
                             builder: (context, userSnapshot) {
                               // Initialize with defaults
                               int userLevel = 1;

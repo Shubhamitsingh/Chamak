@@ -7,6 +7,10 @@ import '../services/gift_service.dart';
 import '../services/withdrawal_service.dart';
 import '../services/database_service.dart';
 import '../services/id_generator_service.dart';
+import '../services/payment_method_service.dart';
+import '../models/payment_method_model.dart';
+import '../widgets/payment_method_card.dart';
+import 'add_payment_method_screen.dart';
 
 class MyEarningScreen extends StatefulWidget {
   final String phoneNumber;
@@ -32,6 +36,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   final GiftService _giftService = GiftService();
   final WithdrawalService _withdrawalService = WithdrawalService();
   final DatabaseService _databaseService = DatabaseService();
+  final PaymentMethodService _paymentMethodService = PaymentMethodService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   // Real-time earnings data (C Coins)
@@ -44,7 +49,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   
   bool _isProcessing = false;
   bool _isLoading = true;
-  String _selectedMethod = 'UPI'; // Default withdrawal method
+  PaymentMethodModel? _selectedPaymentMethod; // Selected saved payment method
   
   // Animation controller for balance
   int _displayedBalance = 0;
@@ -112,6 +117,59 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     });
   }
 
+  /// Format balance with Indian numbering system (K/L/Cr)
+  /// Returns abbreviated format for display
+  String _formatBalance(int number) {
+    if (number >= 10000000) {
+      // Crore (1 Crore = 1,00,00,000)
+      final crores = number / 10000000;
+      return crores >= 100 
+        ? '${crores.toStringAsFixed(0)}Cr'  // 100Cr, 500Cr
+        : '${crores.toStringAsFixed(2)}Cr';  // 12.50Cr, 99.99Cr
+    } else if (number >= 100000) {
+      // Lakh (1 Lakh = 1,00,000)
+      final lakhs = number / 100000;
+      return lakhs >= 100
+        ? '${lakhs.toStringAsFixed(0)}L'     // 100L, 500L
+        : '${lakhs.toStringAsFixed(2)}L';    // 12.50L, 99.99L
+    } else if (number >= 1000) {
+      // Thousand
+      final thousands = number / 1000;
+      return '${thousands.toStringAsFixed(1)}K';  // 1.2K, 99.9K
+    }
+    return number.toString();  // 0-999: Show exact
+  }
+
+  /// Format number with Indian comma system (e.g., 12,50,000)
+  /// Indian numbering: First 3 digits from right, then groups of 2
+  String _formatExactNumber(int number) {
+    final numberStr = number.toString();
+    if (numberStr.length <= 3) {
+      return numberStr;
+    }
+    
+    // Indian numbering: First 3 digits from right, then groups of 2
+    String result = '';
+    final digits = numberStr.split('');
+    final length = digits.length;
+    
+    // Process from right to left
+    for (int i = length - 1; i >= 0; i--) {
+      final positionFromRight = length - 1 - i;
+      
+      // Add comma after first 3 digits, then every 2 digits
+      if (positionFromRight == 3) {
+        result = ',' + result;
+      } else if (positionFromRight > 3 && (positionFromRight - 3) % 2 == 0) {
+        result = ',' + result;
+      }
+      
+      result = digits[i] + result;
+    }
+    
+    return result;
+  }
+
   @override
   void dispose() {
     _amountController.dispose();
@@ -152,9 +210,9 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
         onPressed: () => Navigator.pop(context),
       ),
-      title: Text(
-        AppLocalizations.of(context)!.withdrawMoney,
-        style: const TextStyle(
+      title: const Text(
+        'Cash Out',
+        style: TextStyle(
           color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -238,8 +296,8 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
               
               const SizedBox(height: 30),
               
-              // Withdrawal Input Section
-              _buildWithdrawalInputSection(),
+              // Cash Out Section (With Saved Payment Methods)
+              _buildWithdrawalSection(),
               
               const SizedBox(height: 40),
             ],
@@ -277,17 +335,37 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
             ),
           ),
               const SizedBox(height: 12),
-          // Large coin balance - centered
-          Text(
-            _displayedBalance.toString(),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 52,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-              height: 1.1,
-            ),
+          // Large coin balance - centered (abbreviated format)
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _formatBalance(_displayedBalance),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 52,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  height: 1.1,
+                ),
+              ),
+              // Show exact number below if >= 1000
+              if (_displayedBalance >= 1000)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '(${_formatExactNumber(_displayedBalance)} coins)',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -632,10 +710,10 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                           
                           const SizedBox(width: 8),
                           
-                          // Balance number (Animated)
+                          // Balance number (Animated) - formatted
                           Flexible(
                             child: Text(
-                              _displayedBalance.toString(),
+                              _formatBalance(_displayedBalance),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 24,
@@ -756,282 +834,381 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   }
 
 
-  // ========== WITHDRAWAL SECTION ==========
+  // ========== CASH OUT SECTION (With Saved Payment Methods) ==========
   Widget _buildWithdrawalSection() {
-    return Container(
-      key: _withdrawalSectionKey,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: _getWhiteContainerDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF4CAF50).withOpacity(0.15),
-                      const Color(0xFF66BB6A).withOpacity(0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Image.asset(
-                  'assets/images/coin2.png',
-                  width: 20,
-                  height: 20,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.monetization_on, size: 20, color: Color(0xFF4CAF50));
-                  },
-                ),
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      return const SizedBox.shrink();
+    }
+
+    return StreamBuilder<List<PaymentMethodModel>>(
+      stream: _paymentMethodService.getUserPaymentMethods(currentUser.uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            key: _withdrawalSectionKey,
+            child: const Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF1B7C),
               ),
-              const SizedBox(width: 12),
-              Text(
-                AppLocalizations.of(context)!.withdrawMoney,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Withdrawal Method Selection
-                Text(
-                  AppLocalizations.of(context)!.withdrawalMethod,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedMethod,
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF4CAF50)),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      items: _withdrawalMethods.map((String method) {
-                        return DropdownMenuItem<String>(
-                          value: method,
-                          child: Row(
-                            children: [
-                              Icon(
-                                method == 'UPI'
-                                    ? Icons.account_balance
-                                    : method == AppLocalizations.of(context)!.crypto
-                                        ? Icons.currency_bitcoin
-                                        : Icons.account_balance_outlined,
-                                size: 18,
-                                color: const Color(0xFF4CAF50),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(method),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedMethod = newValue;
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Amount Field
-                Text(
-                  AppLocalizations.of(context)!.amount,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                TextFormField(
-                  controller: _amountController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: AppLocalizations.of(context)!.enterAmount,
-                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Image.asset(
-                        'assets/images/money.png',
-                        width: 18,
-                        height: 18,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    suffixText: '₹',
-                    filled: true,
-                    fillColor: Colors.grey[50],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return AppLocalizations.of(context)!.pleaseEnterAmount;
-                    }
-                    final amountInINR = double.tryParse(value);
-                    if (amountInINR == null || amountInINR <= 0) {
-                      return AppLocalizations.of(context)!.enterValidAmount;
-                    }
-                    // Validate minimum withdrawal amount (₹20)
-                    if (amountInINR < _minWithdrawalINR) {
-                      return 'Minimum withdrawal amount is ₹${_minWithdrawalINR.toStringAsFixed(2)}';
-                    }
-                    // Validate against available balance (in INR)
-                    if (amountInINR > availableBalance) {
-                      return 'Amount exceeds available balance. Maximum: ₹${availableBalance.toStringAsFixed(2)}';
-                    }
-                    // Convert INR to C Coins and validate against total C Coins
-                    final amountInCCoins = (amountInINR / _coinToInrRate).round();
-                    if (amountInCCoins > totalCCoins) {
-                      return 'Insufficient balance. Maximum: ₹${availableBalance.toStringAsFixed(2)}';
-                    }
-                    return null;
-                  },
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Dynamic fields based on withdrawal method
-                if (_selectedMethod == 'UPI') ..._buildUPIFields(),
-                if (_selectedMethod == AppLocalizations.of(context)!.bankTransfer) ..._buildBankFields(),
-                if (_selectedMethod == AppLocalizations.of(context)!.crypto) ..._buildCryptoFields(),
-                
-                const SizedBox(height: 16),
-                
-                // Withdraw Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: _isProcessing
-                          ? null
-                          : const LinearGradient(
-                              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-                            ),
-                      borderRadius: BorderRadius.circular(10),
-                      color: _isProcessing ? Colors.grey[400] : null,
-                      boxShadow: _isProcessing
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: const Color(0xFF2E7D32).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _isProcessing ? null : _handleWithdrawal,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 0,
-                      ),
-                    child: _isProcessing
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : Text(
-                            AppLocalizations.of(context)!.withdraw,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Bottom info with icon and text in container
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildEmptyPaymentMethods();
+        }
+
+        return Builder(
+          key: _withdrawalSectionKey,
+          builder: (context) {
+            final paymentMethods = snapshot.data!;
+            
+            // Set default selected method if not set
+            if (_selectedPaymentMethod == null && paymentMethods.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final defaultMethod = paymentMethods.firstWhere(
+                  (m) => m.isDefault,
+                  orElse: () => paymentMethods.first,
+                );
+                setState(() {
+                  _selectedPaymentMethod = defaultMethod;
+                });
+              });
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                  // Title: Cash Out
+                  Row(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 18,
-                        color: Colors.grey[700],
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF1B7C).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.account_balance_wallet,
+                          color: Color(0xFFFF1B7C),
+                          size: 20,
+                        ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Withdrawal requests are processed within 24-48 hours',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w500,
-                            height: 1.4,
-                          ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Cash Out',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
                     ],
                   ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Payment Methods List
+                  const Text(
+                    'Select Payment Method',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Payment Method Cards
+                  ...paymentMethods.map((method) => PaymentMethodCard(
+                    method: method,
+                    isSelected: _selectedPaymentMethod?.id == method.id,
+                    onTap: () {
+                      setState(() {
+                        _selectedPaymentMethod = method;
+                      });
+                    },
+                    onEdit: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddPaymentMethodScreen(
+                            existingMethod: method,
+                          ),
+                        ),
+                      );
+                      if (result == true) {
+                        // Refresh payment methods
+                      }
+                    },
+                  )),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Add New Payment Method Button
+                  GestureDetector(
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AddPaymentMethodScreen(),
+                        ),
+                      );
+                      if (result == true) {
+                        // Payment method added, will auto-refresh via StreamBuilder
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFFFF1B7C),
+                          width: 1.5,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.add_circle_outline,
+                            color: Color(0xFFFF1B7C),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Add New Payment Method',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFFF1B7C),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Amount Field
+                  const Text(
+                    'Enter Amount',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _amountController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Enter withdraw amount',
+                      hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                      prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFFFF1B7C)),
+                      suffixText: '₹',
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 2),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter amount';
+                      }
+                      final amountInINR = double.tryParse(value);
+                      if (amountInINR == null || amountInINR <= 0) {
+                        return 'Please enter a valid amount';
+                      }
+                      if (amountInINR < _minWithdrawalINR) {
+                        return 'Minimum withdrawal amount is ₹${_minWithdrawalINR.toStringAsFixed(2)}';
+                      }
+                      if (amountInINR > availableBalance) {
+                        return 'Amount exceeds available balance. Maximum: ₹${availableBalance.toStringAsFixed(2)}';
+                      }
+                      final amountInCCoins = (amountInINR / _coinToInrRate).round();
+                      if (amountInCCoins > totalCCoins) {
+                        return 'Insufficient balance. Maximum: ₹${availableBalance.toStringAsFixed(2)}';
+                      }
+                      return null;
+                    },
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Minimum withdraw message
+                  Text(
+                    'Minimum Withdraw ${(_minWithdrawalINR / _coinToInrRate).round()} Coin',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.red[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Cash Out Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: (_selectedPaymentMethod == null || _isProcessing)
+                          ? null
+                          : _handleWithdrawal,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF1B7C),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: _isProcessing
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text(
+                              'Cash Out',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Info message
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: Colors.grey[700],
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Withdrawal requests are processed within 24-48 hours',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 ),
-              ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Empty state when no payment methods
+  Widget _buildEmptyPaymentMethods() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.account_balance_wallet_outlined,
+            size: 48,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'No Payment Method Added',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Add a payment method to start\nwithdrawing your earnings',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.normal,
+              color: Colors.grey[600],
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddPaymentMethodScreen(),
+                ),
+              );
+              if (result == true) {
+                // Payment method added
+              }
+            },
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text(
+              'Add Payment Method',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF1B7C),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -1395,7 +1572,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     if (_formKey.currentState!.validate()) {
       final currentUser = _auth.currentUser;
       if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           const SnackBar(
             content: Text('Please login again'),
             backgroundColor: Colors.red,
@@ -1409,21 +1586,25 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         _isProcessing = true;
       });
       
+      // Check if payment method is selected
+      if (_selectedPaymentMethod == null) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(
+            content: Text('Please select a payment method'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       try {
-        // Prepare payment details based on selected method
-        Map<String, dynamic> paymentDetails = {};
-        
-        if (_selectedMethod == 'UPI') {
-          paymentDetails = {'upiId': _upiController.text.trim()};
-        } else if (_selectedMethod == AppLocalizations.of(context)!.bankTransfer) {
-          paymentDetails = {
-            'accountHolderName': _accountHolderController.text.trim(),
-            'accountNumber': _accountNumberController.text.trim(),
-            'ifscCode': _ifscController.text.trim(),
-          };
-        } else if (_selectedMethod == AppLocalizations.of(context)!.crypto) {
-          paymentDetails = {'walletAddress': _cryptoAddressController.text.trim()};
-        }
+        // Use payment details from selected saved method
+        final paymentDetails = _selectedPaymentMethod!.details;
+        final withdrawalMethod = _selectedPaymentMethod!.type == 'BANK'
+            ? AppLocalizations.of(context)!.bankTransfer
+            : _selectedPaymentMethod!.type == 'CRYPTO'
+                ? AppLocalizations.of(context)!.crypto
+                : 'UPI';
 
         // Get amount in INR from controller
         final amountInINR = double.tryParse(_amountController.text.trim()) ?? 0.0;
@@ -1448,11 +1629,19 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
         final requestId = await _withdrawalService.submitWithdrawalRequest(
           userId: currentUser.uid,
           amount: amountInINR, // Store INR directly (payment amount)
-          withdrawalMethod: _selectedMethod,
+          withdrawalMethod: withdrawalMethod,
           paymentDetails: paymentDetails,
           userName: userName,
           displayId: displayId,
         );
+        
+        // Update last used timestamp for payment method
+        if (_selectedPaymentMethod != null) {
+          await _paymentMethodService.updateLastUsed(
+            userId: currentUser.uid,
+            methodId: _selectedPaymentMethod!.id,
+          );
+        }
         
         if (mounted) {
           setState(() {
@@ -1461,7 +1650,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
           
           if (requestId != null) {
             // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
               SnackBar(
                 content: Row(
                   children: [
@@ -1487,15 +1676,10 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
             
             // Clear form
             _amountController.clear();
-            _upiController.clear();
-            _accountNumberController.clear();
-            _ifscController.clear();
-            _accountHolderController.clear();
-            _cryptoAddressController.clear();
             _loadEarningsData(); // Refresh earnings data
           } else {
             // Show error message
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
               const SnackBar(
                 content: Text('Failed to submit withdrawal request. Please try again.'),
                 backgroundColor: Colors.red,

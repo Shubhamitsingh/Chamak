@@ -307,6 +307,75 @@
         "type": "int"
       }
     }
-  }
+  },
+  "becomeACreator": "क्रिएटर बनें",
+  "applyToBecomeCreator": "क्रिएटर बनने के लिए आवेदन करें",
+  "applyToBecomeHostAndEarnMore": "होस्ट बनें और अधिक कमाएं",
+  "applicationApprovedTapToView": "आवेदन स्वीकृत ✅ - देखने के लिए टैप करें",
+  "applicationRejectedTapToReapply": "आवेदन अस्वीकृत ❌ - पुन: आवेदन करने के लिए टैप करें",
+  "applicationUnderReviewTapToCheckStatus": "आवेदन समीक्षा में - स्थिति जांचने के लिए टैप करें",
+  "applicationStatus": "आवेदन स्थिति",
+  "applicationStatusWithStatus": "आवेदन स्थिति: {status}",
+  "@applicationStatusWithStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "errorLoadingUserData": "उपयोगकर्ता डेटा लोड करने में त्रुटि",
+  "pleaseLoginAgain": "कृपया फिर से लॉगिन करें",
+  "pleaseAcceptTermsAndConditions": "जारी रखने के लिए कृपया नियम और शर्तें स्वीकार करें",
+  "pleaseSelectDateOfBirth": "कृपया अपनी जन्म तिथि चुनें",
+  "mustBe18YearsOld": "क्रिएटर बनने के लिए आपकी आयु कम से कम 18 वर्ष होनी चाहिए",
+  "failedToSubmitApplication": "आवेदन जमा करने में विफल। कृपया पुन: प्रयास करें।",
+  "personalInformation": "व्यक्तिगत जानकारी",
+  "userID": "उपयोगकर्ता आईडी",
+  "username": "उपयोगकर्ता नाम",
+  "notSet": "सेट नहीं",
+  "dateOfBirth": "जन्म तिथि",
+  "selectYourDateOfBirth": "अपनी जन्म तिथि चुनें",
+  "emailOptional": "ईमेल (वैकल्पिक)",
+  "emailPlaceholder": "your@email.com",
+  "pleaseEnterValidEmail": "कृपया एक वैध ईमेल पता दर्ज करें",
+  "socialMediaLinksOptional": "सोशल मीडिया लिंक (वैकल्पिक)",
+  "instagram": "Instagram",
+  "instagramPlaceholder": "@username",
+  "tiktok": "TikTok",
+  "youtube": "YouTube",
+  "channelURL": "चैनल URL",
+  "benefitsOfBecomingCreator": "क्रिएटर बनने के फायदे",
+  "benefitsOfBecomingCreatorDescription": "• अपनी कमाई का 100% कमाएं\n• कोई बिचौलिया नहीं, कोई कमीशन नहीं\n• सीधी स्वीकृति प्रक्रिया\n• तुरंत स्ट्रीमिंग शुरू करें\n• कोई ब्रोकर नहीं • पूरी कमाई",
+  "iAcceptThe": "मैं स्वीकार करता हूं ",
+  "andAgreeToPlatformRules": " और प्लेटफ़ॉर्म नियमों से सहमत हूं",
+  "submitApplication": "आवेदन जमा करें",
+  "applicationRejected": "आवेदन अस्वीकृत",
+  "reason": "कारण: {reason}",
+  "@reason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "applicationNotApprovedCanReapply": "आपका आवेदन स्वीकृत नहीं हुआ। आप हमारे दिशानिर्देशों की समीक्षा करने के बाद पुन: आवेदन कर सकते हैं।",
+  "applicationSubmitted": "आवेदन जमा कर दिया गया!",
+  "underReview": "समीक्षा में",
+  "applicationApproved": "आवेदन स्वीकृत!",
+  "applicationRejectedTitle": "आवेदन अस्वीकृत",
+  "requestSubmittedSuccessfully": "आपका अनुरोध सफलतापूर्वक जमा कर दिया गया है। कृपया समीक्षा के लिए 24-78 घंटे प्रतीक्षा करें।",
+  "applicationBeingReviewed": "आपका आवेदन वर्तमान में हमारी टीम द्वारा समीक्षा किया जा रहा है। निर्णय होने पर हम आपको सूचित करेंगे।",
+  "applicationApprovedCongratulations": "बधाई हो! आपका आवेदन स्वीकृत हो गया है। अब आप स्ट्रीमिंग और कमाई शुरू कर सकते हैं!",
+  "applicationNotApprovedAtThisTime": "इस समय आपका आवेदन स्वीकृत नहीं हुआ।",
+  "applicationNotApprovedCanReapplyAfterReview": "इस समय आपका आवेदन स्वीकृत नहीं हुआ। आप हमारे दिशानिर्देशों की समीक्षा करने के बाद पुन: आवेदन कर सकते हैं।",
+  "backToProfile": "प्रोफ़ाइल पर वापस जाएं",
+  "startStreaming": "स्ट्रीमिंग शुरू करें",
+  "reapply": "पुन: आवेदन करें",
+  "noApplicationFound": "कोई आवेदन नहीं मिला",
+  "noApplicationSubmittedYet": "आपने अभी तक कोई आवेदन जमा नहीं किया है।",
+  "errorLoadingApplicationStatus": "एप्लिकेशन स्थिति लोड करने में त्रुटि",
+  "general": "सामान्य",
+  "policy": "नीति",
+  "childSafety": "बाल सुरक्षा"
 }
 

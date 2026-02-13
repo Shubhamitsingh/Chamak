@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
+import '../providers/language_provider.dart';
 
 class PolicyScreen extends StatefulWidget {
   const PolicyScreen({super.key});
@@ -25,63 +27,68 @@ class _PolicyScreenState extends State<PolicyScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        toolbarHeight: 48,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Policy',
-          style: const TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
+    // Listen to language changes to rebuild when language changes
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            toolbarHeight: 48,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              AppLocalizations.of(context)!.policy,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            centerTitle: true,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(40),
+              child: TabBar(
+                controller: _tabController,
+                labelColor: const Color(0xFFE91E63), // Pink color
+                unselectedLabelColor: Colors.grey[600],
+                indicatorColor: const Color(0xFFE91E63),
+                indicatorWeight: 2.5,
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+                tabs: [
+                  Tab(
+                    text: AppLocalizations.of(context)!.privacyPolicy,
+                  ),
+                  Tab(
+                    text: AppLocalizations.of(context)!.termsConditions,
+                  ),
+                  Tab(
+                    text: AppLocalizations.of(context)!.childSafety,
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(40),
-          child: TabBar(
+          body: TabBarView(
             controller: _tabController,
-            labelColor: const Color(0xFFE91E63), // Pink color
-            unselectedLabelColor: Colors.grey[600],
-            indicatorColor: const Color(0xFFE91E63),
-            indicatorWeight: 2.5,
-            labelStyle: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
-            tabs: [
-              Tab(
-                text: AppLocalizations.of(context)!.privacyPolicy,
-              ),
-              Tab(
-                text: AppLocalizations.of(context)!.termsConditions,
-              ),
-              const Tab(
-                text: 'Child Safety',
-              ),
+            children: [
+              _buildPrivacyPolicyContent(),
+              _buildTermsConditionsContent(),
+              _buildChildSafetyPolicyContent(),
             ],
           ),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildPrivacyPolicyContent(),
-          _buildTermsConditionsContent(),
-          _buildChildSafetyPolicyContent(),
-        ],
-      ),
+        );
+      },
     );
   }
 

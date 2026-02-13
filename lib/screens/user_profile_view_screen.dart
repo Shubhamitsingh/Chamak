@@ -260,6 +260,8 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       await Future.delayed(const Duration(milliseconds: 300));
 
       // Navigate to chat screen
+      // When coming from Search → Profile → Chat, we want back to go to Messages/Home
+      // So we set shouldNavigateToChatListOnBack to true
       if (!mounted) return;
       Navigator.push(
         context,
@@ -267,6 +269,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
           builder: (context) => ChatScreen(
             chatId: chatId,
             otherUser: widget.user,
+            shouldNavigateToChatListOnBack: true, // Navigate to ChatListScreen on back instead of Profile
           ),
         ),
       );
@@ -941,23 +944,32 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
     final benefits = [
       {'emoji': '💰', 'text': 'Instant recharge'},
       {'emoji': '🎁', 'text': 'Bonus offers'},
-      {'emoji': '💎', 'text': 'Unlimited calls'},
+      {'text': 'Unlimited calls', 'isCall': true},
     ];
 
     return Column(
       children: benefits.map((benefit) {
+        final isCall = benefit['isCall'] == true;
+        final text = benefit['text'] as String;
         return Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             children: [
-              Text(
-                benefit['emoji']!,
-                style: const TextStyle(fontSize: 16),
-              ),
+              if (isCall)
+                const Icon(
+                  Icons.call,
+                  size: 16,
+                  color: Color(0xFFFF1B7C),
+                )
+              else
+                Text(
+                  benefit['emoji'] as String,
+                  style: const TextStyle(fontSize: 16),
+                ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  benefit['text']!,
+                  text,
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.grey[800],
@@ -1109,51 +1121,64 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                               
                               const SizedBox(height: 6),
                               
-                              // Real-time Status Indicator (Always Visible)
-                              StreamBuilder<String>(
-                                stream: _onlineStatusService.getUserStatusStream(widget.user.uid),
-                                builder: (context, snapshot) {
-                                  final status = snapshot.data ?? 'offline';
+                              // Real-time Status Indicator (Live/Online/Offline) - Always Visible
+                              StreamBuilder<bool>(
+                                stream: _onlineStatusService.getUserLiveStatusStream(widget.user.uid),
+                                builder: (context, liveSnapshot) {
+                                  final isLive = liveSnapshot.data ?? false;
                                   
-                                  // Determine status color and text (only Online/Offline)
-                                  Color statusColor;
-                                  String statusText;
-                                  bool showDot;
-                                  
-                                  if (status == 'online') {
-                                    // User is online (within 5 minutes)
-                                    statusColor = const Color(0xFF4CAF50); // Green
-                                    statusText = 'Online';
-                                    showDot = true;
-                                  } else {
-                                    // User is offline
-                                    statusColor = Colors.grey[600]!; // Gray for offline
-                                    statusText = 'Offline';
-                                    showDot = false; // No dot for offline
-                                  }
-                                  
-                                  return Row(
-                                    children: [
-                                      // Status Dot (only show for Online)
-                                      if (showDot)
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: BoxDecoration(
-                                            color: statusColor,
-                                            shape: BoxShape.circle,
+                                  return StreamBuilder<String>(
+                                    stream: _onlineStatusService.getUserStatusStream(widget.user.uid),
+                                    builder: (context, onlineSnapshot) {
+                                      final onlineStatus = onlineSnapshot.data ?? 'offline';
+                                      final isOnline = onlineStatus == 'online';
+                                      
+                                      // Determine status (priority: LIVE > ONLINE > OFFLINE)
+                                      Color statusColor;
+                                      String statusText;
+                                      bool showDot;
+                                      
+                                      if (isLive) {
+                                        // LIVE - Highest priority (red)
+                                        statusColor = Colors.red;
+                                        statusText = 'Live';
+                                        showDot = true;
+                                      } else if (isOnline) {
+                                        // ONLINE - Second priority (green)
+                                        statusColor = const Color(0xFF4CAF50); // Green
+                                        statusText = 'Online';
+                                        showDot = true;
+                                      } else {
+                                        // OFFLINE - Default (gray)
+                                        statusColor = Colors.grey[600]!;
+                                        statusText = 'Offline';
+                                        showDot = false; // No dot for offline
+                                      }
+                                      
+                                      return Row(
+                                        children: [
+                                          // Status Dot (show for Live and Online)
+                                          if (showDot)
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                color: statusColor,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          if (showDot) const SizedBox(width: 4),
+                                          Text(
+                                            statusText,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: statusColor,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
-                                        ),
-                                      if (showDot) const SizedBox(width: 4),
-                                      Text(
-                                        statusText,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: statusColor,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
+                                        ],
+                                      );
+                                    },
                                   );
                                 },
                               ),

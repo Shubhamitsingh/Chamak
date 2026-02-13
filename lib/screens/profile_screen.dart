@@ -1300,8 +1300,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           _buildMenuOption(
                             icon: Icons.star_rounded,
-                            title: 'Become a Creator',
-                            subtitle: 'Apply to become a creator',
+                            title: AppLocalizations.of(context)!.becomeACreator,
+                            subtitle: AppLocalizations.of(context)!.applyToBecomeCreator,
                             color: const Color(0xFFFF1B7C),
                             onTap: () {
                               if (!mounted) return;
@@ -1347,7 +1347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Colors.green,
                             size: 24,
                           );
-                          subtitle = 'Application Approved ✅ - Tap to view';
+                          subtitle = AppLocalizations.of(context)!.applicationApprovedTapToView;
                           break;
                         case 'rejected':
                           statusIcon = const Icon(
@@ -1355,7 +1355,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Colors.red,
                             size: 24,
                           );
-                          subtitle = 'Application Rejected ❌ - Tap to reapply';
+                          subtitle = AppLocalizations.of(context)!.applicationRejectedTapToReapply;
                           break;
                         case 'pending':
                         case 'reviewing':
@@ -1364,17 +1364,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Colors.orange,
                             size: 24,
                           );
-                          subtitle = 'Application under review - Tap to check status';
+                          subtitle = AppLocalizations.of(context)!.applicationUnderReviewTapToCheckStatus;
                           break;
                         default:
-                          subtitle = 'Application status: $status';
+                          subtitle = AppLocalizations.of(context)!.applicationStatusWithStatus(status);
                       }
                       
                       return Column(
                         children: [
                           _buildMenuOption(
                             icon: Icons.star_rounded,
-                            title: 'Become a Creator',
+                            title: AppLocalizations.of(context)!.becomeACreator,
                             subtitle: subtitle,
                             color: const Color(0xFFFF1B7C),
                             badgeCount: (status == 'pending' || status == 'reviewing') ? 1 : null,
@@ -1429,8 +1429,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         _buildMenuOption(
                           icon: Icons.star_rounded,
-                          title: 'Become a Creator',
-                          subtitle: 'Apply to become a host and earn more',
+                          title: AppLocalizations.of(context)!.becomeACreator,
+                          subtitle: AppLocalizations.of(context)!.applyToBecomeHostAndEarnMore,
                           color: const Color(0xFFFF1B7C),
                           onTap: () {
                             if (!mounted) return;

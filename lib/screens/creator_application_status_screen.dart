@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/host_application_service.dart';
 import '../models/host_application_model.dart';
 import 'become_creator_screen.dart';
+import '../generated/l10n/app_localizations.dart';
 
 class CreatorApplicationStatusScreen extends StatefulWidget {
   final String? applicationId; // Optional - if null, will fetch latest
@@ -39,9 +40,9 @@ class _CreatorApplicationStatusScreenState
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Application Status',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context)!.applicationStatus,
+          style: const TextStyle(
             color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -79,7 +80,7 @@ class _CreatorApplicationStatusScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Error loading application status',
+                    AppLocalizations.of(context)!.errorLoadingApplicationStatus,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -142,10 +143,10 @@ class _CreatorApplicationStatusScreenState
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'No Application Found',
+            Text(
+              AppLocalizations.of(context)!.noApplicationFound,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
@@ -153,7 +154,7 @@ class _CreatorApplicationStatusScreenState
             ),
             const SizedBox(height: 12),
             Text(
-              'You haven\'t submitted an application yet.',
+              AppLocalizations.of(context)!.noApplicationSubmittedYet,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -185,9 +186,9 @@ class _CreatorApplicationStatusScreenState
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Submit Application',
-                style: TextStyle(
+              child: Text(
+                AppLocalizations.of(context)!.submitApplication,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -301,16 +302,16 @@ class _CreatorApplicationStatusScreenState
     String title;
     switch (status) {
       case HostApplicationStatus.pending:
-        title = 'Application Submitted!';
+        title = AppLocalizations.of(context)!.applicationSubmitted;
         break;
       case HostApplicationStatus.reviewing:
-        title = 'Under Review';
+        title = AppLocalizations.of(context)!.underReview;
         break;
       case HostApplicationStatus.approved:
-        title = 'Application Approved!';
+        title = AppLocalizations.of(context)!.applicationApproved;
         break;
       case HostApplicationStatus.rejected:
-        title = 'Application Rejected';
+        title = AppLocalizations.of(context)!.applicationRejectedTitle;
         break;
     }
 
@@ -335,18 +336,18 @@ class _CreatorApplicationStatusScreenState
     
     switch (application.status) {
       case HostApplicationStatus.pending:
-        message = 'Your request has been submitted successfully. Please wait 24-78 hours for review.';
+        message = AppLocalizations.of(context)!.requestSubmittedSuccessfully;
         break;
       case HostApplicationStatus.reviewing:
-        message = 'Your application is currently being reviewed by our team. We will notify you once a decision has been made.';
+        message = AppLocalizations.of(context)!.applicationBeingReviewed;
         break;
       case HostApplicationStatus.approved:
-        message = 'Congratulations! Your application has been approved. You can now start streaming and earning!';
+        message = AppLocalizations.of(context)!.applicationApprovedCongratulations;
         break;
       case HostApplicationStatus.rejected:
         message = application.rejectionReason != null && application.rejectionReason!.isNotEmpty
-            ? 'Your application was not approved at this time.\n\nReason: ${application.rejectionReason}'
-            : 'Your application was not approved at this time. You can reapply after reviewing our guidelines.';
+            ? '${AppLocalizations.of(context)!.applicationNotApprovedAtThisTime}\n\n${AppLocalizations.of(context)!.reason(application.rejectionReason!)}'
+            : AppLocalizations.of(context)!.applicationNotApprovedCanReapplyAfterReview;
         break;
     }
 
@@ -393,9 +394,9 @@ class _CreatorApplicationStatusScreenState
                     Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
-                child: const Text(
-                  'Back to Profile',
-                  style: TextStyle(
+                child: Text(
+                  AppLocalizations.of(context)!.backToProfile,
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -429,9 +430,9 @@ class _CreatorApplicationStatusScreenState
                     Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
-                child: const Text(
-                  'Start Streaming',
-                  style: TextStyle(
+                child: Text(
+                  AppLocalizations.of(context)!.startStreaming,
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -472,9 +473,9 @@ class _CreatorApplicationStatusScreenState
                     Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
-                child: const Text(
-                  'Reapply',
-                  style: TextStyle(
+                child: Text(
+                  AppLocalizations.of(context)!.reapply,
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),

@@ -1243,4 +1243,188 @@ class AppLocalizationsHi extends AppLocalizations {
   String qrCodeSavedYouEarned(int coins) {
     return 'QR कोड सहेजा गया! आपने $coins सिक्के कमाए!';
   }
+
+  @override
+  String get becomeACreator => 'क्रिएटर बनें';
+
+  @override
+  String get applyToBecomeCreator => 'क्रिएटर बनने के लिए आवेदन करें';
+
+  @override
+  String get applyToBecomeHostAndEarnMore => 'होस्ट बनें और अधिक कमाएं';
+
+  @override
+  String get applicationApprovedTapToView =>
+      'आवेदन स्वीकृत ✅ - देखने के लिए टैप करें';
+
+  @override
+  String get applicationRejectedTapToReapply =>
+      'आवेदन अस्वीकृत ❌ - पुन: आवेदन करने के लिए टैप करें';
+
+  @override
+  String get applicationUnderReviewTapToCheckStatus =>
+      'आवेदन समीक्षा में - स्थिति जांचने के लिए टैप करें';
+
+  @override
+  String get applicationStatus => 'आवेदन स्थिति';
+
+  @override
+  String applicationStatusWithStatus(String status) {
+    return 'आवेदन स्थिति: $status';
+  }
+
+  @override
+  String get errorLoadingUserData => 'उपयोगकर्ता डेटा लोड करने में त्रुटि';
+
+  @override
+  String get pleaseLoginAgain => 'कृपया फिर से लॉगिन करें';
+
+  @override
+  String get pleaseAcceptTermsAndConditions =>
+      'जारी रखने के लिए कृपया नियम और शर्तें स्वीकार करें';
+
+  @override
+  String get pleaseSelectDateOfBirth => 'कृपया अपनी जन्म तिथि चुनें';
+
+  @override
+  String get mustBe18YearsOld =>
+      'क्रिएटर बनने के लिए आपकी आयु कम से कम 18 वर्ष होनी चाहिए';
+
+  @override
+  String get failedToSubmitApplication =>
+      'आवेदन जमा करने में विफल। कृपया पुन: प्रयास करें।';
+
+  @override
+  String get personalInformation => 'व्यक्तिगत जानकारी';
+
+  @override
+  String get userID => 'उपयोगकर्ता आईडी';
+
+  @override
+  String get username => 'उपयोगकर्ता नाम';
+
+  @override
+  String get notSet => 'सेट नहीं';
+
+  @override
+  String get dateOfBirth => 'जन्म तिथि';
+
+  @override
+  String get selectYourDateOfBirth => 'अपनी जन्म तिथि चुनें';
+
+  @override
+  String get emailOptional => 'ईमेल (वैकल्पिक)';
+
+  @override
+  String get emailPlaceholder => 'your@email.com';
+
+  @override
+  String get pleaseEnterValidEmail => 'कृपया एक वैध ईमेल पता दर्ज करें';
+
+  @override
+  String get socialMediaLinksOptional => 'सोशल मीडिया लिंक (वैकल्पिक)';
+
+  @override
+  String get instagram => 'Instagram';
+
+  @override
+  String get instagramPlaceholder => '@username';
+
+  @override
+  String get tiktok => 'TikTok';
+
+  @override
+  String get youtube => 'YouTube';
+
+  @override
+  String get channelURL => 'चैनल URL';
+
+  @override
+  String get benefitsOfBecomingCreator => 'क्रिएटर बनने के फायदे';
+
+  @override
+  String get benefitsOfBecomingCreatorDescription =>
+      '• अपनी कमाई का 100% कमाएं\n• कोई बिचौलिया नहीं, कोई कमीशन नहीं\n• सीधी स्वीकृति प्रक्रिया\n• तुरंत स्ट्रीमिंग शुरू करें\n• कोई ब्रोकर नहीं • पूरी कमाई';
+
+  @override
+  String get iAcceptThe => 'मैं स्वीकार करता हूं ';
+
+  @override
+  String get andAgreeToPlatformRules => ' और प्लेटफ़ॉर्म नियमों से सहमत हूं';
+
+  @override
+  String get submitApplication => 'आवेदन जमा करें';
+
+  @override
+  String get applicationRejected => 'आवेदन अस्वीकृत';
+
+  @override
+  String reason(String reason) {
+    return 'कारण: $reason';
+  }
+
+  @override
+  String get applicationNotApprovedCanReapply =>
+      'आपका आवेदन स्वीकृत नहीं हुआ। आप हमारे दिशानिर्देशों की समीक्षा करने के बाद पुन: आवेदन कर सकते हैं।';
+
+  @override
+  String get applicationSubmitted => 'आवेदन जमा कर दिया गया!';
+
+  @override
+  String get underReview => 'समीक्षा में';
+
+  @override
+  String get applicationApproved => 'आवेदन स्वीकृत!';
+
+  @override
+  String get applicationRejectedTitle => 'आवेदन अस्वीकृत';
+
+  @override
+  String get requestSubmittedSuccessfully =>
+      'आपका अनुरोध सफलतापूर्वक जमा कर दिया गया है। कृपया समीक्षा के लिए 24-78 घंटे प्रतीक्षा करें।';
+
+  @override
+  String get applicationBeingReviewed =>
+      'आपका आवेदन वर्तमान में हमारी टीम द्वारा समीक्षा किया जा रहा है। निर्णय होने पर हम आपको सूचित करेंगे।';
+
+  @override
+  String get applicationApprovedCongratulations =>
+      'बधाई हो! आपका आवेदन स्वीकृत हो गया है। अब आप स्ट्रीमिंग और कमाई शुरू कर सकते हैं!';
+
+  @override
+  String get applicationNotApprovedAtThisTime =>
+      'इस समय आपका आवेदन स्वीकृत नहीं हुआ।';
+
+  @override
+  String get applicationNotApprovedCanReapplyAfterReview =>
+      'इस समय आपका आवेदन स्वीकृत नहीं हुआ। आप हमारे दिशानिर्देशों की समीक्षा करने के बाद पुन: आवेदन कर सकते हैं।';
+
+  @override
+  String get backToProfile => 'प्रोफ़ाइल पर वापस जाएं';
+
+  @override
+  String get startStreaming => 'स्ट्रीमिंग शुरू करें';
+
+  @override
+  String get reapply => 'पुन: आवेदन करें';
+
+  @override
+  String get noApplicationFound => 'कोई आवेदन नहीं मिला';
+
+  @override
+  String get noApplicationSubmittedYet =>
+      'आपने अभी तक कोई आवेदन जमा नहीं किया है।';
+
+  @override
+  String get errorLoadingApplicationStatus =>
+      'एप्लिकेशन स्थिति लोड करने में त्रुटि';
+
+  @override
+  String get general => 'सामान्य';
+
+  @override
+  String get policy => 'नीति';
+
+  @override
+  String get childSafety => 'बाल सुरक्षा';
 }

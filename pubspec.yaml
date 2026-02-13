@@ -1,7 +1,7 @@
 name: Chamak
 description: A live streaming mobile app built with Flutter
 publish_to: 'none'
-version: 1.1.9+31
+version: 1.1.11+33
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -124,6 +124,19 @@ flutter:
   
   assets:
     - assets/images/
+    - assets/fonts/
+  
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
 
 flutter_launcher_icons:
   android: true

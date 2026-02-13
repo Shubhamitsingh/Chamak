@@ -229,6 +229,7 @@ class OnlineStatusService {
             final hostStatus = data['hostStatus'] as String?;
             final endedAt = data['endedAt'];
             final startedAtStr = data['startedAt'] as String?;
+            final lastHeartbeat = data['lastHeartbeat']; // Real-time heartbeat check
             
             // Skip if hostStatus is 'ended' (even if isActive is somehow true)
             if (hostStatus == 'ended') {
@@ -248,8 +249,64 @@ class OnlineStatusService {
               continue;
             }
             
-            // CRITICAL: Check if stream started recently (within last 24 hours)
-            // This filters out old/stale streams
+            // 🔴 CRITICAL: Check heartbeat - if older than 2 minutes, stream is not live
+            if (lastHeartbeat != null) {
+              try {
+                DateTime? heartbeatTime;
+                if (lastHeartbeat is Timestamp) {
+                  heartbeatTime = lastHeartbeat.toDate();
+                } else if (lastHeartbeat is String) {
+                  heartbeatTime = DateTime.parse(lastHeartbeat);
+                }
+                
+                if (heartbeatTime != null) {
+                  final heartbeatAge = now.difference(heartbeatTime);
+                  // If heartbeat is older than 2 minutes, stream is not live
+                  if (heartbeatAge.inMinutes > 2) {
+                    debugPrint('⚠️ Stream ${doc.id} has old heartbeat (${heartbeatAge.inMinutes} min ago) - NOT LIVE');
+                    continue; // Skip this stream - not live
+                  }
+                  debugPrint('✅ Stream ${doc.id} has recent heartbeat (${heartbeatAge.inMinutes} min ago) - LIVE');
+                }
+              } catch (e) {
+                debugPrint('⚠️ Error parsing lastHeartbeat for stream ${doc.id}: $e');
+                // If can't parse heartbeat, continue with other checks (fallback)
+              }
+            } else {
+              // No heartbeat - check startedAt with 2-minute window (same as stream list)
+              debugPrint('⚠️ Stream ${doc.id} has no heartbeat - checking startedAt (2 min window)');
+              
+              if (startedAtStr != null) {
+                try {
+                  final startedAt = DateTime.parse(startedAtStr);
+                  final duration = now.difference(startedAt);
+                  
+                  // If stream started more than 2 minutes ago with no heartbeat, it's not live
+                  if (duration.inMinutes > 2) {
+                    debugPrint('⚠️ Stream ${doc.id} started ${duration.inMinutes} min ago with no heartbeat - NOT LIVE');
+                    continue; // Skip this stream - not live
+                  }
+                  
+                  // If startedAt is in the future (timezone issue), skip it
+                  if (startedAt.isAfter(now)) {
+                    debugPrint('⚠️ Stream ${doc.id} has future startedAt (timezone issue), skipping');
+                    continue;
+                  }
+                  
+                  debugPrint('✅ Stream ${doc.id} started ${duration.inMinutes} min ago (no heartbeat, within 2 min) - LIVE');
+                } catch (e) {
+                  debugPrint('⚠️ Error parsing startedAt for stream ${doc.id}: $e, skipping');
+                  continue;
+                }
+              } else {
+                // If no heartbeat AND no startedAt, it's an invalid stream - skip it
+                debugPrint('⚠️ Stream ${doc.id} has no heartbeat and no startedAt - invalid stream, skipping');
+                continue;
+              }
+            }
+            
+            // CRITICAL: Additional check - if stream is older than 24 hours, it's stale (host likely crashed/force closed)
+            // This is a safety check for very old streams that somehow passed the heartbeat/startedAt checks
             if (startedAtStr != null) {
               try {
                 final startedAt = DateTime.parse(startedAtStr);
@@ -262,20 +319,10 @@ class OnlineStatusService {
                   _autoEndStaleStream(doc.id);
                   continue;
                 }
-                
-                // If startedAt is in the future (timezone issue), skip it
-                if (startedAt.isAfter(now)) {
-                  debugPrint('⚠️ Stream ${doc.id} has future startedAt (timezone issue), skipping');
-                  continue;
-                }
               } catch (e) {
-                debugPrint('⚠️ Error parsing startedAt for stream ${doc.id}: $e, skipping');
-                continue;
+                debugPrint('⚠️ Error parsing startedAt for final check on stream ${doc.id}: $e');
+                // Don't skip here - already passed heartbeat/startedAt checks
               }
-            } else {
-              // If startedAt is missing, it's an invalid stream - skip it
-              debugPrint('⚠️ Stream ${doc.id} missing startedAt field, skipping');
-              continue;
             }
             
             // ALL VALIDATION PASSED - User is actually live!

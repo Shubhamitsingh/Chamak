@@ -163,6 +163,14 @@ service cloud.firestore {
       }
       
       // ============================================
+      // PAYMENT METHODS SUBCOLLECTION
+      // ============================================
+      match /payment_methods/{methodId} {
+        // Users can read/write their own payment methods
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // ============================================
       // TICKETS SUBCOLLECTION (Admin Panel)
       // ============================================
       match /tickets/{ticketId} {

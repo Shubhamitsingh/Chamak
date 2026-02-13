@@ -43,11 +43,26 @@ class HomeScreen extends StatefulWidget {
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
+  
+  // Static method to switch to Messages tab (accessible from other screens)
+  static void switchToMessagesTab() {
+    _HomeScreenState.switchToMessagesTab();
+  }
 }
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _currentBottomIndex = 0;
+  static _HomeScreenState? _instance; // Static reference to current instance
+  
+  // Static method to switch to Messages tab (called from ChatScreen)
+  static void switchToMessagesTab() {
+    if (_instance != null && _instance!.mounted) {
+      _instance!.setState(() {
+        _instance!._currentBottomIndex = 3; // Messages tab
+      });
+    }
+  }
   int _topTabIndex = 0; // 0 = Explore, 1 = Live, 2 = Following, 3 = New, 4 = Nearby
   late final PageController _pageController;
   DateTime? _lastBackPressTime; // Track last back button press for double-tap-to-exit
@@ -76,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _instance = this; // Set static reference
     // Initialize PageController with the current topTabIndex to preserve state
     _pageController = PageController(initialPage: _topTabIndex);
     
@@ -155,6 +171,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
   }
+  
   
   // Scroll menu to show the active tab
   void _scrollMenuToActiveTab() {
@@ -236,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen>
             
             // Show message to user
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                 SnackBar(
                   content: const Text(
                     'You have been logged out because you logged in on another device.',
@@ -560,7 +577,7 @@ class _HomeScreenState extends State<HomeScreen>
         if (mounted) {
           if (success) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                 const SnackBar(
                   content: Row(
                     children: [
@@ -589,7 +606,7 @@ class _HomeScreenState extends State<HomeScreen>
             }
           } else {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                 const SnackBar(
                   content: Row(
                     children: [
@@ -627,6 +644,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    // Clear static reference if this is the current instance
+    if (_instance == this) {
+      _instance = null;
+    }
+    
     // Cancel device session subscription
     _deviceSessionSubscription?.cancel();
     
@@ -782,7 +804,7 @@ class _HomeScreenState extends State<HomeScreen>
                       : 'Nearby';
         debugPrint('🔙 Android back button pressed while in $tabName tab - showing exit confirmation');
         
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: Container(
               width: 180,
@@ -848,7 +870,7 @@ class _HomeScreenState extends State<HomeScreen>
                     : 'Profile';
       debugPrint('🔙 Android back button pressed while in $tabName tab - showing exit confirmation');
       
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(
           content: Container(
             width: 180,
@@ -1735,7 +1757,7 @@ class _HomeScreenState extends State<HomeScreen>
                             try {
                               Navigator.of(context).pop();
                             } catch (_) {}
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                               SnackBar(
                                 content: Text('Failed to join stream: ${e.toString()}'),
                                 backgroundColor: Colors.red,
@@ -2018,7 +2040,7 @@ class _HomeScreenState extends State<HomeScreen>
                           try {
                             Navigator.of(context).pop();
                           } catch (_) {}
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                             SnackBar(
                               content: Text('Failed to join stream: ${e.toString()}'),
                               backgroundColor: Colors.red,
@@ -2044,7 +2066,7 @@ class _HomeScreenState extends State<HomeScreen>
                       } catch (e) {
                         debugPrint('❌ Error loading user profile: $e');
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                             const SnackBar(
                               content: Text('Failed to load profile'),
                               backgroundColor: Colors.red,
@@ -2195,78 +2217,182 @@ class _HomeScreenState extends State<HomeScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Live/Offline Badge & Viewers (Top)
+                            // Live/Online/Offline Badge & Viewers (Top) - Real-Time Updates
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                // Show LIVE badge if live, OFFLINE badge if offline
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isLive ? Colors.red : Colors.grey[600]!,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (isLive)
-                                        const Icon(
-                                          Icons.circle,
-                                          size: 6,
-                                          color: Colors.white,
-                                        ),
-                                      if (isLive) const SizedBox(width: 4),
-                                      Text(
-                                        isLive 
-                                            ? AppLocalizations.of(context)!.liveLabel
-                                            : 'OFFLINE',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Show viewers count only when live
-                                if (isLive)
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              Colors.black.withValues(alpha: 0.3),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.remove_red_eye,
-                                              color: Colors.white,
-                                              size: 10,
+                                // Real-time status badge with nested StreamBuilders
+                                if (hostId != null)
+                                  StreamBuilder<bool>(
+                                    stream: _onlineStatusService.getUserLiveStatusStream(hostId),
+                                    builder: (context, liveSnapshot) {
+                                      final isLiveRealTime = liveSnapshot.data ?? false;
+                                      
+                                      return StreamBuilder<String>(
+                                        stream: _onlineStatusService.getUserStatusStream(hostId),
+                                        builder: (context, onlineSnapshot) {
+                                          final onlineStatus = onlineSnapshot.data ?? 'offline';
+                                          final isOnline = onlineStatus == 'online';
+                                          
+                                          // Determine badge state (priority: LIVE > ONLINE > OFFLINE)
+                                          String badgeText;
+                                          Color badgeColor;
+                                          bool showDot;
+                                          
+                                          if (isLiveRealTime) {
+                                            // LIVE - Highest priority
+                                            badgeText = AppLocalizations.of(context)!.liveLabel;
+                                            badgeColor = Colors.red;
+                                            showDot = true;
+                                          } else if (isOnline) {
+                                            // ONLINE - Second priority
+                                            badgeText = 'ONLINE';
+                                            badgeColor = const Color(0xFF4CAF50); // Green
+                                            showDot = true;
+                                          } else {
+                                            // OFFLINE - Default
+                                            badgeText = 'OFFLINE';
+                                            badgeColor = Colors.grey[600]!;
+                                            showDot = false;
+                                          }
+                                          
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
                                             ),
-                                            const SizedBox(width: 3),
-                                            Text(
-                                              _formatViewers(viewers),
-                                              style: const TextStyle(
+                                            decoration: BoxDecoration(
+                                              color: badgeColor,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                if (showDot)
+                                                  Container(
+                                                    width: 6,
+                                                    height: 6,
+                                                    decoration: const BoxDecoration(
+                                                      color: Colors.white,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                if (showDot) const SizedBox(width: 4),
+                                                Text(
+                                                  badgeText,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                  )
+                                else
+                                  // Fallback for null hostId
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[600]!,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'OFFLINE',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                
+                                // Show viewers count only when live (real-time check)
+                                if (hostId != null)
+                                  StreamBuilder<bool>(
+                                    stream: _onlineStatusService.getUserLiveStatusStream(hostId),
+                                    builder: (context, liveSnapshot) {
+                                      final isLiveRealTime = liveSnapshot.data ?? false;
+                                      if (!isLiveRealTime) return const SizedBox.shrink();
+                                      
+                                      return Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  Colors.black.withValues(alpha: 0.3),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.remove_red_eye,
+                                                  color: Colors.white,
+                                                  size: 10,
+                                                ),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  _formatViewers(viewers),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  )
+                                else
+                                  // Fallback: show viewers if static isLive is true
+                                  if (isLive)
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.black.withValues(alpha: 0.3),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.remove_red_eye,
                                                 color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
+                                                size: 10,
                                               ),
-                                            ),
-                                          ],
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                _formatViewers(viewers),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
                               ],
                             ),
 
@@ -2833,7 +2959,7 @@ class _HomeScreenState extends State<HomeScreen>
                             try {
                               Navigator.of(context).pop();
                             } catch (_) {}
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                               SnackBar(
                                 content: Text('Failed to join stream: ${e.toString()}'),
                                 backgroundColor: Colors.red,
@@ -3046,7 +3172,7 @@ class _HomeScreenState extends State<HomeScreen>
                           try {
                             Navigator.of(context).pop();
                           } catch (_) {}
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                             SnackBar(
                               content: Text('Failed to join stream: ${e.toString()}'),
                               backgroundColor: Colors.red,
@@ -3072,7 +3198,7 @@ class _HomeScreenState extends State<HomeScreen>
                       } catch (e) {
                         debugPrint('❌ Error loading user profile: $e');
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                             const SnackBar(
                               content: Text('Failed to load profile'),
                               backgroundColor: Colors.red,
@@ -3253,7 +3379,7 @@ class _HomeScreenState extends State<HomeScreen>
                             try {
                               Navigator.of(context).pop();
                             } catch (_) {}
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                               SnackBar(
                                 content: Text('Failed to join stream: ${e.toString()}'),
                                 backgroundColor: Colors.red,
@@ -3462,7 +3588,7 @@ class _HomeScreenState extends State<HomeScreen>
                       } catch (e) {
                         debugPrint('❌ Error joining stream: $e');
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                             SnackBar(
                               content: Text('Failed to join stream: ${e.toString()}'),
                               backgroundColor: Colors.red,
@@ -3488,7 +3614,7 @@ class _HomeScreenState extends State<HomeScreen>
                       } catch (e) {
                         debugPrint('❌ Error loading user profile: $e');
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                             const SnackBar(
                               content: Text('Failed to load profile'),
                               backgroundColor: Colors.red,
@@ -3628,7 +3754,7 @@ class _HomeScreenState extends State<HomeScreen>
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(
           content:
               Text(AppLocalizations.of(context)!.pleaseLoginToStartLiveStream),
@@ -3714,7 +3840,7 @@ class _HomeScreenState extends State<HomeScreen>
                         InkWell(
                           onTap: () {
                             Clipboard.setData(const ClipboardData(text: 'info@chamakz.app'));
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                               const SnackBar(
                                 content: Text('Email address copied to clipboard'),
                                 duration: Duration(seconds: 2),
@@ -3898,7 +4024,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (cameraStatus.isDenied || micStatus.isDenied) {
         if (isLoadingDialogShown) navigator.pop();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: const Text(
                 'Camera and microphone permissions are required to start a live stream.'),
@@ -3912,7 +4038,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
         if (isLoadingDialogShown) navigator.pop();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: const Text(
                 'Please enable camera and microphone permissions in app settings.'),
@@ -3974,7 +4100,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
         debugPrint('❌ Error generating token: $e');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
             SnackBar(
               content: Text(
                   'Failed to generate token. Please check your internet connection and try again.'),
@@ -4049,7 +4175,7 @@ class _HomeScreenState extends State<HomeScreen>
 
       // Show error message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: Text('Error starting live stream: ${e.toString()}'),
             backgroundColor: Colors.red,
