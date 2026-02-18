@@ -24,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final DatabaseService _databaseService = DatabaseService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String? _phoneNumber;
+  String? _email;
   String? _userId;
 
   @override
@@ -39,14 +40,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // Get phone number from Firebase Auth
-      _phoneNumber = currentUser.phoneNumber ?? '';
+      // Get phone number and email from Firebase Auth
+      _phoneNumber = currentUser.phoneNumber;
+      _email = currentUser.email;
 
-      // Get user data from Firestore to get numericUserId
+      // Get user data from Firestore to get numericUserId and email
       final userData = await _databaseService.getUserData(currentUser.uid);
       if (userData != null && mounted) {
         setState(() {
           _userId = IdGeneratorService.getDisplayId(userData.numericUserId);
+          // Use email from Firestore if available (more reliable)
+          if (userData.email != null && userData.email!.isNotEmpty) {
+            _email = userData.email;
+          }
         });
       }
     } catch (e) {
@@ -121,7 +127,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: AppLocalizations.of(context)!.accountSecurity,
                       subtitle: AppLocalizations.of(context)!.phonePasswordAccountSettings,
                   onTap: () {
-                    if (_phoneNumber == null || _userId == null) {
+                    // Use email if available, otherwise use phone number
+                    final identifier = _email ?? _phoneNumber ?? '';
+                    if (identifier.isEmpty || _userId == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(AppLocalizations.of(context)!.errorLoadingProfile),
@@ -136,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => AccountSecurityScreen(
-                            phoneNumber: _phoneNumber!,
+                            phoneNumber: identifier,
                             userId: _userId!,
                           ),
                         ),

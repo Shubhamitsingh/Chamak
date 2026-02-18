@@ -338,18 +338,36 @@ exports.sendChatNotification = onDocumentCreated(
         // Admin messages have receiverId === "user" (string literal)
         // This is set by Flutter app when isAdmin = true
         const receiverId = messageData.receiverId;
-        const isAdminMessage = receiverId === "user" || 
-                               receiverId === "user" || // Double check
-                               senderId === "admin" || 
-                               senderId?.startsWith("admin_");
+        
+        // ✅ FIX: More reliable admin detection
+        // Admin sends to 'user' (string literal), user sends to 'admin' (string literal)
+        const isAdminMessage = receiverId === "user";
+        
+        // Also check if sender is admin (backup check)
+        // Check if senderId is an admin user (from admins collection)
+        let isAdminUser = false;
+        if (senderId) {
+          try {
+            const adminDoc = await admin.firestore()
+                .collection("admins")
+                .doc(senderId)
+                .get();
+            isAdminUser = adminDoc.exists;
+          } catch (e) {
+            console.log(`⚠️ Error checking admin status: ${e.message}`);
+          }
+        }
+        
+        const finalIsAdminMessage = isAdminMessage || isAdminUser;
 
         console.log(`🔍 Admin detection check:`);
+        console.log(`   receiverId: ${receiverId}`);
         console.log(`   receiverId === "user": ${receiverId === "user"}`);
-        console.log(`   senderId === "admin": ${senderId === "admin"}`);
-        console.log(`   senderId starts with "admin_": ${senderId?.startsWith("admin_")}`);
-        console.log(`   Final result - isAdminMessage: ${isAdminMessage}`);
+        console.log(`   senderId: ${senderId}`);
+        console.log(`   isAdminUser (from admins collection): ${isAdminUser}`);
+        console.log(`   Final result - isAdminMessage: ${finalIsAdminMessage}`);
 
-        if (!isAdminMessage) {
+        if (!finalIsAdminMessage) {
           console.log(`⏭️ Skipping notification - message is from user`);
           console.log(`   senderId: ${senderId}, receiverId: ${receiverId}`);
           return null;
@@ -1373,7 +1391,7 @@ exports.cleanupInactiveStreams = onSchedule("every 5 minutes", async (event) => 
   try {
     console.log("🧹 Starting stream timeout auto-cleanup...");
     const now = admin.firestore.Timestamp.now();
-    const heartbeatTimeout = 60; // 60 seconds = 1 minute (stream is dead if no heartbeat for 60s)
+    const heartbeatTimeout = 120; // 120 seconds = 2 minutes (matches client logic)
     
     const streamsRef = admin.firestore().collection("live_streams");
     const activeStreams = await streamsRef
@@ -1425,8 +1443,8 @@ exports.cleanupInactiveStreams = onSchedule("every 5 minutes", async (event) => 
             : startedAt.toMillis();
           const streamAge = (now.toMillis() - startedAtTime) / 1000; // Age in seconds
           
-          // If stream started more than 5 minutes ago and no heartbeat, it's dead
-          if (streamAge > 300) { // 5 minutes
+          // If stream started more than 2 minutes ago and no heartbeat, it's dead (matches client logic)
+          if (streamAge > 120) { // 2 minutes (matches client logic)
             shouldCleanup = true;
             cleanupReason = `no_heartbeat_old_stream_${Math.round(streamAge)}s`;
           }
@@ -1471,7 +1489,7 @@ exports.manageStreamState = onSchedule("*/1 * * * *", async (event) => {
   try {
     console.log("🖥️ Starting server-controlled stream state management...");
     const now = admin.firestore.Timestamp.now();
-    const heartbeatTimeout = 60; // 60 seconds
+    const heartbeatTimeout = 120; // 120 seconds = 2 minutes (matches client logic)
     
     const streamsRef = admin.firestore().collection("live_streams");
     const activeStreams = await streamsRef

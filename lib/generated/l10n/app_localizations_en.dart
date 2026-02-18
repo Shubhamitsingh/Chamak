@@ -1425,4 +1425,281 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get childSafety => 'Child Safety';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get chooseFromAlbum => 'Choose from Album';
+
+  @override
+  String get removePhoto => 'Remove photo';
+
+  @override
+  String get deletePhotoTitle => 'Delete photo?';
+
+  @override
+  String get deletePhotoMessage => 'Do you want to delete this photo?';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get words => 'words';
+
+  @override
+  String get photoRemoved => 'Photo removed.';
+
+  @override
+  String get tapSaveToApply => 'Tap Save to apply.';
+
+  @override
+  String get noUserDataFound => 'No user data found';
+
+  @override
+  String get noPostsYet => 'No posts yet';
+
+  @override
+  String get noSubscriptionsYet => 'No subscriptions yet';
+
+  @override
+  String get noFansYet => 'No fans yet';
+
+  @override
+  String get post => 'Post';
+
+  @override
+  String get sub => 'Sub';
+
+  @override
+  String get about => 'About';
+
+  @override
+  String get fans => 'Fans';
+
+  @override
+  String idCopiedMessage(String id) {
+    return 'ID $id copied!';
+  }
+
+  @override
+  String get photo => 'Photo';
+
+  @override
+  String get avatar => 'Avatar';
+
+  @override
+  String get profileDetails => 'Profile Details';
+
+  @override
+  String get birthday => 'Birthday';
+
+  @override
+  String get years => 'yrs';
+
+  @override
+  String get countryRegion => 'Country/Region';
+
+  @override
+  String get socialLinks => 'Social Links';
+
+  @override
+  String get panels => 'Panels';
+
+  @override
+  String get coverPhotos => 'Cover Photos';
+
+  @override
+  String get searchCountry => 'Search Country';
+
+  @override
+  String get startTypingToSearch => 'Start typing to search';
+
+  @override
+  String get selectGender => 'Select Gender';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get clickToChangeOrDeletePhoto =>
+      'Click to change or delete photo. Drag photo to change order.';
+
+  @override
+  String get nearby => 'Nearby';
+
+  @override
+  String get popularQuestions => 'Popular Questions';
+
+  @override
+  String get paymentIssues => 'Payment Issues';
+
+  @override
+  String get liveStreamingIssues => 'Live Streaming Issues';
+
+  @override
+  String get gamingIssues => 'Gaming Issues';
+
+  @override
+  String get partnershipRelated => 'Partnership-Related';
+
+  @override
+  String get otherIssues => 'Other Issues';
+
+  @override
+  String get noFaqsInThisCategory => 'No FAQs in this category';
+
+  @override
+  String get trySelectingDifferentCategory =>
+      'Try selecting a different category';
+
+  @override
+  String get unableToOpenFeedbackScreen =>
+      'Unable to open feedback screen. Please try again.';
+
+  @override
+  String get faqWithdrawEarningsDetailed => 'How can I withdraw my earnings?';
+
+  @override
+  String get faqWithdrawEarningsDetailedAnswer =>
+      '1. Go to [Wallet]: Open the wallet in your account.\n2. Select [Withdraw]: Tap the \"Withdraw\" button to proceed.\n3. Check the Requirements:\n   - Your C Coins balance must be above the minimum withdrawal amount.\n   - The minimum withdrawal is 1000 C Coins for fiat withdraw.\n   - The minimum withdrawal is 5 USDT (4250 C Coins) for crypto withdraw.\n   - Your Points balance must be 0 (withdrawal may be blocked if there are any remaining Points).\n4. Submit the Request: Enter the amount and follow the instructions to complete the withdrawal.\n\nNote: Processing time may vary depending on your payment method. If you face any problems then contact us.';
+
+  @override
+  String get faqGetStreamingPermission =>
+      'How can I get permission to start streaming?';
+
+  @override
+  String get faqGetStreamingPermissionAnswer =>
+      'Contact customer service to get permission for live streaming. Our support team will review your request and grant access.';
+
+  @override
+  String get faqUCoinsVsCCoins =>
+      'What is the difference between U Coins and C Coins?';
+
+  @override
+  String get faqUCoinsVsCCoinsAnswer =>
+      'U Coins are your wallet balance (spendable coins) that you can use to send gifts and make private calls. C Coins are your earnings that you receive when viewers send you gifts or call you during live streams. U Coins are used for spending, while C Coins are your earnings that can be withdrawn.';
+
+  @override
+  String get faqPurchaseUCoins => 'How do I purchase U Coins?';
+
+  @override
+  String get faqPurchaseUCoinsAnswer =>
+      '1. Go to Wallet screen\n2. Tap \"Purchase Coins\" or \"Recharge\" button\n3. Select the amount you want to purchase\n4. Complete payment via UPI or payment gateway\n5. Coins will be added to your wallet immediately after successful payment';
+
+  @override
+  String get faqCantWithdrawEarnings => 'Why can\'t I withdraw my earnings?';
+
+  @override
+  String get faqCantWithdrawEarningsAnswer =>
+      'You may not be able to withdraw if:\n1. Your C Coins balance is below the minimum withdrawal amount (1000 C Coins for fiat, 5 USDT for crypto)\n2. Your Points balance is not 0\n3. Your account verification is pending\n4. You already have a withdrawal request pending\n\nIf none of these apply, please contact customer support.';
+
+  @override
+  String get faqWhereSeeEarnings => 'Where can I see my earnings?';
+
+  @override
+  String get faqWhereSeeEarningsAnswer =>
+      'Go to \"My Earnings\" screen (separate from Wallet). This shows your C Coins earned from gifts and private calls. Your Wallet shows U Coins (your spendable balance). These are separate balances.';
+
+  @override
+  String get faqGiftPrices => 'How much do gifts cost?';
+
+  @override
+  String get faqGiftPricesAnswer =>
+      'Gift prices:\n• Rose: 10 U Coins\n• Heart: 20 U Coins\n• Diamond: 50 U Coins\n• Crown: 100 U Coins\n• Sports Car: 500 U Coins\n• Rocket: 1000 U Coins\n\nMake sure you have enough U Coins in your wallet before sending gifts.';
+
+  @override
+  String get faqChangeProfilePicture => 'How do I change my profile picture?';
+
+  @override
+  String get faqChangeProfilePictureAnswer =>
+      '1. Go to Profile screen\n2. Tap \"Edit Profile\"\n3. Tap on your profile picture\n4. Select new image from gallery\n5. Crop and adjust as needed\n6. Tap \"Save\" to update your profile picture';
+
+  @override
+  String get faqGoLive => 'How do I go live?';
+
+  @override
+  String get faqGoLiveAnswer =>
+      '1. Tap the \"Go Live\" button (center button in bottom navigation)\n2. Grant camera and microphone permissions when prompted\n3. Read and accept the host rules\n4. Tap \"Start Live\" to begin streaming\n\nNote: You need permission from customer service first before you can go live.';
+
+  @override
+  String get faqSendGiftsLiveStream =>
+      'How do I send gifts during a live stream?';
+
+  @override
+  String get faqSendGiftsLiveStreamAnswer =>
+      '1. While watching a live stream, tap the gift icon\n2. Select a gift from the gift selection sheet\n3. Confirm to send the gift\n4. U Coins will be deducted from your wallet\n5. The host will receive the gift and earn C Coins';
+
+  @override
+  String get faqRequestPrivateCall =>
+      'How do I request a private call with a host?';
+
+  @override
+  String get faqRequestPrivateCallAnswer =>
+      '1. While watching a live stream, tap the call icon\n2. Send a call request to the host\n3. If the host accepts, the private call will start\n4. The call costs 1000 U Coins per minute (deducted automatically)\n5. The host earns C Coins for the call duration';
+
+  @override
+  String get faqCantSendMessagesChat =>
+      'Why can\'t I send messages in live chat?';
+
+  @override
+  String get faqCantSendMessagesChatAnswer =>
+      'Numbers (digits) and number words (one, two, etc.) are blocked in chat for your safety. This prevents sharing phone numbers. You can send text messages, but avoid using any numbers. If you need to share contact information, use the contact support feature instead.';
+
+  @override
+  String get faqFollowHostLiveStream =>
+      'How do I follow a host during a live stream?';
+
+  @override
+  String get faqFollowHostLiveStreamAnswer =>
+      'Tap the follow button on the live stream screen. Once you follow a host, you will receive notifications when they go live. You can also see their profile and chat history.';
+
+  @override
+  String get faqEarnCCoinsHost => 'How do I earn C Coins as a host?';
+
+  @override
+  String get faqEarnCCoinsHostAnswer =>
+      'You earn C Coins when:\n1. Viewers send you gifts during your live stream\n2. Viewers call you privately during your live stream\n\nCheck \"My Earnings\" screen to see your total C Coins balance. These earnings can be withdrawn once you meet the minimum withdrawal requirements.';
+
+  @override
+  String get faqWhatHappensSendGift => 'What happens when I send a gift?';
+
+  @override
+  String get faqWhatHappensSendGiftAnswer =>
+      'When you send a gift:\n1. U Coins are deducted from your wallet\n2. The host receives the gift and earns C Coins\n3. A gift animation appears on the screen\n4. The transaction is recorded in your transaction history\n\nMake sure you have enough U Coins in your wallet before sending gifts.';
+
+  @override
+  String get faqGetUCoins => 'How do I get U Coins?';
+
+  @override
+  String get faqGetUCoinsAnswer =>
+      'U Coins are purchased through the Wallet screen. Tap \"Purchase Coins\" or \"Recharge\" to buy U Coins. You can use U Coins to send gifts and make private calls. U Coins are your spendable balance in your wallet.';
+
+  @override
+  String get faqBecomePartner => 'How do I become a partner?';
+
+  @override
+  String get faqBecomePartnerAnswer =>
+      'To become a partner, contact our partnership team through the support section. We will review your application and get back to you with partnership details and benefits.';
+
+  @override
+  String get faqContactCustomerService => 'How can I contact customer service?';
+
+  @override
+  String get faqContactCustomerServiceAnswer =>
+      'You can contact customer service by:\n1. Using the \"Contact Support\" button in Help & Feedback screen\n2. Sending a message through the app\n3. Email us at support@chamakz.com\n\nOur support team is available to help you with any questions or issues.';
+
+  @override
+  String get faqNumbersBlockedChat => 'Why are numbers blocked in chat?';
+
+  @override
+  String get faqNumbersBlockedChatAnswer =>
+      'Numbers (digits and number words) are blocked in chat for your safety. This prevents sharing phone numbers and protects your privacy. You can send text messages, but avoid using any numbers. If you need to share contact information, use the contact support feature instead.';
+
+  @override
+  String get faqSearchUsers => 'How do I search for users?';
+
+  @override
+  String get faqSearchUsersAnswer =>
+      '1. Tap the search icon in the top bar\n2. Enter user ID or name in the search field\n3. Tap on a user from the search results to view their profile\n4. You can follow the user or start a chat with them';
 }

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class UserModel {
   final String userId;
   final String numericUserId; // New: Numeric-only ID for display
+  final String? email; // Email address (for email/Google auth users)
   final String phoneNumber;
   final String countryCode;
   final String? displayName;
@@ -34,6 +35,7 @@ class UserModel {
   UserModel({
     required this.userId,
     required this.numericUserId,
+    this.email,
     required this.phoneNumber,
     required this.countryCode,
     this.displayName,
@@ -47,7 +49,7 @@ class UserModel {
     this.language,
     required this.createdAt,
     required this.lastLogin,
-    this.isActive = true,
+    this.isActive = false, // Default to false - requires admin approval
     this.followersCount = 0,
     this.followingCount = 0,
     this.level = 1, // Legacy field
@@ -80,6 +82,7 @@ class UserModel {
     return UserModel(
       userId: doc.id,
       numericUserId: data['numericUserId'] ?? '', // New numeric ID field
+      email: data['email'],
       phoneNumber: data['phoneNumber'] ?? '',
       countryCode: data['countryCode'] ?? '',
       displayName: data['displayName'],
@@ -93,7 +96,7 @@ class UserModel {
       language: data['language'],
       createdAt: parseTimestamp(data['createdAt'], now),
       lastLogin: parseTimestamp(data['lastLogin'], now),
-      isActive: data['isActive'] ?? true,
+      isActive: data['isActive'] ?? false, // Default to false - requires admin approval
       followersCount: data['followersCount'] ?? 0,
       followingCount: data['followingCount'] ?? 0,
       level: data['level'] ?? 1, // Legacy field
@@ -115,6 +118,7 @@ class UserModel {
     return {
       'userId': userId,
       'numericUserId': numericUserId, // Store numeric ID
+      if (email != null) 'email': email,
       'phoneNumber': phoneNumber,
       'countryCode': countryCode,
       'displayName': displayName,
@@ -149,6 +153,7 @@ class UserModel {
   // Create a copy with updated fields
   UserModel copyWith({
     String? numericUserId,
+    String? email,
     String? displayName,
     String? photoURL,
     String? coverURL,
@@ -177,6 +182,7 @@ class UserModel {
     return UserModel(
       userId: userId,
       numericUserId: numericUserId ?? this.numericUserId,
+      email: email ?? this.email,
       phoneNumber: phoneNumber,
       countryCode: countryCode,
       displayName: displayName ?? this.displayName,
@@ -212,9 +218,21 @@ class UserModel {
   String get name => displayName ?? 'User';
   String get profileImage => photoURL ?? '';
 
+  // Get primary identifier (email if available, otherwise phone)
+  String get primaryIdentifier {
+    if (email != null && email!.isNotEmpty) {
+      return email!;
+    }
+    if (phoneNumber.isNotEmpty && countryCode.isNotEmpty) {
+      return '$countryCode$phoneNumber';
+    }
+    return userId;
+  }
+
   @override
   String toString() {
-    return 'UserModel(userId: $userId, phone: $countryCode$phoneNumber, name: $displayName)';
+    final identifier = email ?? (phoneNumber.isNotEmpty ? '$countryCode$phoneNumber' : userId);
+    return 'UserModel(userId: $userId, identifier: $identifier, name: $displayName)';
   }
 }
 

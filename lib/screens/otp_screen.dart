@@ -10,7 +10,6 @@ import 'set_profile_screen.dart';
 import '../services/database_service.dart';
 import '../services/crashlytics_service.dart';
 import '../services/meta_events_service.dart';
-import '../services/device_service.dart';
 import '../generated/l10n/app_localizations.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -112,30 +111,52 @@ class _OtpScreenState extends State<OtpScreen> {
       debugPrint('📱 Phone: ${widget.countryCode}${widget.phoneNumber}');
       debugPrint('👤 User UID: ${userCredential.user?.uid}');
       
-      try {
+      // ✅ FIX: Add retry logic for database save (critical for phone number saving)
+      bool dbSaveSuccess = false;
+      bool isNewUser = false;
       final dbService = DatabaseService();
-      final isNewUser = await dbService.createOrUpdateUser(
-        phoneNumber: widget.phoneNumber,
-        countryCode: widget.countryCode,
-      );
-      debugPrint('✅ User saved to database successfully!');
       
-      // Log Meta complete_registration event for new users only
-      if (isNewUser) {
-        debugPrint('📊 Logging Meta complete_registration event...');
-        await MetaEventsService.logCompleteRegistration(
-          method: 'phone',
-        );
-      }
-      } catch (dbError) {
-        debugPrint('❌ Database save error: $dbError');
-        debugPrint('❌ Error details: ${dbError.runtimeType}');
-        // Show error to user but allow them to proceed
-        if (mounted) {
-          _showErrorSnackBar('Warning: Could not save profile data. Please try again later.');
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        try {
+          debugPrint('🔄 Database save attempt $attempt/3...');
+          isNewUser = await dbService.createOrUpdateUser(
+            phoneNumber: widget.phoneNumber,
+            countryCode: widget.countryCode,
+          );
+          dbSaveSuccess = true;
+          debugPrint('✅ User saved to database successfully!');
+          break; // Success, exit retry loop
+        } catch (dbError) {
+          debugPrint('❌ Database save error (attempt $attempt/3): $dbError');
+          debugPrint('❌ Error details: ${dbError.runtimeType}');
+          
+          if (attempt < 3) {
+            // Wait before retry (exponential backoff: 1s, 2s)
+            await Future.delayed(Duration(seconds: attempt));
+            debugPrint('🔄 Retrying database save...');
+          } else {
+            // Final attempt failed
+            debugPrint('❌ Database save failed after 3 attempts');
+            if (mounted) {
+              _showErrorSnackBar('Warning: Could not save profile data. Please try again later.');
+            }
+            // Continue even if database save fails
+            // User is authenticated, just database save failed
+          }
         }
-        // Continue even if database save fails
-        // User is authenticated, just database save failed
+      }
+      
+      // Log Meta complete_registration event for new users only (if save succeeded)
+      if (dbSaveSuccess && isNewUser) {
+        try {
+          debugPrint('📊 Logging Meta complete_registration event...');
+          await MetaEventsService.logCompleteRegistration(
+            method: 'phone',
+          );
+        } catch (metaError) {
+          debugPrint('⚠️ Meta event logging failed: $metaError');
+          // Non-critical, continue
+        }
       }
 
       if (!mounted) return;
@@ -161,7 +182,7 @@ class _OtpScreenState extends State<OtpScreen> {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => HomeScreen(
-                  phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+                  userIdentifier: '${widget.countryCode}${widget.phoneNumber}',
                 ),
               ),
               (route) => false, // Clear all previous routes - prevent back navigation to auth screens
@@ -305,7 +326,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
                       builder: (context) => HomeScreen(
-                        phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+                        userIdentifier: '${widget.countryCode}${widget.phoneNumber}',
                       ),
                     ),
                   );

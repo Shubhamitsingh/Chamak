@@ -2743,6 +2743,498 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Child Safety'**
   String get childSafety;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @chooseFromAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from Album'**
+  String get chooseFromAlbum;
+
+  /// No description provided for @removePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove photo'**
+  String get removePhoto;
+
+  /// No description provided for @deletePhotoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete photo?'**
+  String get deletePhotoTitle;
+
+  /// No description provided for @deletePhotoMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to delete this photo?'**
+  String get deletePhotoMessage;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @words.
+  ///
+  /// In en, this message translates to:
+  /// **'words'**
+  String get words;
+
+  /// No description provided for @photoRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo removed.'**
+  String get photoRemoved;
+
+  /// No description provided for @tapSaveToApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Save to apply.'**
+  String get tapSaveToApply;
+
+  /// No description provided for @noUserDataFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No user data found'**
+  String get noUserDataFound;
+
+  /// No description provided for @noPostsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No posts yet'**
+  String get noPostsYet;
+
+  /// No description provided for @noSubscriptionsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No subscriptions yet'**
+  String get noSubscriptionsYet;
+
+  /// No description provided for @noFansYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No fans yet'**
+  String get noFansYet;
+
+  /// No description provided for @post.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
+  String get post;
+
+  /// No description provided for @sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub'**
+  String get sub;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// No description provided for @fans.
+  ///
+  /// In en, this message translates to:
+  /// **'Fans'**
+  String get fans;
+
+  /// No description provided for @idCopiedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'ID {id} copied!'**
+  String idCopiedMessage(String id);
+
+  /// No description provided for @photo.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get photo;
+
+  /// No description provided for @avatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar'**
+  String get avatar;
+
+  /// No description provided for @profileDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile Details'**
+  String get profileDetails;
+
+  /// No description provided for @birthday.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthday'**
+  String get birthday;
+
+  /// No description provided for @years.
+  ///
+  /// In en, this message translates to:
+  /// **'yrs'**
+  String get years;
+
+  /// No description provided for @countryRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Country/Region'**
+  String get countryRegion;
+
+  /// No description provided for @socialLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Social Links'**
+  String get socialLinks;
+
+  /// No description provided for @panels.
+  ///
+  /// In en, this message translates to:
+  /// **'Panels'**
+  String get panels;
+
+  /// No description provided for @coverPhotos.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover Photos'**
+  String get coverPhotos;
+
+  /// No description provided for @searchCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Country'**
+  String get searchCountry;
+
+  /// No description provided for @startTypingToSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Start typing to search'**
+  String get startTypingToSearch;
+
+  /// No description provided for @selectGender.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Gender'**
+  String get selectGender;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @clickToChangeOrDeletePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to change or delete photo. Drag photo to change order.'**
+  String get clickToChangeOrDeletePhoto;
+
+  /// No description provided for @nearby.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby'**
+  String get nearby;
+
+  /// No description provided for @popularQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular Questions'**
+  String get popularQuestions;
+
+  /// No description provided for @paymentIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Issues'**
+  String get paymentIssues;
+
+  /// No description provided for @liveStreamingIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Streaming Issues'**
+  String get liveStreamingIssues;
+
+  /// No description provided for @gamingIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaming Issues'**
+  String get gamingIssues;
+
+  /// No description provided for @partnershipRelated.
+  ///
+  /// In en, this message translates to:
+  /// **'Partnership-Related'**
+  String get partnershipRelated;
+
+  /// No description provided for @otherIssues.
+  ///
+  /// In en, this message translates to:
+  /// **'Other Issues'**
+  String get otherIssues;
+
+  /// No description provided for @noFaqsInThisCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'No FAQs in this category'**
+  String get noFaqsInThisCategory;
+
+  /// No description provided for @trySelectingDifferentCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Try selecting a different category'**
+  String get trySelectingDifferentCategory;
+
+  /// No description provided for @unableToOpenFeedbackScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to open feedback screen. Please try again.'**
+  String get unableToOpenFeedbackScreen;
+
+  /// No description provided for @faqWithdrawEarningsDetailed.
+  ///
+  /// In en, this message translates to:
+  /// **'How can I withdraw my earnings?'**
+  String get faqWithdrawEarningsDetailed;
+
+  /// No description provided for @faqWithdrawEarningsDetailedAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Go to [Wallet]: Open the wallet in your account.\n2. Select [Withdraw]: Tap the \"Withdraw\" button to proceed.\n3. Check the Requirements:\n   - Your C Coins balance must be above the minimum withdrawal amount.\n   - The minimum withdrawal is 1000 C Coins for fiat withdraw.\n   - The minimum withdrawal is 5 USDT (4250 C Coins) for crypto withdraw.\n   - Your Points balance must be 0 (withdrawal may be blocked if there are any remaining Points).\n4. Submit the Request: Enter the amount and follow the instructions to complete the withdrawal.\n\nNote: Processing time may vary depending on your payment method. If you face any problems then contact us.'**
+  String get faqWithdrawEarningsDetailedAnswer;
+
+  /// No description provided for @faqGetStreamingPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'How can I get permission to start streaming?'**
+  String get faqGetStreamingPermission;
+
+  /// No description provided for @faqGetStreamingPermissionAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact customer service to get permission for live streaming. Our support team will review your request and grant access.'**
+  String get faqGetStreamingPermissionAnswer;
+
+  /// No description provided for @faqUCoinsVsCCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the difference between U Coins and C Coins?'**
+  String get faqUCoinsVsCCoins;
+
+  /// No description provided for @faqUCoinsVsCCoinsAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'U Coins are your wallet balance (spendable coins) that you can use to send gifts and make private calls. C Coins are your earnings that you receive when viewers send you gifts or call you during live streams. U Coins are used for spending, while C Coins are your earnings that can be withdrawn.'**
+  String get faqUCoinsVsCCoinsAnswer;
+
+  /// No description provided for @faqPurchaseUCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I purchase U Coins?'**
+  String get faqPurchaseUCoins;
+
+  /// No description provided for @faqPurchaseUCoinsAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Go to Wallet screen\n2. Tap \"Purchase Coins\" or \"Recharge\" button\n3. Select the amount you want to purchase\n4. Complete payment via UPI or payment gateway\n5. Coins will be added to your wallet immediately after successful payment'**
+  String get faqPurchaseUCoinsAnswer;
+
+  /// No description provided for @faqCantWithdrawEarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Why can\'t I withdraw my earnings?'**
+  String get faqCantWithdrawEarnings;
+
+  /// No description provided for @faqCantWithdrawEarningsAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'You may not be able to withdraw if:\n1. Your C Coins balance is below the minimum withdrawal amount (1000 C Coins for fiat, 5 USDT for crypto)\n2. Your Points balance is not 0\n3. Your account verification is pending\n4. You already have a withdrawal request pending\n\nIf none of these apply, please contact customer support.'**
+  String get faqCantWithdrawEarningsAnswer;
+
+  /// No description provided for @faqWhereSeeEarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Where can I see my earnings?'**
+  String get faqWhereSeeEarnings;
+
+  /// No description provided for @faqWhereSeeEarningsAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to \"My Earnings\" screen (separate from Wallet). This shows your C Coins earned from gifts and private calls. Your Wallet shows U Coins (your spendable balance). These are separate balances.'**
+  String get faqWhereSeeEarningsAnswer;
+
+  /// No description provided for @faqGiftPrices.
+  ///
+  /// In en, this message translates to:
+  /// **'How much do gifts cost?'**
+  String get faqGiftPrices;
+
+  /// No description provided for @faqGiftPricesAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Gift prices:\n• Rose: 10 U Coins\n• Heart: 20 U Coins\n• Diamond: 50 U Coins\n• Crown: 100 U Coins\n• Sports Car: 500 U Coins\n• Rocket: 1000 U Coins\n\nMake sure you have enough U Coins in your wallet before sending gifts.'**
+  String get faqGiftPricesAnswer;
+
+  /// No description provided for @faqChangeProfilePicture.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I change my profile picture?'**
+  String get faqChangeProfilePicture;
+
+  /// No description provided for @faqChangeProfilePictureAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Go to Profile screen\n2. Tap \"Edit Profile\"\n3. Tap on your profile picture\n4. Select new image from gallery\n5. Crop and adjust as needed\n6. Tap \"Save\" to update your profile picture'**
+  String get faqChangeProfilePictureAnswer;
+
+  /// No description provided for @faqGoLive.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I go live?'**
+  String get faqGoLive;
+
+  /// No description provided for @faqGoLiveAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Tap the \"Go Live\" button (center button in bottom navigation)\n2. Grant camera and microphone permissions when prompted\n3. Read and accept the host rules\n4. Tap \"Start Live\" to begin streaming\n\nNote: You need permission from customer service first before you can go live.'**
+  String get faqGoLiveAnswer;
+
+  /// No description provided for @faqSendGiftsLiveStream.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I send gifts during a live stream?'**
+  String get faqSendGiftsLiveStream;
+
+  /// No description provided for @faqSendGiftsLiveStreamAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'1. While watching a live stream, tap the gift icon\n2. Select a gift from the gift selection sheet\n3. Confirm to send the gift\n4. U Coins will be deducted from your wallet\n5. The host will receive the gift and earn C Coins'**
+  String get faqSendGiftsLiveStreamAnswer;
+
+  /// No description provided for @faqRequestPrivateCall.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I request a private call with a host?'**
+  String get faqRequestPrivateCall;
+
+  /// No description provided for @faqRequestPrivateCallAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'1. While watching a live stream, tap the call icon\n2. Send a call request to the host\n3. If the host accepts, the private call will start\n4. The call costs 1000 U Coins per minute (deducted automatically)\n5. The host earns C Coins for the call duration'**
+  String get faqRequestPrivateCallAnswer;
+
+  /// No description provided for @faqCantSendMessagesChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Why can\'t I send messages in live chat?'**
+  String get faqCantSendMessagesChat;
+
+  /// No description provided for @faqCantSendMessagesChatAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbers (digits) and number words (one, two, etc.) are blocked in chat for your safety. This prevents sharing phone numbers. You can send text messages, but avoid using any numbers. If you need to share contact information, use the contact support feature instead.'**
+  String get faqCantSendMessagesChatAnswer;
+
+  /// No description provided for @faqFollowHostLiveStream.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I follow a host during a live stream?'**
+  String get faqFollowHostLiveStream;
+
+  /// No description provided for @faqFollowHostLiveStreamAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the follow button on the live stream screen. Once you follow a host, you will receive notifications when they go live. You can also see their profile and chat history.'**
+  String get faqFollowHostLiveStreamAnswer;
+
+  /// No description provided for @faqEarnCCoinsHost.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I earn C Coins as a host?'**
+  String get faqEarnCCoinsHost;
+
+  /// No description provided for @faqEarnCCoinsHostAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'You earn C Coins when:\n1. Viewers send you gifts during your live stream\n2. Viewers call you privately during your live stream\n\nCheck \"My Earnings\" screen to see your total C Coins balance. These earnings can be withdrawn once you meet the minimum withdrawal requirements.'**
+  String get faqEarnCCoinsHostAnswer;
+
+  /// No description provided for @faqWhatHappensSendGift.
+  ///
+  /// In en, this message translates to:
+  /// **'What happens when I send a gift?'**
+  String get faqWhatHappensSendGift;
+
+  /// No description provided for @faqWhatHappensSendGiftAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'When you send a gift:\n1. U Coins are deducted from your wallet\n2. The host receives the gift and earns C Coins\n3. A gift animation appears on the screen\n4. The transaction is recorded in your transaction history\n\nMake sure you have enough U Coins in your wallet before sending gifts.'**
+  String get faqWhatHappensSendGiftAnswer;
+
+  /// No description provided for @faqGetUCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I get U Coins?'**
+  String get faqGetUCoins;
+
+  /// No description provided for @faqGetUCoinsAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'U Coins are purchased through the Wallet screen. Tap \"Purchase Coins\" or \"Recharge\" to buy U Coins. You can use U Coins to send gifts and make private calls. U Coins are your spendable balance in your wallet.'**
+  String get faqGetUCoinsAnswer;
+
+  /// No description provided for @faqBecomePartner.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I become a partner?'**
+  String get faqBecomePartner;
+
+  /// No description provided for @faqBecomePartnerAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'To become a partner, contact our partnership team through the support section. We will review your application and get back to you with partnership details and benefits.'**
+  String get faqBecomePartnerAnswer;
+
+  /// No description provided for @faqContactCustomerService.
+  ///
+  /// In en, this message translates to:
+  /// **'How can I contact customer service?'**
+  String get faqContactCustomerService;
+
+  /// No description provided for @faqContactCustomerServiceAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'You can contact customer service by:\n1. Using the \"Contact Support\" button in Help & Feedback screen\n2. Sending a message through the app\n3. Email us at support@chamakz.com\n\nOur support team is available to help you with any questions or issues.'**
+  String get faqContactCustomerServiceAnswer;
+
+  /// No description provided for @faqNumbersBlockedChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Why are numbers blocked in chat?'**
+  String get faqNumbersBlockedChat;
+
+  /// No description provided for @faqNumbersBlockedChatAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbers (digits and number words) are blocked in chat for your safety. This prevents sharing phone numbers and protects your privacy. You can send text messages, but avoid using any numbers. If you need to share contact information, use the contact support feature instead.'**
+  String get faqNumbersBlockedChatAnswer;
+
+  /// No description provided for @faqSearchUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I search for users?'**
+  String get faqSearchUsers;
+
+  /// No description provided for @faqSearchUsersAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Tap the search icon in the top bar\n2. Enter user ID or name in the search field\n3. Tap on a user from the search results to view their profile\n4. You can follow the user or start a chat with them'**
+  String get faqSearchUsersAnswer;
 }
 
 class _AppLocalizationsDelegate

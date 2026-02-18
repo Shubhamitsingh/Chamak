@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
+import 'email_login_screen.dart';
 import 'home_screen.dart';
 import 'set_profile_screen.dart';
+import '../services/database_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,10 +17,39 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  bool _showMoreOptions = false;
+  static const String _prefKeyShowMoreOptions = 'splash_show_more_options';
+
   @override
   void initState() {
     super.initState();
+    _loadMoreOptionsState();
     _checkAuthState();
+  }
+
+  Future<void> _loadMoreOptionsState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedState = prefs.getBool(_prefKeyShowMoreOptions) ?? false;
+      debugPrint('📱 Restoring more options state: $savedState');
+      if (mounted) {
+        setState(() {
+          _showMoreOptions = savedState;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading more options state: $e');
+    }
+  }
+
+  Future<void> _saveMoreOptionsState(bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefKeyShowMoreOptions, value);
+      debugPrint('💾 Saved more options state: $value');
+    } catch (e) {
+      debugPrint('❌ Error saving more options state: $e');
+    }
   }
 
   Future<void> _checkAuthState() async {
@@ -29,10 +62,11 @@ class _SplashScreenState extends State<SplashScreen> {
       
       final User? currentUser = FirebaseAuth.instance.currentUser;
       
-      if (currentUser != null && currentUser.phoneNumber != null) {
+      if (currentUser != null) {
         // User is logged in - check profile completion
-        debugPrint('✅ User already logged in: ${currentUser.phoneNumber}');
-        debugPrint('👤 User UID: ${currentUser.uid}');
+        debugPrint('✅ User already logged in: ${currentUser.uid}');
+        debugPrint('👤 User Email: ${currentUser.email}');
+        debugPrint('👤 User Phone: ${currentUser.phoneNumber}');
         
         // Minimal delay before navigating (reduced for faster startup)
         await Future.delayed(const Duration(milliseconds: 200));
@@ -46,12 +80,12 @@ class _SplashScreenState extends State<SplashScreen> {
                 .get();
             
             final profileCompleted = userDoc.data()?['profileCompleted'] ?? false;
-            final phoneNumber = currentUser.phoneNumber!;
+            final phoneNumber = currentUser.phoneNumber ?? '';
             // Extract country code and phone number
             // Phone format: +919876543210 (country code + phone)
             String countryCode = '+91'; // Default
             String phoneOnly = phoneNumber;
-            if (phoneNumber.startsWith('+')) {
+            if (phoneNumber.isNotEmpty && phoneNumber.startsWith('+')) {
               // Try to extract country code (usually 1-3 digits after +)
               final match = RegExp(r'^\+(\d{1,3})(\d+)$').firstMatch(phoneNumber);
               if (match != null) {
@@ -66,7 +100,7 @@ class _SplashScreenState extends State<SplashScreen> {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) => HomeScreen(
-                    phoneNumber: phoneNumber,
+                    userIdentifier: phoneNumber.isNotEmpty ? phoneNumber : (currentUser.email ?? ''),
                   ),
                 ),
                 (route) => false, // Clear all previous routes - prevent back navigation to auth screens
@@ -77,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen> {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) => SetProfileScreen(
-                    phoneNumber: phoneOnly,
+                    phoneNumber: phoneOnly.isNotEmpty ? phoneOnly : (currentUser.email ?? ''),
                     countryCode: countryCode,
                   ),
                 ),
@@ -97,20 +131,131 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
-  void _navigateToLogin() {
+  void _navigateToPhoneLogin() {
     if (!mounted) return;
     
     try {
-      // Navigate to login when user clicks "Continue with Phone" button
-      // ✅ FIX: Use pushAndRemoveUntil to clear navigation stack completely
+      // Navigate to phone login screen
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => const LoginScreen(),
         ),
-        (route) => false, // Clear all previous routes - prevent back navigation to auth screens
+        (route) => false,
       );
     } catch (e) {
-      debugPrint('Navigation error in _navigateToLogin: $e');
+      debugPrint('Navigation error in _navigateToPhoneLogin: $e');
+    }
+  }
+
+  void _navigateToEmailLogin() {
+    if (!mounted) return;
+    
+    try {
+      // Navigate to email login screen
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const EmailLoginScreen(),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      debugPrint('Navigation error in _navigateToEmailLogin: $e');
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    if (!mounted) return;
+    
+    try {
+      setState(() {
+        // Show loading indicator
+      });
+
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // User cancelled the sign-in
+        if (mounted) {
+          setState(() {});
+        }
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      if (user != null && mounted) {
+        debugPrint('✅ Google Sign-In successful: ${user.email}');
+        
+        // Create or update user in Firestore
+        final dbService = DatabaseService();
+        try {
+          await dbService.createOrUpdateUserWithEmail(
+            email: user.email ?? '',
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+          );
+          
+          if (mounted) {
+            // Check if profile is completed
+            final userDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
+            
+            final profileCompleted = userDoc.data()?['profileCompleted'] ?? false;
+            
+            if (profileCompleted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => HomeScreen(
+                    userIdentifier: user.email ?? '',
+                  ),
+                ),
+                (route) => false,
+              );
+            } else {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => SetProfileScreen(
+                    phoneNumber: user.email ?? '',
+                    countryCode: '',
+                  ),
+                ),
+                (route) => false,
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint('❌ Error saving user to database: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error: ${e.toString()}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Google Sign-In error: $e');
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -214,57 +359,191 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ),
                 const Spacer(),
+                // Google Login Button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30),
                   child: SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: Semantics(
-                      label: 'Continue with Phone Number',
+                      label: 'Continue with Google',
                       button: true,
                       child: ElevatedButton(
-                        onPressed: _navigateToLogin,
+                        onPressed: _signInWithGoogle,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF1B7C),
-                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black87,
                           elevation: 8,
-                          shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
+                          shadowColor: Colors.black.withValues(alpha: 0.2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
                           padding: EdgeInsets.zero,
                         ),
                         child: Stack(
-                        children: [
-                          // Centered text in entire container
-                          const Center(
-                            child: Text(
-                              'Continue with Phone',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                          children: [
+                            // Centered text in entire container
+                            const Center(
+                              child: Text(
+                                'Continue with Google',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                          // Phone icon at left position
-                          Positioned(
-                            left: 12,
-                            top: 0,
-                            bottom: 0,
-                            child: Center(
-                              child: const Icon(
-                                Icons.phone_android,
-                                size: 28,
-                                color: Colors.white,
+                            // Google icon at left position
+                            Positioned(
+                              left: 12,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/google.png',
+                                  width: 28,
+                                  height: 28,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.g_mobiledata,
+                                      size: 28,
+                                      color: Colors.black87,
+                                    );
+                                  },
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
+                // Email Login Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: Semantics(
+                      label: 'Continue with Email',
+                      button: true,
+                      child: ElevatedButton(
+                        onPressed: _navigateToEmailLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFFFF1B7C),
+                          elevation: 8,
+                          shadowColor: Colors.black.withValues(alpha: 0.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: Stack(
+                          children: [
+                            // Centered text in entire container
+                            const Center(
+                              child: Text(
+                                'Continue with Email',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            // Email icon at left position
+                            Positioned(
+                              left: 12,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: const Icon(
+                                  Icons.email,
+                                  size: 28,
+                                  color: Color(0xFFFF1B7C),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Simple Arrow Button for More Options
+                Center(
+                  child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _showMoreOptions = !_showMoreOptions;
+                      });
+                      _saveMoreOptionsState(_showMoreOptions);
+                    },
+                    icon: Icon(
+                      _showMoreOptions ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                    tooltip: _showMoreOptions ? 'Hide Options' : 'More Options',
+                  ),
+                ),
+                // Phone Login Button (shown when expanded)
+                if (_showMoreOptions) ...[
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 30),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: Semantics(
+                        label: 'Continue with Phone Number',
+                        button: true,
+                        child: ElevatedButton(
+                          onPressed: _navigateToPhoneLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF1B7C),
+                            foregroundColor: Colors.white,
+                            elevation: 8,
+                            shadowColor: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: Stack(
+                            children: [
+                              // Centered text in entire container
+                              const Center(
+                                child: Text(
+                                  'Continue with Phone',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              // Phone icon at left position
+                              Positioned(
+                                left: 12,
+                                top: 0,
+                                bottom: 0,
+                                child: Center(
+                                  child: const Icon(
+                                    Icons.phone_android,
+                                    size: 28,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 30),

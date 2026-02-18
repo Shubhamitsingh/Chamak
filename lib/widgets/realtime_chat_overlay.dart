@@ -38,6 +38,10 @@ class _RealtimeChatOverlayState extends State<RealtimeChatOverlay>
   bool _isInputVisible = false; // Track if input field should be visible
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
+  
+  // Store listener references for proper cleanup
+  VoidCallback? _focusNodeListener;
+  VoidCallback? _messageControllerListener;
 
   @override
   void initState() {
@@ -70,32 +74,47 @@ class _RealtimeChatOverlayState extends State<RealtimeChatOverlay>
     });
     
     // Listen to keyboard visibility
-    _focusNode.addListener(() {
+    _focusNodeListener = () {
+      if (!mounted) return; // Check if widget is still mounted
       final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
       if (keyboardVisible != _isKeyboardVisible) {
-        setState(() {
-          _isKeyboardVisible = keyboardVisible;
-          _isInputVisible = keyboardVisible; // Show input when keyboard appears
-        });
-        // Auto-scroll when keyboard appears
-        if (keyboardVisible) {
-          _scrollToBottom();
+        if (mounted) {
+          setState(() {
+            _isKeyboardVisible = keyboardVisible;
+            _isInputVisible = keyboardVisible; // Show input when keyboard appears
+          });
+          // Auto-scroll when keyboard appears
+          if (keyboardVisible) {
+            _scrollToBottom();
+          }
         }
       }
-    });
+    };
+    _focusNode.addListener(_focusNodeListener!);
     
     // Listen to message controller for input visibility
-    _messageController.addListener(() {
+    _messageControllerListener = () {
+      if (!mounted) return; // Check if widget is still mounted
       if (_messageController.text.isNotEmpty && !_isInputVisible) {
-        setState(() {
-          _isInputVisible = true;
-        });
+        if (mounted) {
+          setState(() {
+            _isInputVisible = true;
+          });
+        }
       }
-    });
+    };
+    _messageController.addListener(_messageControllerListener!);
   }
 
   @override
   void dispose() {
+    // Remove listeners before disposing controllers
+    if (_focusNodeListener != null) {
+      _focusNode.removeListener(_focusNodeListener!);
+    }
+    if (_messageControllerListener != null) {
+      _messageController.removeListener(_messageControllerListener!);
+    }
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();

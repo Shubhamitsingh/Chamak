@@ -133,7 +133,7 @@ class _IntroLogoScreenState extends State<IntroLogoScreen> with TickerProviderSt
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (_) => HomeScreen(
-                    phoneNumber: phoneNumber,
+                    userIdentifier: phoneNumber,
                   ),
                 ),
                 (route) => false, // Clear all previous routes - prevent back navigation to auth screens

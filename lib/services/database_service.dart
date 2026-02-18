@@ -45,6 +45,9 @@ class DatabaseService {
         final data = userDoc.data() as Map<String, dynamic>?;
         final String? existingPhoto = data != null ? (data['photoURL'] as String?) : null;
         final String? existingNumericId = data != null ? (data['numericUserId'] as String?) : null;
+        final String? existingPhoneNumber = data != null ? (data['phoneNumber'] as String?) : null;
+        final String? existingCountryCode = data != null ? (data['countryCode'] as String?) : null;
+        final dynamic existingCreatedAt = data != null ? data['createdAt'] : null; // Check createdAt
 
         // Generate numeric ID if missing (for existing users)
         String? numericIdToUpdate;
@@ -64,6 +67,22 @@ class DatabaseService {
           // Note: isActive field is NOT updated here - it's managed by admin only
           // This prevents overwriting admin-set approval status
         };
+        
+        // ✅ FIX: Update phoneNumber and countryCode if missing (critical for user identification)
+        if (existingPhoneNumber == null || existingPhoneNumber.isEmpty) {
+          updateData['phoneNumber'] = phoneNumber;
+          print('📱 Updating missing phoneNumber: $phoneNumber');
+        }
+        if (existingCountryCode == null || existingCountryCode.isEmpty) {
+          updateData['countryCode'] = countryCode;
+          print('🌍 Updating missing countryCode: $countryCode');
+        }
+        
+        // ✅ FIX: Update createdAt if missing (critical for join date tracking)
+        if (existingCreatedAt == null) {
+          updateData['createdAt'] = FieldValue.serverTimestamp();
+          print('📅 Updating missing createdAt: Setting join date');
+        }
         
         // Note: Coin fields (uCoins, coins, cCoins) cannot be set by users
         // They are managed by Cloud Functions and admin services only
@@ -175,8 +194,8 @@ class DatabaseService {
       };
       
       if (displayName != null) updates['displayName'] = displayName;
-      if (photoURL != null) updates['photoURL'] = photoURL;
-      if (coverURL != null) updates['coverURL'] = coverURL;
+      if (photoURL != null) updates['photoURL'] = photoURL.isEmpty ? FieldValue.delete() : photoURL;
+      if (coverURL != null) updates['coverURL'] = coverURL.isEmpty ? FieldValue.delete() : coverURL;
       if (bio != null) updates['bio'] = bio;
       if (age != null) updates['age'] = age;
       if (gender != null) updates['gender'] = gender;
@@ -316,6 +335,140 @@ class DatabaseService {
       print('✅ Phone number updated successfully');
     } catch (e) {
       print('❌ Error updating phone number: $e');
+      rethrow;
+    }
+  }
+
+  // Create or Update User with Email/Google (for email and Google sign-in)
+  // Returns true if new user was created, false if existing user was updated
+  Future<bool> createOrUpdateUserWithEmail({
+    required String email,
+    String? displayName,
+    String? photoURL,
+  }) async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        print('❌ No authenticated user found');
+        return false;
+      }
+
+      print('📝 Creating/Updating user in Firestore (Email/Google): $userId');
+
+      // Check if user already exists with timeout
+      DocumentSnapshot userDoc = await _usersCollection.doc(userId).get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Database operation timed out. Please check your internet connection.');
+        },
+      );
+
+      if (userDoc.exists) {
+        // User exists → Update last login
+        print('✅ User exists, updating last login');
+        final data = userDoc.data() as Map<String, dynamic>?;
+        final String? existingPhoto = data != null ? (data['photoURL'] as String?) : null;
+        final String? existingNumericId = data != null ? (data['numericUserId'] as String?) : null;
+        final String? existingEmail = data != null ? (data['email'] as String?) : null;
+        final dynamic existingCreatedAt = data != null ? data['createdAt'] : null;
+
+        // Generate numeric ID if missing (for existing users)
+        String? numericIdToUpdate;
+        if (existingNumericId == null || existingNumericId.isEmpty) {
+          numericIdToUpdate = IdGeneratorService.generateNumericUserId();
+          print('🆔 Generated numeric ID for existing user: $numericIdToUpdate');
+        }
+
+        // Get current device ID for single device login tracking
+        final deviceId = await DeviceService.getDeviceId();
+
+        Map<String, dynamic> updateData = {
+          if (numericIdToUpdate != null) 'numericUserId': numericIdToUpdate,
+          'lastLogin': FieldValue.serverTimestamp(),
+          'currentDeviceId': deviceId,
+          'currentDeviceLoginAt': FieldValue.serverTimestamp(),
+        };
+        
+        // Update email if missing
+        if (existingEmail == null || existingEmail.isEmpty) {
+          updateData['email'] = email;
+          print('📧 Updating missing email: $email');
+        }
+        
+        // Update displayName if provided and missing
+        if (displayName != null && displayName.isNotEmpty) {
+          final existingDisplayName = data != null ? (data['displayName'] as String?) : null;
+          if (existingDisplayName == null || existingDisplayName.isEmpty) {
+            updateData['displayName'] = displayName;
+            print('👤 Updating displayName: $displayName');
+          }
+        }
+        
+        // Update photoURL if provided and missing
+        if (photoURL != null && photoURL.isNotEmpty) {
+          if (existingPhoto == null || existingPhoto.isEmpty) {
+            updateData['photoURL'] = photoURL;
+            print('🖼️ Updating photoURL: $photoURL');
+          }
+        } else if (existingPhoto == null || existingPhoto.isEmpty) {
+          // Generate avatar if no photo
+          final generated = AvatarService.generateAvatarUrl(userId: userId);
+          updateData['photoURL'] = generated;
+        }
+        
+        // Update createdAt if missing
+        if (existingCreatedAt == null) {
+          updateData['createdAt'] = FieldValue.serverTimestamp();
+          print('📅 Updating missing createdAt: Setting join date');
+        }
+        
+        await _usersCollection.doc(userId).update(updateData).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            throw TimeoutException('Database update timed out. Please check your internet connection.');
+          },
+        );
+        print('✅ Last login updated successfully');
+        return false; // Existing user updated
+      } else {
+        // New user → Create profile
+        print('✨ New user detected, creating profile...');
+        final generated = photoURL ?? AvatarService.generateAvatarUrl(userId: userId);
+        final numericId = IdGeneratorService.generateNumericUserId();
+        print('🆔 Generated numeric ID for new user: $numericId');
+        
+        // Get current device ID for single device login tracking
+        final deviceId = await DeviceService.getDeviceId();
+        print('📱 Device ID for new user: $deviceId');
+        
+        await _usersCollection.doc(userId).set({
+          'userId': userId,
+          'numericUserId': numericId,
+          'email': email,
+          'phoneNumber': '', // Empty for email/Google users
+          'countryCode': '', // Empty for email/Google users
+          'displayName': displayName,
+          'photoURL': generated,
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLogin': FieldValue.serverTimestamp(),
+          'lastActive': FieldValue.serverTimestamp(),
+          'currentDeviceId': deviceId,
+          'currentDeviceLoginAt': FieldValue.serverTimestamp(),
+          'isActive': false,
+          'followersCount': 0,
+          'followingCount': 0,
+          'level': 1,
+        }).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            throw TimeoutException('Database creation timed out. Please check your internet connection.');
+          },
+        );
+        print('✅ User profile created successfully in Firestore!');
+        return true; // New user created
+      }
+    } catch (e) {
+      print('❌ Error creating/updating user in Firestore: $e');
       rethrow;
     }
   }

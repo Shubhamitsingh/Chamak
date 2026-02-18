@@ -660,6 +660,23 @@ class LiveStreamService {
   /// Keep stream alive (heartbeat) - call periodically while streaming
   Future<void> keepStreamAlive(String streamId) async {
     try {
+      // ✅ SAFETY CHECK: Don't update if stream is already ended
+      // This prevents heartbeat from overriding stream end status
+      final streamDoc = await _firestore.collection(_collection).doc(streamId).get();
+      if (!streamDoc.exists) {
+        print('⚠️ Stream $streamId does not exist, skipping heartbeat');
+        return;
+      }
+      
+      final data = streamDoc.data();
+      final hostStatus = data?['hostStatus'] as String?;
+      
+      // Don't update if stream is already ended
+      if (hostStatus == 'ended') {
+        print('⚠️ Stream $streamId is already ended, skipping heartbeat');
+        return;
+      }
+      
       await _firestore.collection(_collection).doc(streamId).update({
         'isActive': true, // Ensure it stays active
         'lastHeartbeat': FieldValue.serverTimestamp(),

@@ -265,7 +265,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
       if (cameraStatus.isDenied || micStatus.isDenied) {
         if (mounted) {
-          Navigator.pop(context); // Close dialog
+          // ✅ FIX: Check if we can pop before attempting to pop
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context); // Close dialog
+          }
+          // Reset flag
+          setState(() {
+            _isCallDialogShowing = false;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Camera and microphone permissions are required for video calls'),
@@ -279,7 +286,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
       if (cameraStatus.isPermanentlyDenied || micStatus.isPermanentlyDenied) {
         if (mounted) {
-          Navigator.pop(context); // Close dialog
+          // ✅ FIX: Check if we can pop before attempting to pop
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context); // Close dialog
+          }
+          // Reset flag
+          setState(() {
+            _isCallDialogShowing = false;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Please enable camera and microphone permissions in app settings'),
@@ -314,7 +328,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
       if (!mounted) return;
       
       // Close dialog before navigation
-      Navigator.pop(context);
+      // ✅ FIX: Check if we can pop before attempting to pop
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      // Reset flag
+      setState(() {
+        _isCallDialogShowing = false;
+      });
       
       // Navigate to call screen
       Navigator.push(
@@ -335,7 +356,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
     } catch (e) {
       debugPrint('❌ Error accepting call: $e');
       if (mounted) {
-        Navigator.pop(context); // Close dialog on error
+        // ✅ FIX: Check if we can pop before attempting to pop
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context); // Close dialog on error
+        }
+        // Reset flag
+        setState(() {
+          _isCallDialogShowing = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to accept call: $e'),
@@ -351,12 +379,31 @@ class _ChatListScreenState extends State<ChatListScreen> {
     try {
       await _callRequestService.rejectCallRequest(requestId);
       if (mounted) {
-        Navigator.pop(context); // Close dialog
+        // ✅ FIX: Check if we can pop before attempting to pop
+        // This prevents "Bad state: No element" crash
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context); // Close dialog
+        }
+        // Reset flag even if dialog was already closed
+        if (mounted) {
+          setState(() {
+            _isCallDialogShowing = false;
+          });
+        }
       }
     } catch (e) {
       debugPrint('❌ Error rejecting call: $e');
       if (mounted) {
-        Navigator.pop(context); // Close dialog on error
+        // ✅ FIX: Check if we can pop before attempting to pop
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context); // Close dialog on error
+        }
+        // Reset flag even if dialog was already closed
+        if (mounted) {
+          setState(() {
+            _isCallDialogShowing = false;
+          });
+        }
       }
     }
   }

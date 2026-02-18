@@ -63,6 +63,10 @@ class _LiveChatPanelState extends State<LiveChatPanel> with TickerProviderStateM
   final Set<String> _animatedMessages = {}; // Track which messages have been animated to prevent re-animation
   bool _adminMessageShown = false; // Track if admin welcome message has been shown
   OverlayEntry? _adminMessageOverlay; // Track admin message overlay
+  
+  // Store listener references for proper cleanup
+  VoidCallback? _messageControllerListener;
+  VoidCallback? _scrollControllerListener;
 
   @override
   void initState() {
@@ -98,7 +102,8 @@ class _LiveChatPanelState extends State<LiveChatPanel> with TickerProviderStateM
     }
 
     // Listen for numbers while typing and update UI
-    _messageController.addListener(() {
+    _messageControllerListener = () {
+      if (!mounted) return; // Check if widget is still mounted
       final hasNumbers = _containsAnyNumbers(_messageController.text);
       final hasText = _messageController.text.trim().isNotEmpty;
       if (hasNumbers != _containsNumbersWarning || hasText != _hasText) {
@@ -109,10 +114,12 @@ class _LiveChatPanelState extends State<LiveChatPanel> with TickerProviderStateM
           });
         }
       }
-    });
+    };
+    _messageController.addListener(_messageControllerListener!);
 
     // Track scroll position to detect user scrolling
-    _scrollController.addListener(() {
+    _scrollControllerListener = () {
+      if (!mounted) return; // Check if widget is still mounted
       if (_scrollController.hasClients) {
         try {
         final isAtBottom = _scrollController.position.pixels >= 
@@ -122,7 +129,8 @@ class _LiveChatPanelState extends State<LiveChatPanel> with TickerProviderStateM
           // Ignore errors during scroll tracking
         }
       }
-    });
+    };
+    _scrollController.addListener(_scrollControllerListener!);
   }
 
 
@@ -437,6 +445,13 @@ class _LiveChatPanelState extends State<LiveChatPanel> with TickerProviderStateM
     // Send exit notification when leaving chat (only if an entry was sent)
     if (_entryNotificationSent && !_exitNotificationSent) {
       _sendExitNotification();
+    }
+    // Remove listeners before disposing controllers
+    if (_messageControllerListener != null) {
+      _messageController.removeListener(_messageControllerListener!);
+    }
+    if (_scrollControllerListener != null) {
+      _scrollController.removeListener(_scrollControllerListener!);
     }
     _messageController.dispose();
     _scrollController.dispose();

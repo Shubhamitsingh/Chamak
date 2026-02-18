@@ -83,22 +83,22 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
       // Popular Questions
       {
         'id': 'faq_1',
-        'question': 'How can I withdraw my earnings?',
-        'answer': '1. Go to [Wallet]: Open the wallet in your account.\n2. Select [Withdraw]: Tap the "Withdraw" button to proceed.\n3. Check the Requirements:\n   - Your C Coins balance must be above the minimum withdrawal amount.\n   - The minimum withdrawal is 1000 C Coins for fiat withdraw.\n   - The minimum withdrawal is 5 USDT (4250 C Coins) for crypto withdraw.\n   - Your Points balance must be 0 (withdrawal may be blocked if there are any remaining Points).\n4. Submit the Request: Enter the amount and follow the instructions to complete the withdrawal.\n\nNote: Processing time may vary depending on your payment method. If you face any problems then contact us.',
+        'question': localizations.faqWithdrawEarningsDetailed,
+        'answer': localizations.faqWithdrawEarningsDetailedAnswer,
         'category': 'popular',
         'order': 1,
       },
       {
         'id': 'faq_2',
-        'question': 'How can I get permission to start streaming?',
-        'answer': 'Contact customer service to get permission for live streaming. Our support team will review your request and grant access.',
+        'question': localizations.faqGetStreamingPermission,
+        'answer': localizations.faqGetStreamingPermissionAnswer,
         'category': 'popular',
         'order': 2,
       },
       {
         'id': 'faq_3',
-        'question': 'What is the difference between U Coins and C Coins?',
-        'answer': 'U Coins are your wallet balance (spendable coins) that you can use to send gifts and make private calls. C Coins are your earnings that you receive when viewers send you gifts or call you during live streams. U Coins are used for spending, while C Coins are your earnings that can be withdrawn.',
+        'question': localizations.faqUCoinsVsCCoins,
+        'answer': localizations.faqUCoinsVsCCoinsAnswer,
         'category': 'popular',
         'order': 3,
       },
@@ -118,8 +118,8 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
       },
       {
         'id': 'faq_6',
-        'question': 'How do I purchase U Coins?',
-        'answer': '1. Go to Wallet screen\n2. Tap "Purchase Coins" or "Recharge" button\n3. Select the amount you want to purchase\n4. Complete payment via UPI or payment gateway\n5. Coins will be added to your wallet immediately after successful payment',
+        'question': localizations.faqPurchaseUCoins,
+        'answer': localizations.faqPurchaseUCoinsAnswer,
         'category': 'popular',
         'order': 6,
       },
@@ -141,22 +141,22 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
       },
       {
         'id': 'faq_9',
-        'question': 'Why can\'t I withdraw my earnings?',
-        'answer': 'You may not be able to withdraw if:\n1. Your C Coins balance is below the minimum withdrawal amount (1000 C Coins for fiat, 5 USDT for crypto)\n2. Your Points balance is not 0\n3. Your account verification is pending\n4. You already have a withdrawal request pending\n\nIf none of these apply, please contact customer support.',
+        'question': localizations.faqCantWithdrawEarnings,
+        'answer': localizations.faqCantWithdrawEarningsAnswer,
         'category': 'payment',
         'order': 3,
       },
       {
         'id': 'faq_10',
-        'question': 'Where can I see my earnings?',
-        'answer': 'Go to "My Earnings" screen (separate from Wallet). This shows your C Coins earned from gifts and private calls. Your Wallet shows U Coins (your spendable balance). These are separate balances.',
+        'question': localizations.faqWhereSeeEarnings,
+        'answer': localizations.faqWhereSeeEarningsAnswer,
         'category': 'payment',
         'order': 4,
       },
       {
         'id': 'faq_11',
-        'question': 'How much do gifts cost?',
-        'answer': 'Gift prices:\n• Rose: 10 U Coins\n• Heart: 20 U Coins\n• Diamond: 50 U Coins\n• Crown: 100 U Coins\n• Sports Car: 500 U Coins\n• Rocket: 1000 U Coins\n\nMake sure you have enough U Coins in your wallet before sending gifts.',
+        'question': localizations.faqGiftPrices,
+        'answer': localizations.faqGiftPricesAnswer,
         'category': 'payment',
         'order': 5,
       },
@@ -185,8 +185,8 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
       },
       {
         'id': 'faq_15',
-        'question': 'How do I change my profile picture?',
-        'answer': '1. Go to Profile screen\n2. Tap "Edit Profile"\n3. Tap on your profile picture\n4. Select new image from gallery\n5. Crop and adjust as needed\n6. Tap "Save" to update your profile picture',
+        'question': localizations.faqChangeProfilePicture,
+        'answer': localizations.faqChangeProfilePictureAnswer,
         'category': 'account',
         'order': 4,
       },
@@ -194,36 +194,36 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
       // Live Streaming Issues
       {
         'id': 'faq_16',
-        'question': 'How do I go live?',
-        'answer': '1. Tap the "Go Live" button (center button in bottom navigation)\n2. Grant camera and microphone permissions when prompted\n3. Read and accept the host rules\n4. Tap "Start Live" to begin streaming\n\nNote: You need permission from customer service first before you can go live.',
+        'question': localizations.faqGoLive,
+        'answer': localizations.faqGoLiveAnswer,
         'category': 'live_streaming',
         'order': 1,
       },
       {
         'id': 'faq_17',
-        'question': 'How do I send gifts during a live stream?',
-        'answer': '1. While watching a live stream, tap the gift icon\n2. Select a gift from the gift selection sheet\n3. Confirm to send the gift\n4. U Coins will be deducted from your wallet\n5. The host will receive the gift and earn C Coins',
+        'question': localizations.faqSendGiftsLiveStream,
+        'answer': localizations.faqSendGiftsLiveStreamAnswer,
         'category': 'live_streaming',
         'order': 2,
       },
       {
         'id': 'faq_18',
-        'question': 'How do I request a private call with a host?',
-        'answer': '1. While watching a live stream, tap the call icon\n2. Send a call request to the host\n3. If the host accepts, the private call will start\n4. The call costs 1000 U Coins per minute (deducted automatically)\n5. The host earns C Coins for the call duration',
+        'question': localizations.faqRequestPrivateCall,
+        'answer': localizations.faqRequestPrivateCallAnswer,
         'category': 'live_streaming',
         'order': 3,
       },
       {
         'id': 'faq_19',
-        'question': 'Why can\'t I send messages in live chat?',
-        'answer': 'Numbers (digits) and number words (one, two, etc.) are blocked in chat for your safety. This prevents sharing phone numbers. You can send text messages, but avoid using any numbers. If you need to share contact information, use the contact support feature instead.',
+        'question': localizations.faqCantSendMessagesChat,
+        'answer': localizations.faqCantSendMessagesChatAnswer,
         'category': 'live_streaming',
         'order': 4,
       },
       {
         'id': 'faq_20',
-        'question': 'How do I follow a host during a live stream?',
-        'answer': 'Tap the follow button on the live stream screen. Once you follow a host, you will receive notifications when they go live. You can also see their profile and chat history.',
+        'question': localizations.faqFollowHostLiveStream,
+        'answer': localizations.faqFollowHostLiveStreamAnswer,
         'category': 'live_streaming',
         'order': 5,
       },
@@ -231,22 +231,22 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
       // Coins & Earnings
       {
         'id': 'faq_21',
-        'question': 'How do I earn C Coins as a host?',
-        'answer': 'You earn C Coins when:\n1. Viewers send you gifts during your live stream\n2. Viewers call you privately during your live stream\n\nCheck "My Earnings" screen to see your total C Coins balance. These earnings can be withdrawn once you meet the minimum withdrawal requirements.',
+        'question': localizations.faqEarnCCoinsHost,
+        'answer': localizations.faqEarnCCoinsHostAnswer,
         'category': 'gaming',
         'order': 1,
       },
       {
         'id': 'faq_22',
-        'question': 'What happens when I send a gift?',
-        'answer': 'When you send a gift:\n1. U Coins are deducted from your wallet\n2. The host receives the gift and earns C Coins\n3. A gift animation appears on the screen\n4. The transaction is recorded in your transaction history\n\nMake sure you have enough U Coins in your wallet before sending gifts.',
+        'question': localizations.faqWhatHappensSendGift,
+        'answer': localizations.faqWhatHappensSendGiftAnswer,
         'category': 'gaming',
         'order': 2,
       },
       {
         'id': 'faq_23',
-        'question': 'How do I get U Coins?',
-        'answer': 'U Coins are purchased through the Wallet screen. Tap "Purchase Coins" or "Recharge" to buy U Coins. You can use U Coins to send gifts and make private calls. U Coins are your spendable balance in your wallet.',
+        'question': localizations.faqGetUCoins,
+        'answer': localizations.faqGetUCoinsAnswer,
         'category': 'gaming',
         'order': 3,
       },
@@ -254,8 +254,8 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
       // Partnership
       {
         'id': 'faq_24',
-        'question': 'How do I become a partner?',
-        'answer': 'To become a partner, contact our partnership team through the support section. We will review your application and get back to you with partnership details and benefits.',
+        'question': localizations.faqBecomePartner,
+        'answer': localizations.faqBecomePartnerAnswer,
         'category': 'partnership',
         'order': 1,
       },
@@ -277,22 +277,22 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
       },
       {
         'id': 'faq_27',
-        'question': 'How can I contact customer service?',
-        'answer': 'You can contact customer service by:\n1. Using the "Contact Support" button in Help & Feedback screen\n2. Sending a message through the app\n3. Email us at support@chamakz.com\n\nOur support team is available to help you with any questions or issues.',
+        'question': localizations.faqContactCustomerService,
+        'answer': localizations.faqContactCustomerServiceAnswer,
         'category': 'other',
         'order': 3,
       },
       {
         'id': 'faq_28',
-        'question': 'Why are numbers blocked in chat?',
-        'answer': 'Numbers (digits and number words) are blocked in chat for your safety. This prevents sharing phone numbers and protects your privacy. You can send text messages, but avoid using any numbers. If you need to share contact information, use the contact support feature instead.',
+        'question': localizations.faqNumbersBlockedChat,
+        'answer': localizations.faqNumbersBlockedChatAnswer,
         'category': 'other',
         'order': 4,
       },
       {
         'id': 'faq_29',
-        'question': 'How do I search for users?',
-        'answer': '1. Tap the search icon in the top bar\n2. Enter user ID or name in the search field\n3. Tap on a user from the search results to view their profile\n4. You can follow the user or start a chat with them',
+        'question': localizations.faqSearchUsers,
+        'answer': localizations.faqSearchUsersAnswer,
         'category': 'other',
         'order': 5,
       },
@@ -330,7 +330,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
           style: const TextStyle(
             color: Colors.black87,
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
           ),
         ),
         centerTitle: true,
@@ -379,7 +379,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
+                  Flexible(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -389,7 +389,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -419,7 +419,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                     AppLocalizations.of(context)!.frequentlyAskedQuestions,
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       color: Colors.grey[900],
                     ),
                   ),
@@ -439,7 +439,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'No FAQs in this category',
+                                  AppLocalizations.of(context)!.noFaqsInThisCategory,
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey[600],
@@ -448,7 +448,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Try selecting a different category',
+                                  AppLocalizations.of(context)!.trySelectingDifferentCategory,
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Colors.grey[500],
@@ -478,18 +478,19 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Number Badge
                                 Text(
                                   '$displayIndex.',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w700,
                                     color: Colors.grey[700],
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                Expanded(
+                                Flexible(
                                   child: Text(
                                     faq['question'].toString(),
                                     style: TextStyle(
@@ -499,6 +500,7 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                                     ),
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Icon(
                                   isExpanded 
                                       ? Icons.keyboard_arrow_up
@@ -569,8 +571,8 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                         );
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Unable to open feedback screen. Please try again.'),
+                            SnackBar(
+                              content: Text(AppLocalizations.of(context)!.unableToOpenFeedbackScreen),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -592,9 +594,9 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Feedback',
-                    style: TextStyle(
+                  child: Text(
+                    AppLocalizations.of(context)!.feedback,
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -610,6 +612,29 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
         ),
       ),
     );
+  }
+
+  // Get localized category name
+  String _getCategoryName(BuildContext context, String categoryId) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (categoryId) {
+      case 'popular':
+        return l10n.popularQuestions;
+      case 'payment':
+        return l10n.paymentIssues;
+      case 'account':
+        return l10n.account;
+      case 'live_streaming':
+        return l10n.liveStreamingIssues;
+      case 'gaming':
+        return l10n.gamingIssues;
+      case 'partnership':
+        return l10n.partnershipRelated;
+      case 'other':
+        return l10n.otherIssues;
+      default:
+        return categoryId;
+    }
   }
 
   // Build Category Tabs (Horizontal Scrollable)
@@ -656,11 +681,11 @@ class _HelpFeedbackScreenState extends State<HelpFeedbackScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    category.name,
+                    _getCategoryName(context, category.id),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: isSelected 
-                          ? FontWeight.bold 
+                          ? FontWeight.w600 
                           : FontWeight.normal,
                       color: isSelected 
                           ? Colors.grey[600]! 

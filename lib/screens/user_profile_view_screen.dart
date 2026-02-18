@@ -42,6 +42,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
   bool _isLoading = true;
   int _followersCount = 0;
   int _followingCount = 0;
+  bool _isBioExpanded = false; // Track if bio is expanded
   
   late TabController _tabController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -198,23 +199,55 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
           );
         } catch (dbError) {
           debugPrint('⚠️ Error using DatabaseService, creating manually: $dbError');
-          // Fallback: Create manually if DatabaseService fails
-          await FirebaseFirestore.instance
+          // ✅ FIX: Check if document exists before using merge
+          final existingDoc = await FirebaseFirestore.instance
               .collection('users')
               .doc(currentUser.uid)
-              .set({
-            'userId': currentUser.uid,
-            'phoneNumber': cleanPhone,
-            'countryCode': countryCode,
-            'displayName': null, // Will be set when profile is completed
-            'photoURL': null, // Will be set when profile is completed
-            'createdAt': FieldValue.serverTimestamp(),
-            'lastLogin': FieldValue.serverTimestamp(),
-            'isActive': false, // New users need admin approval
-            'followersCount': 0,
-            'followingCount': 0,
-            'level': 1,
-          }, SetOptions(merge: true));
+              .get();
+          
+          if (existingDoc.exists) {
+            // Document exists - update missing fields only
+            final updates = <String, dynamic>{};
+            final existingData = existingDoc.data() as Map<String, dynamic>?;
+            
+            if (existingData == null || existingData['createdAt'] == null) {
+              updates['createdAt'] = FieldValue.serverTimestamp();
+              debugPrint('📅 Setting missing createdAt in fallback');
+            }
+            if (existingData == null || existingData['phoneNumber'] == null || (existingData['phoneNumber'] as String?)?.isEmpty == true) {
+              updates['phoneNumber'] = cleanPhone;
+            }
+            if (existingData == null || existingData['countryCode'] == null || (existingData['countryCode'] as String?)?.isEmpty == true) {
+              updates['countryCode'] = countryCode;
+            }
+            if (existingData == null || existingData['userId'] == null) {
+              updates['userId'] = currentUser.uid;
+            }
+            
+            if (updates.isNotEmpty) {
+              await existingDoc.reference.update(updates);
+              debugPrint('✅ Updated missing fields in existing document');
+            }
+          } else {
+            // New document - create with all fields
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .set({
+              'userId': currentUser.uid,
+              'phoneNumber': cleanPhone,
+              'countryCode': countryCode,
+              'displayName': null, // Will be set when profile is completed
+              'photoURL': null, // Will be set when profile is completed
+              'createdAt': FieldValue.serverTimestamp(), // ✅ Always set for new docs
+              'lastLogin': FieldValue.serverTimestamp(),
+              'isActive': false, // New users need admin approval
+              'followersCount': 0,
+              'followingCount': 0,
+              'level': 1,
+            });
+            debugPrint('✅ Created new user document in fallback');
+          }
         }
         
         // Re-fetch the document
@@ -1031,7 +1064,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                         // Profile Picture with Pink Gradient Border
                         Container(
@@ -1075,6 +1108,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               // Username + Verified Badge
                               Row(
@@ -1183,21 +1217,10 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
                                 },
                               ),
                               
-                              // Bio
+                              // Bio with Expandable "More" Button
                               if (widget.user.bio != null && widget.user.bio!.isNotEmpty) ...[
                                 const SizedBox(height: 6),
-                                Text(
-                                  widget.user.bio!.length > 80 
-                                      ? '${widget.user.bio!.substring(0, 80)}...'
-                                        : widget.user.bio!,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.black54,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                ),
+                                _buildExpandableBio(),
                               ],
                           ],
                         ),
@@ -1754,6 +1777,84 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
           ),
         ),
       ],
+    );
+  }
+
+  // Build expandable bio widget with "more" button
+  Widget _buildExpandableBio() {
+    final bio = widget.user.bio!;
+    
+    // Use LayoutBuilder to check if text exceeds 2 lines
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Create a TextPainter to measure text
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: bio,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          maxLines: 2,
+          textDirection: TextDirection.ltr,
+        );
+        textPainter.layout(maxWidth: constraints.maxWidth);
+        
+        // Check if text needs expansion (more than 2 lines)
+        final needsExpansion = textPainter.didExceedMaxLines;
+        
+        // If bio doesn't need expansion, show it normally
+        if (!needsExpansion) {
+          return Text(
+            bio,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              fontWeight: FontWeight.w400,
+            ),
+          );
+        }
+        
+        // Bio needs expansion - show expandable version with smooth animation
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                bio,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.w400,
+                ),
+                maxLines: _isBioExpanded ? null : 2,
+                overflow: _isBioExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isBioExpanded = !_isBioExpanded;
+                  });
+                },
+                child: Text(
+                  _isBioExpanded ? '...(less)' : '...(more)',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54, // Same color as bio text
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

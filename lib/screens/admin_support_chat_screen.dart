@@ -32,6 +32,9 @@ class _AdminSupportChatScreenState extends State<AdminSupportChatScreen> {
   
   String? _adminId;
   bool _containsDigitsWarning = false;
+  
+  // Store listener reference for proper cleanup
+  VoidCallback? _messageControllerListener;
 
   @override
   void initState() {
@@ -44,18 +47,24 @@ class _AdminSupportChatScreenState extends State<AdminSupportChatScreen> {
     }
 
     // Listen for numbers while typing
-    _messageController.addListener(() {
+    _messageControllerListener = () {
+      if (!mounted) return; // Check if widget is still mounted
       final hasNumbers = _containsAnyNumbers(_messageController.text);
       if (hasNumbers != _containsDigitsWarning) {
         setState(() {
           _containsDigitsWarning = hasNumbers;
         });
       }
-    });
+    };
+    _messageController.addListener(_messageControllerListener!);
   }
 
   @override
   void dispose() {
+    // Remove listener before disposing controller
+    if (_messageControllerListener != null) {
+      _messageController.removeListener(_messageControllerListener!);
+    }
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();

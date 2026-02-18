@@ -34,11 +34,11 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String phoneNumber;
+  final String userIdentifier; // Can be phone number or email
 
   const HomeScreen({
     super.key,
-    required this.phoneNumber,
+    required this.userIdentifier,
   });
 
   @override
@@ -1142,10 +1142,18 @@ class _HomeScreenState extends State<HomeScreen>
                 if (!announcementSnapshot.hasData) {
                   return Padding(
                     padding: const EdgeInsets.all(2.0),
-                    child: Icon(
-                      Icons.whatshot_rounded,
-                      color: Colors.white.withOpacity(0.95),
-                      size: 24,
+                    child: Image.asset(
+                      'assets/images/bell.png',
+                      width: 24,
+                      height: 24,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.notifications,
+                          color: Colors.white.withOpacity(0.95),
+                          size: 24,
+                        );
+                      },
                     ),
                   );
                 }
@@ -1158,10 +1166,18 @@ class _HomeScreenState extends State<HomeScreen>
                     if (!seenSnapshot.hasData) {
                       return Padding(
                         padding: const EdgeInsets.all(2.0),
-                        child: Icon(
-                          Icons.whatshot_rounded,
-                          color: Colors.white.withOpacity(0.95),
-                          size: 24,
+                        child: Image.asset(
+                          'assets/images/bell.png',
+                          width: 24,
+                          height: 24,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.notifications,
+                              color: Colors.white.withOpacity(0.95),
+                              size: 24,
+                            );
+                          },
                         ),
                       );
                     }
@@ -1210,10 +1226,18 @@ class _HomeScreenState extends State<HomeScreen>
                             children: [
                               Padding(
                                 padding: const EdgeInsets.all(2.0),
-                                child: Icon(
-                                  Icons.whatshot_rounded,
-                                  color: Colors.white.withOpacity(0.95),
-                                  size: 24,
+                                child: Image.asset(
+                                  'assets/images/bell.png',
+                                  width: 24,
+                                  height: 24,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.notifications,
+                                      color: Colors.white.withOpacity(0.95),
+                                      size: 24,
+                                    );
+                                  },
                                 ),
                               ),
                               // Counter Badge (Only Unseen)
@@ -1309,15 +1333,16 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== TAB NAVIGATION (Below Top Bar) ==========
   Widget _buildTabNavigation() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 2, 12, 0),
+    return SizedBox(
       height: 36,
-              child: SingleChildScrollView(
-                controller: _topMenuScrollController,
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 2, 12, 0),
+        child: SingleChildScrollView(
+          controller: _topMenuScrollController,
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
                     // Explore Button
                     Semantics(
                       label: 'Explore tab. ${_topTabIndex == 0 ? "Currently selected" : "Tap to switch to explore"}',
@@ -1339,7 +1364,7 @@ class _HomeScreenState extends State<HomeScreen>
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: _topTabIndex == 0
-                                  ? FontWeight.bold
+                                  ? FontWeight.w600
                                   : FontWeight.w500,
                               color: _topTabIndex == 0
                                   ? Colors.black87
@@ -1393,7 +1418,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: _topTabIndex == 1
-                                      ? FontWeight.bold
+                                      ? FontWeight.w600
                                       : FontWeight.w500,
                                   color: _topTabIndex == 1
                                       ? Colors.black87
@@ -1436,7 +1461,7 @@ class _HomeScreenState extends State<HomeScreen>
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: _topTabIndex == 2
-                                  ? FontWeight.bold
+                                  ? FontWeight.w600
                                   : FontWeight.w500,
                               color: _topTabIndex == 2
                                   ? Colors.black87
@@ -1478,7 +1503,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: _topTabIndex == 3
-                                      ? FontWeight.bold
+                                      ? FontWeight.w600
                                       : FontWeight.w500,
                                   color: _topTabIndex == 3
                                       ? Colors.black87
@@ -1494,12 +1519,12 @@ class _HomeScreenState extends State<HomeScreen>
                                     color: Colors.red,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Text(
-                                    'NEW',
-                                    style: TextStyle(
+                                  child: Text(
+                                    AppLocalizations.of(context)!.newLabel,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 8,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
@@ -1543,11 +1568,11 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Nearby',
+                                AppLocalizations.of(context)!.nearby,
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: _topTabIndex == 4
-                                      ? FontWeight.bold
+                                      ? FontWeight.w600
                                       : FontWeight.w500,
                                   color: _topTabIndex == 4
                                       ? Colors.black87
@@ -1571,6 +1596,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ],
                 ),
+        ),
       ),
     );
   }
@@ -3647,7 +3673,7 @@ class _HomeScreenState extends State<HomeScreen>
   // ========== WALLET TAB ==========
   Widget _buildWalletTab() {
     return WalletScreen(
-      phoneNumber: widget.phoneNumber,
+      phoneNumber: widget.userIdentifier,
       isHost: false,
       showBackButton: false, // No back button from homepage
     );
@@ -4188,7 +4214,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ========== PROFILE TAB ==========
   Widget _buildProfileTab() {
-    return ProfileScreen(phoneNumber: widget.phoneNumber);
+    return ProfileScreen(phoneNumber: widget.userIdentifier);
   }
 
   // ========== MESSAGE TAB ==========

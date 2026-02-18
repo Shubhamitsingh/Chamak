@@ -36,8 +36,8 @@ android {
         applicationId = "com.chamakz.app"
         minSdkVersion = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 33
-        versionName = "1.1.11"
+        versionCode = 36
+        versionName = "1.2.3"
         
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a'

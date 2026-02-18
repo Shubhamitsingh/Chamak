@@ -52,6 +52,9 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isRequestingPermissions = false; // Prevent multiple simultaneous permission requests
   StreamSubscription<List<CallRequestModel>>? _incomingCallSubscription;
   StreamSubscription<CallRequestModel?>? _callStatusSubscription;
+  
+  // Store listener reference for proper cleanup
+  VoidCallback? _messageControllerListener;
 
   @override
   void initState() {
@@ -64,14 +67,16 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     // Listen for numbers (digits or words) while typing
-    _messageController.addListener(() {
+    _messageControllerListener = () {
+      if (!mounted) return; // Check if widget is still mounted
       final hasNumbers = _containsAnyNumbers(_messageController.text);
       if (hasNumbers != _containsDigitsWarning) {
         setState(() {
           _containsDigitsWarning = hasNumbers;
         });
       }
-    });
+    };
+    _messageController.addListener(_messageControllerListener!);
 
     // Setup incoming call listener
     _setupIncomingCallListener();
@@ -83,6 +88,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    // Remove listener before disposing controller
+    if (_messageControllerListener != null) {
+      _messageController.removeListener(_messageControllerListener!);
+    }
     _messageController.dispose();
     _scrollController.dispose();
     _incomingCallSubscription?.cancel();

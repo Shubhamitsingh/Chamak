@@ -939,6 +939,12 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
   // End stream and show summary
   Future<void> _endStreamAndShowSummary() async {
     try {
+      // ✅ CRITICAL FIX: Cancel heartbeat timer FIRST to prevent race condition
+      // This ensures heartbeat doesn't override stream end status
+      _heartbeatTimer?.cancel();
+      _heartbeatTimer = null;
+      debugPrint('🛑 Heartbeat timer cancelled before ending stream');
+      
       // Calculate metrics
       final streamDuration = _streamStartTime != null
           ? DateTime.now().difference(_streamStartTime!)

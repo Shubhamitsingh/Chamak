@@ -243,7 +243,7 @@ class _SetProfileScreenState extends State<SetProfileScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => HomeScreen(
-            phoneNumber: '${widget.countryCode}${widget.phoneNumber}',
+            userIdentifier: '${widget.countryCode}${widget.phoneNumber}',
           ),
         ),
       );

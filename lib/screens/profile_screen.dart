@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
-import 'edit_profile_screen.dart';
+import 'profile_settings_screen.dart';
 import 'wallet_screen.dart';
 import 'my_earning_screen.dart';
 import 'settings_screen.dart';
@@ -533,7 +533,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => EditProfileScreen(
+                          builder: (context) => ProfileSettingsScreen(
                             phoneNumber: widget.phoneNumber,
                           ),
                         ),

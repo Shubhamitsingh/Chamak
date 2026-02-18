@@ -166,16 +166,54 @@ class SupportChatService {
 
   // Get messages for a specific support chat (real-time)
   Stream<List<MessageModel>> getSupportChatMessages(String chatId) {
-    return _firestore
-        .collection('supportChats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('timestamp', descending: true)
-        .limit(100) // Load last 100 messages
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => MessageModel.fromFirestore(doc))
-            .toList());
+    try {
+      debugPrint('📨 Getting support chat messages for chatId: $chatId');
+      return _firestore
+          .collection('supportChats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(100) // Load last 100 messages
+          .snapshots()
+          .map((snapshot) {
+            debugPrint('📨 Support chat messages snapshot: ${snapshot.docs.length} messages found');
+            if (snapshot.docs.isEmpty) {
+              debugPrint('⚠️ No messages found in chat: $chatId');
+            }
+            final messages = snapshot.docs
+                .map((doc) {
+                  try {
+                    final data = doc.data();
+                    debugPrint('📨 Message ${doc.id}: senderId=${data['senderId']}, receiverId=${data['receiverId']}');
+                    return MessageModel.fromFirestore(doc);
+                  } catch (e) {
+                    debugPrint('❌ Error parsing message ${doc.id}: $e');
+                    return null;
+                  }
+                })
+                .whereType<MessageModel>()
+                .toList();
+            debugPrint('✅ Parsed ${messages.length} messages successfully');
+            return messages;
+          })
+          .handleError((error) {
+            debugPrint('❌ Error in support chat messages stream: $error');
+            debugPrint('❌ Error type: ${error.runtimeType}');
+            if (error.toString().contains('index') || error.toString().contains('failed-precondition')) {
+              debugPrint('⚠️ INDEX REQUIRED: Please deploy firestore.indexes.json');
+              debugPrint('⚠️ Run: firebase deploy --only firestore:indexes');
+              debugPrint('⚠️ Or create index manually in Firebase Console');
+            }
+            if (error.toString().contains('permission') || error.toString().contains('PERMISSION_DENIED')) {
+              debugPrint('⚠️ PERMISSION DENIED: Check Firestore rules for supportChats/{chatId}/messages');
+              debugPrint('⚠️ Verify admin can read messages or user owns the chat');
+            }
+            return <MessageModel>[];
+          });
+    } catch (e) {
+      debugPrint('❌ Error creating support chat messages stream: $e');
+      return Stream.value(<MessageModel>[]);
+    }
   }
 
   // Get all support chats (for admin dashboard) - real-time

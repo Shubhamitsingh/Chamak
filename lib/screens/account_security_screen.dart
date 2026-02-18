@@ -3,10 +3,12 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:Chamak/generated/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:country_picker/country_picker.dart';
 import 'otp_screen.dart';
 import 'kyc_verification_screen.dart';
 import 'login_screen.dart';
+import 'splash_screen.dart';
 import '../services/database_service.dart';
 
 class AccountSecurityScreen extends StatefulWidget {
@@ -117,12 +119,8 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                   onTap: () => _showUpdatePhoneDialog(),
                 ),
                 
-                // Email Id
-                _buildSettingItem(
-                  title: 'Email Id',
-                  trailing: 'Bind >',
-                  onTap: () => _showEmailDialog(),
-                ),
+                // Email Id - Show directly on screen
+                _buildEmailSection(),
                 
                 // Login Password
                 _buildSettingItem(
@@ -151,14 +149,14 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
             ),
           ),
           
-          // Switch Account Button - Fixed at bottom
+          // Logout Button - Fixed at bottom
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 60),
             child: SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: () => _showSwitchAccountDialog(),
+                onPressed: () => _showLogoutDialog(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF1B7C),
                   foregroundColor: Colors.white,
@@ -167,12 +165,19 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  padding: EdgeInsets.zero, // Remove default padding
                 ),
-                child: Text(
-                  AppLocalizations.of(context)!.switchAccount,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                child: Container(
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'Logout',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ),
@@ -251,6 +256,69 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ========== WIDGETS ==========
+  Widget _buildEmailSection() {
+    return InkWell(
+      onTap: () {
+        // Optional: Can add bind email functionality here
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Email Id',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Bind >',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (_userEmail != null && _userEmail!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _userEmail!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'No email set',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -634,18 +702,34 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                     onPressed: () {
                       try {
                         Navigator.pop(context);
-                        FirebaseAuth.instance.signOut().then((_) {
+                        // Sign out from both Firebase Auth and Google Sign-In
+                        Future.wait([
+                          FirebaseAuth.instance.signOut(),
+                          GoogleSignIn().signOut(), // Clear Google Sign-In cache
+                        ]).then((_) {
                           try {
-                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                            // Navigate to SplashScreen so user can choose Google, Email, or Phone login
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => const SplashScreen(),
+                              ),
+                              (route) => false,
+                            );
                           } catch (e) {
-                            debugPrint('Error navigating to login after sign out: $e');
+                            debugPrint('Error navigating to splash screen after sign out: $e');
                           }
                         }).catchError((e) {
                           debugPrint('Error signing out: $e');
                           try {
-                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                            // Navigate to SplashScreen so user can choose Google, Email, or Phone login
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => const SplashScreen(),
+                              ),
+                              (route) => false,
+                            );
                           } catch (navError) {
-                            debugPrint('Error navigating to login: $navError');
+                            debugPrint('Error navigating to splash screen: $navError');
                           }
                         });
                       } catch (e) {
@@ -877,10 +961,15 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                                     Navigator.pop(dialogContext);
                                     confirmController.dispose();
                                     try {
-                                      // Use the original context from the state
-                                      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                                      // Navigate to SplashScreen so user can choose Google, Email, or Phone login
+                                      Navigator.of(context).pushAndRemoveUntil(
+                                        MaterialPageRoute(
+                                          builder: (context) => const SplashScreen(),
+                                        ),
+                                        (route) => false,
+                                      );
                                     } catch (e) {
-                                      debugPrint('Error navigating to login after account deletion: $e');
+                                      debugPrint('Error navigating to splash screen after account deletion: $e');
                                     }
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -947,107 +1036,329 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
     try {
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Email Id',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_userEmail != null && _userEmail!.isNotEmpty) ...[
-                Text(
-                  'Your email address:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+        barrierDismissible: true,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutBack,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                child: child,
+              );
+            },
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.6,
+                maxWidth: 400,
+              ),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.white, Color(0xFFFFF5F9)],
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.grey[300]!,
-                      width: 1,
-                    ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
+                    blurRadius: 30,
+                    spreadRadius: 5,
+                    offset: const Offset(0, 10),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.email_outlined,
-                        color: Color(0xFFFF1B7C),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _userEmail!,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: -30,
+                      right: -30,
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFFFF1B7C).withValues(alpha: 0.1),
+                              const Color(0xFFFF1B7C).withValues(alpha: 0.05),
+                            ],
                           ),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18),
-                        color: const Color(0xFFFF1B7C),
-                        onPressed: () async {
-                          try {
-                            await Clipboard.setData(ClipboardData(text: _userEmail!));
-                            if (!mounted) return;
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Email copied to clipboard'),
-                                backgroundColor: Color(0xFFFF1B7C),
-                                behavior: SnackBarBehavior.floating,
-                                duration: Duration(seconds: 2),
+                    ),
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Email Icon
+                          Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFF1B7C), Color(0xFFFF6B9D), Color(0xFFFF1B7C)],
                               ),
-                            );
-                          } catch (e) {
-                            debugPrint('Error copying email: $e');
-                          }
-                        },
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
+                                  blurRadius: 20,
+                                  spreadRadius: 3,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.email_rounded, color: Colors.white, size: 36),
+                          ),
+                          const SizedBox(height: 20),
+                          // Title
+                          ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [Color(0xFFFF1B7C), Color(0xFFFF6B9D)],
+                            ).createShader(bounds),
+                            child: const Text(
+                              'Email Id',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // Email Content
+                          if (_userEmail != null && _userEmail!.isNotEmpty) ...[
+                            // Label
+                            Text(
+                              'Your email address',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            // Email Container with perfect alignment
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  // Email Icon
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFFFF1B7C), Color(0xFFFF6B9D)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(
+                                      Icons.email_outlined,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  // Email Text - Perfect Alignment
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _userEmail!,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                            letterSpacing: 0.2,
+                                            height: 1.3,
+                                          ),
+                                          textAlign: TextAlign.left,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  // Copy Button
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFF1B7C).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: IconButton(
+                                      icon: const Icon(Icons.copy_rounded, size: 20),
+                                      color: const Color(0xFFFF1B7C),
+                                      onPressed: () async {
+                                        try {
+                                          await Clipboard.setData(ClipboardData(text: _userEmail!));
+                                          if (!mounted) return;
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.all(6),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white.withValues(alpha: 0.3),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.check_circle,
+                                                      color: Colors.white,
+                                                      size: 18,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  const Expanded(
+                                                    child: Text(
+                                                      'Email copied to clipboard',
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.w600,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              backgroundColor: const Color(0xFFFF1B7C),
+                                              behavior: SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              margin: const EdgeInsets.all(18),
+                                              duration: const Duration(seconds: 2),
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          debugPrint('Error copying email: $e');
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            // No Email State
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.grey[300]!,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.email_outlined,
+                                    size: 48,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No email address is set',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Bind your email to increase account security',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[600],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+                          // Close Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFFF1B7C), Color(0xFFFF6B9D), Color(0xFFFF1B7C)],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
+                                    blurRadius: 12,
+                                    spreadRadius: 2,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Close',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                Text(
-                  'No email address is set for this account.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Close',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFFFF1B7C),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
       );
     } catch (e) {
@@ -1068,8 +1379,8 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 20),
-                child: Text(
-                  AppLocalizations.of(context)!.logoutConfirmation,
+                child: const Text(
+                  'Are you sure you want to logout?',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.normal,
@@ -1118,18 +1429,34 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                       onPressed: () {
                         try {
                           Navigator.pop(context);
-                          FirebaseAuth.instance.signOut().then((_) {
+                          // Sign out from both Firebase Auth and Google Sign-In
+                          Future.wait([
+                            FirebaseAuth.instance.signOut(),
+                            GoogleSignIn().signOut(), // Clear Google Sign-In cache
+                          ]).then((_) {
                             try {
-                              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                              // Navigate to SplashScreen so user can choose Google, Email, or Phone login
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (context) => const SplashScreen(),
+                                ),
+                                (route) => false,
+                              );
                             } catch (e) {
-                              debugPrint('Error navigating to login after logout: $e');
+                              debugPrint('Error navigating to splash screen after logout: $e');
                             }
                           }).catchError((e) {
                             debugPrint('Error signing out: $e');
                             try {
-                              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                              // Navigate to SplashScreen so user can choose Google, Email, or Phone login
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (context) => const SplashScreen(),
+                                ),
+                                (route) => false,
+                              );
                             } catch (navError) {
-                              debugPrint('Error navigating to login: $navError');
+                              debugPrint('Error navigating to splash screen: $navError');
                             }
                           });
                         } catch (e) {
@@ -1144,12 +1471,12 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                           ),
                         ),
                       ),
-                      child: Text(
-                        AppLocalizations.of(context)!.confirm,
-                        style: const TextStyle(
+                      child: const Text(
+                        'Switch Account',
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF04B104),
+                          color: Colors.blue,
                         ),
                       ),
                     ),

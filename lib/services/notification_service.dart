@@ -7,11 +7,13 @@ import 'package:flutter/material.dart';
 import '../main.dart'; // Import navigatorKey
 import '../screens/wallet_screen.dart';
 import '../screens/chat_list_screen.dart';
+import '../screens/chat_screen.dart';
 import '../screens/team_messages_screen.dart';
 import '../screens/contact_support_chat_screen.dart';
 import '../screens/agora_live_stream_screen.dart';
 import '../services/agora_token_service.dart';
 import '../services/live_stream_service.dart';
+import '../services/database_service.dart';
 
 // Top-level function to handle background messages
 @pragma('vm:entry-point')
@@ -287,7 +289,7 @@ class NotificationService {
 
   // Handle notification tap navigation
   // ⚠️ CRITICAL FIX: Implement deep linking to navigate to appropriate screens
-  void _handleNotificationTap(Map<String, dynamic> data) {
+  Future<void> _handleNotificationTap(Map<String, dynamic> data) async {
     print('🔔 Handling notification tap with data: $data');
     
     final notificationType = data['type'] as String?;
@@ -301,16 +303,17 @@ class NotificationService {
     // Handle different notification types
     if (notificationType == 'coin_addition' || notificationType == 'wallet') {
       print('💰 Coin addition/wallet notification tapped - Navigating to WalletScreen');
-      // Get current user's phone number for WalletScreen
+      // Get current user's identifier (email or phone number) for WalletScreen
       final currentUser = FirebaseAuth.instance.currentUser;
-      final phoneNumber = currentUser?.phoneNumber ?? '';
-      if (phoneNumber.isEmpty) {
-        print('⚠️ Cannot navigate to WalletScreen: User phone number not available');
+      // ✅ FIX: Use email if available, otherwise phone number
+      final userIdentifier = currentUser?.email ?? currentUser?.phoneNumber ?? '';
+      if (userIdentifier.isEmpty) {
+        print('⚠️ Cannot navigate to WalletScreen: User identifier not available');
         return;
       }
       navigator.push(
         MaterialPageRoute(
-          builder: (context) => WalletScreen(phoneNumber: phoneNumber),
+          builder: (context) => WalletScreen(phoneNumber: userIdentifier),
         ),
       );
     } else if (notificationType == 'team_message') {
@@ -333,6 +336,7 @@ class NotificationService {
       print('📩 Message notification tapped');
       final chatId = data['chatId'] as String?;
       final userId = data['userId'] as String?;
+      final senderId = data['senderId'] as String?;
       
       // Check if this is a support chat (chatId starts with 'support_')
       if (chatId != null && chatId.startsWith('support_')) {
@@ -345,28 +349,45 @@ class NotificationService {
         return;
       }
       
-      // ⚠️ CRITICAL FIX: ChatScreen requires both chatId and otherUser
-      // For now, navigate to ChatListScreen and let user select the chat
-      // In a future enhancement, we can fetch the UserModel from userId/chatId
-      // and then navigate directly to ChatScreen
-      if (chatId != null && chatId.isNotEmpty || userId != null && userId.isNotEmpty) {
-        print('📱 Navigating to ChatListScreen (will auto-select chat if possible)');
-        // TODO: Enhance this to fetch UserModel and navigate directly to ChatScreen
-        // For now, navigate to chat list where user can see the new message
-        navigator.push(
-          MaterialPageRoute(
-            builder: (context) => const ChatListScreen(),
-          ),
-        );
-      } else {
-        // No specific chat, navigate to chat list
-        print('📱 Navigating to ChatListScreen');
-        navigator.push(
-          MaterialPageRoute(
-            builder: (context) => const ChatListScreen(),
-          ),
-        );
+      // ✅ FIX: Try to navigate directly to ChatScreen if we have chatId and userId
+      if (chatId != null && chatId.isNotEmpty) {
+        try {
+          // Fetch UserModel for the other user (sender or receiver)
+          final otherUserId = senderId ?? userId;
+          if (otherUserId != null && otherUserId.isNotEmpty) {
+            print('🔍 Fetching user data for direct navigation: $otherUserId');
+            final databaseService = DatabaseService();
+            final otherUser = await databaseService.getUserData(otherUserId)
+                .timeout(const Duration(seconds: 3));
+            
+            if (otherUser != null) {
+              print('✅ Found other user - Navigating directly to ChatScreen');
+              navigator.push(
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(
+                    chatId: chatId,
+                    otherUser: otherUser,
+                  ),
+                ),
+              );
+              return;
+            } else {
+              print('⚠️ User not found: $otherUserId');
+            }
+          }
+        } catch (e) {
+          print('⚠️ Error fetching user data for direct navigation: $e');
+          // Fall through to ChatListScreen navigation
+        }
       }
+      
+      // Fallback: Navigate to ChatListScreen
+      print('📱 Navigating to ChatListScreen');
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => const ChatListScreen(),
+        ),
+      );
     } else if (notificationType == 'live_stream' || notificationType == 'stream') {
       print('📺 Live stream notification tapped');
       final streamId = data['streamId'] as String?;
