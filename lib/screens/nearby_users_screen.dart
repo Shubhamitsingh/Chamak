@@ -231,8 +231,8 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
           .collection('users')
           .snapshots(),
       builder: (context, snapshot) {
-        // Loading state
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // Only show loading indicator on initial load, not on rebuilds
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Center(
             child: CircularProgressIndicator(
               color: Color(0xFFFF1B7C),

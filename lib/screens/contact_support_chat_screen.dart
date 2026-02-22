@@ -364,7 +364,8 @@ class _ContactSupportChatScreenState extends State<ContactSupportChatScreen> {
                       child: StreamBuilder<List<MessageModel>>(
                         stream: _supportChatService.getSupportChatMessages(_chatId!),
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
+                          // Only show full-screen loader on initial load (no data yet)
+                          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                             return const Center(
                               child: CircularProgressIndicator(
                                 color: Color(0xFF00BCD4),

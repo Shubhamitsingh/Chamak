@@ -60,7 +60,8 @@ class _CreatorApplicationStatusScreenState
                 ? _applicationService.getApplicationStatus(currentUser.uid)
                 : Stream<DocumentSnapshot?>.empty(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          // Only show loading on initial load, not on rebuilds
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(
                 color: Color(0xFFFF1B7C),

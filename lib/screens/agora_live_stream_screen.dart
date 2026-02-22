@@ -30,7 +30,6 @@ import 'user_profile_view_screen.dart';
 import 'private_call_screen.dart';
 import 'messages_screen.dart';
 import 'chat_screen.dart';
-import '../widgets/low_coin_popup.dart';
 import '../widgets/end_stream_confirmation_sheet.dart';
 import 'live_stream_summary_screen.dart';
 import 'wallet_screen.dart';
@@ -1208,8 +1207,8 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
               hostName = stream.hostName;
             }
             
-            // If still "Host", show loading state or wait for user data
-            if (hostName == 'Host' && userSnapshot.connectionState == ConnectionState.waiting) {
+            // If still "Host", show loading state only on initial load
+            if (hostName == 'Host' && userSnapshot.connectionState == ConnectionState.waiting && !userSnapshot.hasData) {
               // User data is still loading, show loading indicator
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -1364,49 +1363,8 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                         ],
                       ),
                       const SizedBox(height: 2),
-                      // Coins + Viewer Count Row
+                      // Viewer Count only (no coin icon/balance on viewer screen)
                       Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Coins Display
-                          StreamBuilder<DocumentSnapshot>(
-                            stream: !widget.isHost && _auth.currentUser != null
-                                ? FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(_auth.currentUser!.uid)
-                                    .snapshots()
-                                : null,
-                            builder: (context, balanceSnapshot) {
-                              int coins = _userBalance;
-                              if (balanceSnapshot.hasData && balanceSnapshot.data!.exists) {
-                                final userData = balanceSnapshot.data!.data() as Map<String, dynamic>?;
-                                coins = (userData?['uCoins'] as int?) ?? _userBalance;
-                              }
-                              return Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Image.asset(
-                                    'assets/images/coin3.png',
-                                    width: 14,
-                                    height: 14,
-                                    fit: BoxFit.contain,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _formatNumber(coins.toDouble()),
-                                    style: TextStyle(
-                                      color: Colors.amber[300],
-                                      fontSize: isSmallScreen ? 10 : 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          // Viewer Count
-                          Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
@@ -1427,11 +1385,9 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Pink Plus/Follow Button
+                    ),
+                    const SizedBox(width: 8),
+                    // Pink Plus/Follow Button
                 if (!widget.isHost && currentHostId != null && currentHostId.isNotEmpty)
                   GestureDetector(
                     onTap: () async {
@@ -1747,6 +1703,22 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     final currentUser = _auth.currentUser;
     if (currentUser == null) return;
 
+    // Check balance FIRST before any loading or network calls
+    try {
+      final hasEnoughCoins = await _coinDeductionService.hasEnoughCoins(currentUser.uid)
+          .timeout(const Duration(seconds: 2));
+      if (!hasEnoughCoins) {
+        // Show popup instantly without waiting for balance details
+        _showInsufficientBalanceDialog('');
+        return;
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking balance: $e');
+      // If balance check fails or times out, show popup anyway to be safe
+      _showInsufficientBalanceDialog('');
+      return;
+    }
+
     try {
       // Validate stream exists before proceeding
       debugPrint('🔍 Looking up stream for call request: ${widget.streamId}');
@@ -1852,13 +1824,9 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
     }
   }
 
-  // Show insufficient balance dialog - Matching Telegram/Play Store rating popup style
+  // Show insufficient balance dialog - Simplified design (same as chat_screen)
   void _showInsufficientBalanceDialog(String errorMessage) {
     if (!mounted) return;
-    
-    // Extract balance from error message
-    final balanceMatch = RegExp(r'Your balance: (\d+) coins').firstMatch(errorMessage);
-    final currentBalance = balanceMatch?.group(1) ?? '0';
     
     showDialog(
       context: context,
@@ -1866,264 +1834,135 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       barrierColor: Colors.black.withOpacity(0.7),
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-        child: FadeInDown(
-          duration: const Duration(milliseconds: 400),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 280),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header with gradient and wallet icon (matching Telegram popup)
-                _buildInsufficientBalanceHeader(),
-                
-                // Content box (matching Telegram popup)
-                _buildInsufficientBalanceContent(currentBalance),
-              ],
-            ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
           ),
+          child: _buildInsufficientBalanceContent(),
         ),
       ),
     );
   }
 
-  // Build header for insufficient balance dialog
-  Widget _buildInsufficientBalanceHeader() {
+  // Build content for insufficient balance dialog - Single unified container (same as chat_screen)
+  Widget _buildInsufficientBalanceContent() {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFF1B7C), // Pink
-            Color(0xFF9C27B0), // Purple
-          ],
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Wallet icon on the left
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(
-                Icons.account_balance_wallet_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-          // Title - truly centered
-          const Text(
-            'Insufficient Balance',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
-            ),
-          ),
-          // Close icon on the right
-          Align(
-            alignment: Alignment.centerRight,
-            child: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.close_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Build content for insufficient balance dialog
-  Widget _buildInsufficientBalanceContent(String currentBalance) {
-    return Container(
-      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(16),
-          bottomRight: Radius.circular(16),
-        ),
+        borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Description text
-          Text(
-            'You need at least 300 coins to start a video call.',
+          // Title
+          const Text(
+            'Insufficient Coins',
+            textAlign: TextAlign.left,
             style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[700],
-              height: 1.3,
+              color: Color(0xFFFF1B7C), // App theme pink color
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
           
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           
-          // Balance display
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey[300]!,
-                width: 1,
-              ),
+          // Simple message text - Left aligned
+          const Text(
+            'Your balance is insufficient to\ncontinue with call. A minimum of\n300 coins is required.',
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+              height: 1.5,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.account_balance_wallet,
-                  color: Color(0xFFFF1B7C),
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Balance: $currentBalance coins',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.w600,
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Recharge and Cancel buttons in same row
+          Row(
+            children: [
+              // Cancel button
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 10),
-          
-          // Benefits list (compact)
-          _buildRechargeBenefits(),
-          
-          const SizedBox(height: 10),
-          
-          // Recharge button (matching Telegram Join button style)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navigate to wallet screen
-                final currentUser = _auth.currentUser;
-                if (currentUser != null && mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WalletScreen(
-                        phoneNumber: currentUser.phoneNumber ?? '',
-                        isHost: false,
-                      ),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF1B7C), // Pink (matching app theme)
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 2,
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_circle_outline, size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'Recharge Wallet',
+              
+              const SizedBox(width: 12),
+              
+              // Recharge button
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Navigate to wallet screen
+                    final currentUser = _auth.currentUser;
+                    if (currentUser != null && mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WalletScreen(
+                            phoneNumber: currentUser.phoneNumber ?? '',
+                            isHost: false,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF1B7C), // App theme pink color
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Recharge',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Build recharge benefits list (compact)
-  Widget _buildRechargeBenefits() {
-    final benefits = [
-      {'emoji': '💰', 'text': 'Instant recharge'},
-      {'emoji': '🎁', 'text': 'Bonus offers'},
-      {'text': 'Unlimited calls', 'isCall': true},
-    ];
-
-    return Column(
-      children: benefits.map((benefit) {
-        final isCall = benefit['isCall'] == true;
-        final text = benefit['text'] as String;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            children: [
-              if (isCall)
-                const Icon(
-                  Icons.call,
-                  size: 16,
-                  color: Color(0xFFFF1B7C),
-                )
-              else
-                Text(
-                  benefit['emoji'] as String,
-                  style: const TextStyle(fontSize: 16),
-                ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ],
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
+
 
   // Open chat with host
   Future<void> _openChatWithHost(UserModel hostUser) async {
@@ -2283,7 +2122,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Viewer Avatars (horizontal row) - Clickable to show viewer list
+        // Single fixed icon - tap opens viewer list bottom sheet (no increasing avatars)
         GestureDetector(
           onTap: () {
             if (widget.streamId != null) {
@@ -2323,66 +2162,18 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
               );
             }
           },
-          child: StreamBuilder<QuerySnapshot>(
-          stream: widget.streamId != null
-              ? FirebaseFirestore.instance
-                  .collection('live_streams')
-                  .doc(widget.streamId!)
-                  .collection('viewers')
-                  .limit(3)
-                  .snapshots()
-              : null,
-          builder: (context, viewersSnapshot) {
-            if (viewersSnapshot.hasData && viewersSnapshot.data!.docs.isNotEmpty) {
-              final viewers = viewersSnapshot.data!.docs;
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (int i = 0; i < viewers.length && i < 3; i++)
-                    Transform.translate(
-                        offset: Offset(i * -8.0, 0),
-                      child: Container(
-                          width: 32,
-                          height: 32,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFFFF1B7C), // Pink border
-                            width: 2,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: viewers[i].data() != null
-                              ? Image.network(
-                                  (viewers[i].data() as Map<String, dynamic>)['photoURL'] ?? '',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey[400],
-                                      child: const Icon(
-                                        Icons.person,
-                                        color: Colors.white,
-                                          size: 18,
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Container(
-                                  color: Colors.grey[400],
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                      size: 18,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            }
-            return const SizedBox.shrink();
-          },
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.8),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.group,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -2937,12 +2728,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
       if (!hasEnoughCoins) {
         await _loadUserBalance(); // Refresh balance
         if (mounted) {
-          await LowCoinPopup.show(
-            context,
-            currentBalance: _userBalance,
-            requiredCoins: 300,
-            phoneNumber: _auth.currentUser?.phoneNumber,
-          );
+          _showInsufficientBalanceDialog('');
         }
         return;
       }
@@ -3590,12 +3376,7 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                         ),
                       );
                     } else if (!widget.isHost && _userBalance < 300) {
-                      await LowCoinPopup.show(
-                        context,
-                        currentBalance: _userBalance,
-                        requiredCoins: 300,
-                        phoneNumber: _auth.currentUser?.phoneNumber,
-                      );
+                      _showInsufficientBalanceDialog('');
                     }
                     return;
                   }
@@ -3621,9 +3402,9 @@ class _AgoraLiveStreamScreenState extends State<AgoraLiveStreamScreen> with Tick
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(22),
-                    color: (_isHostInCall || _isCallRequestPending || (!widget.isHost && _userBalance < 300))
+                    color: (_isHostInCall || _isCallRequestPending)
                         ? Colors.grey
-                        : const Color(0xFFFF1B7C), // Solid pink color instead of gradient
+                        : const Color(0xFFFF1B7C), // Same pink when low coins (tap shows insufficient balance)
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFFFF1B7C).withValues(alpha: 0.4),

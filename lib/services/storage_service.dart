@@ -459,5 +459,36 @@ class StorageService {
       return null;
     }
   }
+
+  /// Upload host application selfie for admin approval
+  Future<String?> uploadHostApplicationSelfie(File imageFile) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return null;
+      final userId = user.uid;
+      final String fileName = 'selfie_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final Reference storageRef = _storage
+          .ref()
+          .child('host_application_selfies')
+          .child(userId)
+          .child(fileName);
+      final UploadTask uploadTask = storageRef.putFile(
+        imageFile,
+        SettableMetadata(
+          contentType: 'image/jpeg',
+          customMetadata: {
+            'uploadedBy': userId,
+            'uploadedAt': DateTime.now().toIso8601String(),
+          },
+        ),
+      );
+      final TaskSnapshot snapshot = await uploadTask;
+      final String downloadURL = await snapshot.ref.getDownloadURL();
+      return downloadURL;
+    } catch (e) {
+      print('❌ Error uploading host application selfie: $e');
+      return null;
+    }
+  }
 }
 

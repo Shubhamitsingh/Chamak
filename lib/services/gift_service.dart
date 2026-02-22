@@ -268,6 +268,63 @@ class GiftService {
       return 0;
     }
   }
+
+  /// Leaderboard entry: host info + earned C coins
+  static Map<String, dynamic> leaderboardEntry({
+    required String userId,
+    required int totalCCoins,
+    String? displayName,
+    String? photoURL,
+    int level = 1,
+    String? countryCode,
+  }) {
+    return {
+      'userId': userId,
+      'totalCCoins': totalCCoins,
+      'displayName': displayName ?? '******',
+      'photoURL': photoURL,
+      'level': level,
+      'countryCode': countryCode ?? '',
+    };
+  }
+
+  /// Get host leaderboard (top hosts by C coins earned)
+  /// Requires Firestore index: earnings collection, totalCCoins descending
+  Future<List<Map<String, dynamic>>> getHostLeaderboard({int limit = 50}) async {
+    try {
+      final snapshot = await _firestore
+          .collection('earnings')
+          .orderBy('totalCCoins', descending: true)
+          .limit(limit)
+          .get();
+
+      if (snapshot.docs.isEmpty) return [];
+
+      final entries = <Map<String, dynamic>>[];
+      for (var i = 0; i < snapshot.docs.length; i++) {
+        final doc = snapshot.docs[i];
+        final data = doc.data();
+        final userId = doc.id;
+        final totalCCoins = (data['totalCCoins'] as num?)?.toInt() ?? 0;
+        if (totalCCoins <= 0) continue;
+
+        final userDoc = await _firestore.collection('users').doc(userId).get();
+        final userData = userDoc.data();
+        entries.add(leaderboardEntry(
+          userId: userId,
+          totalCCoins: totalCCoins,
+          displayName: userData?['displayName'] as String?,
+          photoURL: userData?['photoURL'] as String?,
+          level: (userData?['hostLevel'] as num?)?.toInt() ?? (userData?['level'] as num?)?.toInt() ?? 1,
+          countryCode: userData?['countryCode'] as String?,
+        ));
+      }
+      return entries;
+    } catch (e) {
+      print('Error getting host leaderboard: $e');
+      return [];
+    }
+  }
 }
 
 

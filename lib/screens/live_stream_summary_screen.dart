@@ -71,12 +71,12 @@ class LiveStreamSummaryScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFFFF69B4),
+                            color: const Color(0xFFFF1B7C), // App theme pink
                             width: 3,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFF69B4).withValues(alpha: 0.3),
+                              color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -143,7 +143,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
                           icon: Icons.access_time,
                           label: 'Duration',
                           value: _formatDuration(streamDuration),
-                          color: const Color(0xFFFF69B4),
+                          color: const Color(0xFFFF1B7C), // App theme pink
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -180,7 +180,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
                         Navigator.of(context).popUntil((route) => route.isFirst);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF69B4),
+                        backgroundColor: const Color(0xFFFF1B7C), // App theme pink
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -244,7 +244,7 @@ class LiveStreamSummaryScreen extends StatelessWidget {
           width: 6,
           height: 6,
           decoration: const BoxDecoration(
-            color: Color(0xFFFF69B4),
+            color: Color(0xFFFF1B7C), // App theme pink
             shape: BoxShape.circle,
           ),
         ),

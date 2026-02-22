@@ -122,12 +122,12 @@ class _CallSummaryScreenState extends State<CallSummaryScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFFFF69B4),
+                            color: const Color(0xFFFF1B7C), // App theme pink
                             width: 3,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFF69B4).withValues(alpha: 0.3),
+                              color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -194,7 +194,7 @@ class _CallSummaryScreenState extends State<CallSummaryScreen> {
                           icon: Icons.access_time,
                           label: 'Duration',
                           value: _formatDuration(widget.callDuration),
-                          color: const Color(0xFFFF69B4),
+                          color: const Color(0xFFFF1B7C), // App theme pink
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -223,7 +223,7 @@ class _CallSummaryScreenState extends State<CallSummaryScreen> {
                         Navigator.of(context).popUntil((route) => route.isFirst);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF69B4),
+                        backgroundColor: const Color(0xFFFF1B7C), // App theme pink
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -305,7 +305,7 @@ class _CallSummaryScreenState extends State<CallSummaryScreen> {
           width: 6,
           height: 6,
           decoration: const BoxDecoration(
-            color: Color(0xFFFF69B4),
+            color: Color(0xFFFF1B7C), // App theme pink
             shape: BoxShape.circle,
           ),
         ),
@@ -356,7 +356,7 @@ class _CallSummaryScreenState extends State<CallSummaryScreen> {
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: color.withValues(alpha: 0.3),
+          color: Color.lerp(color, Colors.white, 0.6)!,
           width: 1,
         ),
       ),

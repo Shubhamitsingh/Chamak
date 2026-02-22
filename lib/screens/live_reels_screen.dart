@@ -87,7 +87,8 @@ class _LiveReelsScreenState extends State<LiveReelsScreen> {
         child: StreamBuilder<List<LiveStreamModel>>(
         stream: _liveStreamService.getActiveLiveStreams(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          // Only show loading indicator on initial load, not on rebuilds
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(color: Color(0xFFFF1B7C)),
             );

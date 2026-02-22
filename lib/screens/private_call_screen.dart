@@ -1041,8 +1041,8 @@ class _PrivateCallScreenState extends State<PrivateCallScreen> {
                         decoration: _isDraggingLocalVideo
                             ? BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
-                                gradient: LinearGradient(
-                                  colors: const [Color(0xFFFF69B4), Color(0xFFFF1B7C), Color(0xFFFF69B4)],
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFFF1B7C), Color(0xFFE91E63)], // App theme pink
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),

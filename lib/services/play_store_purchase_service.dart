@@ -15,7 +15,7 @@ class PlayStorePurchaseService {
   
   // Product IDs - must match Play Console exactly
   final Set<String> _productIds = {
-    'coins_90_pack', // Changed from coins_90 (deleted ID can't be reused)
+    'coins_190', // ₹19 package - 190 coins
     'coins_550',
     'coins_1100',
     'coins_1700',

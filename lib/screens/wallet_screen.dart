@@ -40,13 +40,13 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   // Real coin data - fetched from Firestore
   int coinBalance = 0; // U Coins (User Coins)
   double hostEarnings = 0.0; // C Coins converted to real money
-  bool _isLoading = true;
+  bool _isLoading = false; // Start with false to show content immediately
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   bool _listenersSetup = false; // Track if listeners are set up
   
-  // Recharge packages - 12 options (added ₹9, ₹49, ₹149, ₹199; removed ₹7,999)
+  // Recharge packages - 12 options (updated ₹9→₹19, ₹49, ₹149, ₹199; removed ₹7,999)
   final List<Map<String, dynamic>> rechargePackages = [
-    {'coins': 90, 'inr': 9, 'bonus': 0, 'badge': null}, // Entry level - no badge
+    {'coins': 190, 'inr': 19, 'bonus': 0, 'badge': null}, // Entry level - no badge (₹19 = 190 coins, 10 coins/rupee)
     {'coins': 550, 'inr': 49, 'bonus': 10, 'badge': 'Starter'}, // Casual users
     {'coins': 1100, 'inr': 99, 'bonus': 10, 'badge': 'Popular Choice'},
     {'coins': 1700, 'inr': 149, 'bonus': 14, 'badge': null}, // Mid-tier - fills gap between ₹99-₹199
@@ -237,16 +237,15 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   /// Load real coin balance from Firestore
   Future<void> _loadCoinBalance() async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-    });
+    // Load balance in background without blocking UI
+    // Real-time listener will update balance when data arrives
 
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
         debugPrint('❌ Wallet: No authenticated user');
+        if (!mounted) return;
         setState(() {
-          _isLoading = false;
           coinBalance = 0;
           hostEarnings = 0.0;
         });
@@ -360,10 +359,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       setState(() {
         coinBalance = 0;
         hostEarnings = 0.0;
-        _isLoading = false;
       });
       
-      // Show error to user
+      // Show error to user (non-blocking)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Error loading balance. Please refresh.'),
@@ -379,10 +377,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       return;
     }
     
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-    });
+    // Balance loaded successfully - real-time listener will handle future updates
   }
 
   @override
@@ -392,7 +387,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1A1A), // Dark background
         elevation: 0,
-        centerTitle: false, // Left align title
+        centerTitle: true, // Center title
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Color(0xFF1A1A1A), // Dark status bar
           statusBarIconBrightness: Brightness.light, // Light icons
@@ -424,47 +419,6 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
           ),
         ),
         actions: [
-          // Coin Balance Pill Button
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF1B7C), // App theme pink
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/images/coin3.png',
-                    width: 16,
-                    height: 16,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(width: 4),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '${NumberFormat.decimalPattern().format(coinBalance)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  const Icon(
-                    Icons.star,
-                    color: Colors.amber,
-                    size: 14,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 1),
           // Coin Purchase History Icon (3 dots)
           IconButton(
             icon: const Icon(
@@ -497,46 +451,47 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title Section
+                    // User Balance Card (same width as grid below - horizontal 12)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Main Title
-                          Text(
-                            'Make a Video Call',
-                            style: const TextStyle(
-                              color: Color(0xFFFF1B7C), // App theme pink
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              height: 1.2,
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF1B7C),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Image.asset(
+                              'assets/images/coin3.png',
+                              width: 36,
+                              height: 36,
+                              fit: BoxFit.contain,
                             ),
-                          ),
-                          Text(
-                            'with Coins',
-                            style: const TextStyle(
-                              color: Color(0xFFFF1B7C), // App theme pink
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              height: 1.2,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    NumberFormat.decimalPattern().format(coinBalance),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Subtitle
-                          Text(
-                            'Call beauties with coins',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 6),
             
                     // Recharge Packages
                     _buildFlatRechargeTab(),
@@ -1268,7 +1223,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
     
     // Map coins to product ID
     final productIdMap = {
-      90: 'coins_90_pack', // Changed from coins_90 (deleted ID can't be reused)
+      190: 'coins_190', // ₹19 package - 190 coins (10 coins/rupee)
       550: 'coins_550',
       1100: 'coins_1100',
       1700: 'coins_1700',

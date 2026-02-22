@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:animate_do/animate_do.dart';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -85,32 +86,26 @@ class CoinPurchasePopup {
     );
   }
   
-  /// Navigate to wallet screen (shared function)
+  /// Navigate to wallet screen (shared function) - Simple navigation, no checks
   static void _navigateToWallet(BuildContext context) {
+    // Close popup and navigate to wallet - simple and direct
     Navigator.pop(context);
     
+    // Get user identifier (phone or email) - use empty string as fallback
     final currentUser = FirebaseAuth.instance.currentUser;
-    final phoneNumber = currentUser?.phoneNumber ?? '';
+    final userIdentifier = currentUser?.phoneNumber ?? currentUser?.email ?? '';
     
-    if (phoneNumber.isNotEmpty) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WalletScreen(
-            phoneNumber: phoneNumber,
-            isHost: false,
-            showBackButton: true,
-          ),
+    // Navigate to wallet screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WalletScreen(
+          phoneNumber: userIdentifier,
+          isHost: false,
+          showBackButton: true,
         ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to get user information. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+      ),
+    );
   }
 }
 

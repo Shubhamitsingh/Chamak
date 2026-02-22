@@ -15,6 +15,7 @@ import '../services/online_status_service.dart';
 import '../services/call_request_service.dart';
 import '../services/agora_token_service.dart';
 import '../services/database_service.dart';
+import '../services/call_coin_deduction_service.dart';
 import '../widgets/gift_selection_sheet.dart';
 import '../widgets/call_request_dialog.dart';
 import 'chat_screen.dart';
@@ -37,9 +38,10 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
   final CallRequestService _callRequestService = CallRequestService();
   final AgoraTokenService _tokenService = AgoraTokenService();
   final DatabaseService _databaseService = DatabaseService();
+  final CallCoinDeductionService _coinDeductionService = CallCoinDeductionService();
   
   bool _isFollowing = false;
-  bool _isLoading = true;
+  bool _isLoading = false; // Start with false to show content immediately
   int _followersCount = 0;
   int _followingCount = 0;
   bool _isBioExpanded = false; // Track if bio is expanded
@@ -74,9 +76,8 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) return;
 
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-
+    // Load follow data in background without blocking UI
+    // Profile content shows immediately since we already have widget.user data
     try {
       final isFollowing = await _followService.isFollowing(currentUserId, widget.user.uid);
       final followersCount = await _followService.getFollowersCount(widget.user.uid);
@@ -87,12 +88,10 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
         _isFollowing = isFollowing;
         _followersCount = followersCount;
         _followingCount = followingCount;
-        _isLoading = false;
       });
     } catch (e) {
       debugPrint('❌ Error loading profile data: $e');
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+      // Don't block UI on error - just log it
     }
   }
 
@@ -147,16 +146,6 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       }
       return;
     }
-
-    // Show loading
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFFFF69B4)),
-      ),
-    );
 
     try {
       // Get current user data
@@ -285,16 +274,8 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       // Create or get chat (now works with any logged-in user)
       final chatId = await _chatService.createOrGetChat(currentUserForChat, otherUserForChat);
 
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading
-
-      // Small delay to ensure chat document is fully committed to Firestore
-      // This prevents permission errors when ChatScreen tries to listen to messages
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // Navigate to chat screen
-      // When coming from Search → Profile → Chat, we want back to go to Messages/Home
-      // So we set shouldNavigateToChatListOnBack to true
+      // Navigate to chat screen immediately - no loading dialog, no delay
+      // Chat screen will handle its own loading state (already fixed)
       if (!mounted) return;
       Navigator.push(
         context,
@@ -315,7 +296,6 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       }
       
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
       
       String errorMessage = 'Failed to open chat. Please try again.';
       if (e is FirebaseException) {
@@ -464,6 +444,22 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
           ),
         );
       }
+      return;
+    }
+
+    // Check balance FIRST before requesting permissions or showing loading
+    try {
+      final hasEnoughCoins = await _coinDeductionService.hasEnoughCoins(currentUser.uid)
+          .timeout(const Duration(seconds: 2));
+      if (!hasEnoughCoins) {
+        // Show popup instantly without waiting for balance details
+        _showInsufficientBalanceDialog('');
+        return;
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking balance: $e');
+      // If balance check fails or times out, show popup anyway to be safe
+      _showInsufficientBalanceDialog('');
       return;
     }
 
@@ -744,13 +740,9 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
     }
   }
 
-  // Show insufficient balance dialog - Matching Telegram/Play Store rating popup style
+  // Show insufficient balance dialog - Simplified design (same as chat_screen)
   void _showInsufficientBalanceDialog(String errorMessage) {
     if (!mounted) return;
-    
-    // Extract balance from error message
-    final balanceMatch = RegExp(r'Your balance: (\d+) coins').firstMatch(errorMessage);
-    final currentBalance = balanceMatch?.group(1) ?? '0';
     
     showDialog(
       context: context,
@@ -758,264 +750,135 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> with Sing
       barrierColor: Colors.black.withOpacity(0.7),
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-        child: FadeInDown(
-          duration: const Duration(milliseconds: 400),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 280),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header with gradient and wallet icon (matching Telegram popup)
-                _buildInsufficientBalanceHeader(),
-                
-                // Content box (matching Telegram popup)
-                _buildInsufficientBalanceContent(currentBalance),
-              ],
-            ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
           ),
+          child: _buildInsufficientBalanceContent(),
         ),
       ),
     );
   }
 
-  // Build header for insufficient balance dialog
-  Widget _buildInsufficientBalanceHeader() {
+  // Build content for insufficient balance dialog - Single unified container (same as chat_screen)
+  Widget _buildInsufficientBalanceContent() {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFF1B7C), // Pink
-            Color(0xFF9C27B0), // Purple
-          ],
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Wallet icon on the left
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(
-                Icons.account_balance_wallet_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-          // Title - truly centered
-          const Text(
-            'Insufficient Balance',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
-            ),
-          ),
-          // Close icon on the right
-          Align(
-            alignment: Alignment.centerRight,
-            child: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.close_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Build content for insufficient balance dialog
-  Widget _buildInsufficientBalanceContent(String currentBalance) {
-    return Container(
-      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(16),
-          bottomRight: Radius.circular(16),
-        ),
+        borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Description text
-          Text(
-            'You need at least 300 coins to start a video call.',
+          // Title
+          const Text(
+            'Insufficient Coins',
+            textAlign: TextAlign.left,
             style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[700],
-              height: 1.3,
+              color: Color(0xFFFF1B7C), // App theme pink color
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
           
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           
-          // Balance display
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey[300]!,
-                width: 1,
-              ),
+          // Simple message text - Left aligned
+          const Text(
+            'Your balance is insufficient to\ncontinue with call. A minimum of\n300 coins is required.',
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+              height: 1.5,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.account_balance_wallet,
-                  color: Color(0xFFFF1B7C),
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Balance: $currentBalance coins',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.w600,
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Recharge and Cancel buttons in same row
+          Row(
+            children: [
+              // Cancel button
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 10),
-          
-          // Benefits list (compact)
-          _buildRechargeBenefits(),
-          
-          const SizedBox(height: 10),
-          
-          // Recharge button (matching Telegram Join button style)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navigate to wallet screen
-                final currentUser = FirebaseAuth.instance.currentUser;
-                if (currentUser != null && mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WalletScreen(
-                        phoneNumber: currentUser.phoneNumber ?? '',
-                        isHost: false,
-                      ),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF1B7C), // Pink (matching app theme)
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 2,
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_circle_outline, size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'Recharge Wallet',
+              
+              const SizedBox(width: 12),
+              
+              // Recharge button
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Navigate to wallet screen
+                    final currentUser = FirebaseAuth.instance.currentUser;
+                    if (currentUser != null && mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WalletScreen(
+                            phoneNumber: currentUser.phoneNumber ?? '',
+                            isHost: false,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF1B7C), // App theme pink color
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Recharge',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Build recharge benefits list (compact)
-  Widget _buildRechargeBenefits() {
-    final benefits = [
-      {'emoji': '💰', 'text': 'Instant recharge'},
-      {'emoji': '🎁', 'text': 'Bonus offers'},
-      {'text': 'Unlimited calls', 'isCall': true},
-    ];
-
-    return Column(
-      children: benefits.map((benefit) {
-        final isCall = benefit['isCall'] == true;
-        final text = benefit['text'] as String;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            children: [
-              if (isCall)
-                const Icon(
-                  Icons.call,
-                  size: 16,
-                  color: Color(0xFFFF1B7C),
-                )
-              else
-                Text(
-                  benefit['emoji'] as String,
-                  style: const TextStyle(fontSize: 16),
-                ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ],
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

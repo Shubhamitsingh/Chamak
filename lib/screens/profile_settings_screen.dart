@@ -23,7 +23,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen>
     with SingleTickerProviderStateMixin {
   final DatabaseService _databaseService = DatabaseService();
   UserModel? _user;
-  bool _isLoading = true;
+  bool _isLoading = false; // Start with false to show content immediately
   List<String> _coverImages = [];
   late TabController _tabController;
   late PageController _coverImagePageController;

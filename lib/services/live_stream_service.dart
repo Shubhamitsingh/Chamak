@@ -7,9 +7,10 @@ class LiveStreamService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _collection = 'live_streams';
   
-  /// Create or update live stream from model
-  /// If a stream already exists for this host, it will be reused and updated
-  Future<void> createStream(LiveStreamModel stream) async {
+  /// Create or update live stream from model.
+  /// If a stream already exists for this host, it will be reused and updated.
+  /// Returns the actual Firestore document ID (host must use this as streamId for real-time viewer count and audience list).
+  Future<String> createStream(LiveStreamModel stream) async {
     try {
       print('📡 Creating/updating live stream: ${stream.streamId}');
       print('   Channel: ${stream.channelName}');
@@ -69,6 +70,13 @@ class LiveStreamService {
           print('   ⚠️ Error clearing old chat messages: $e');
           // Don't fail the entire operation if chat clearing fails
         }
+        // Clear old viewers so Audience list is real-time for this session only
+        try {
+          await _clearViewersSubcollection(documentId);
+          print('   🗑️ Cleared old viewers list for new stream session');
+        } catch (e) {
+          print('   ⚠️ Error clearing old viewers: $e');
+        }
       } else {
         print('   ✨ No existing stream found, creating new document: $documentId');
         // Ensure viewerCount is 0 for new streams
@@ -78,9 +86,11 @@ class LiveStreamService {
       // CRITICAL: Force isActive to true and hostStatus to 'live' when creating/updating stream
       streamData['isActive'] = true;
       streamData['hostStatus'] = 'live';
+      // Use actual document ID as streamId so host and viewers use the same id (fixes host viewer count 0 and audience list)
+      streamData['streamId'] = documentId;
       // Don't include endedAt in streamData (will be removed if exists)
       
-      print('   🔧 Forcing isActive=true, hostStatus=live');
+      print('   🔧 Forcing isActive=true, hostStatus=live, streamId=$documentId');
       
       // First, use set() with merge: true to update/create document
       await _firestore.collection(_collection).doc(documentId).set(streamData, SetOptions(merge: true));
@@ -124,6 +134,7 @@ class LiveStreamService {
       } else {
         print('❌ WARNING: Stream not found after creation!');
       }
+      return documentId;
     } catch (e) {
       print('❌ Error creating live stream: $e');
       print('   Stack trace: ${StackTrace.current}');
@@ -639,6 +650,13 @@ class LiveStreamService {
         print('⚠️ Error clearing chat messages: $e');
         // Don't fail the entire operation if chat clearing fails
       }
+      // Clear viewers subcollection so next session has real-time audience only
+      try {
+        await _clearViewersSubcollection(streamId);
+        print('✅ Viewers list cleared for stream: $streamId');
+      } catch (e) {
+        print('⚠️ Error clearing viewers list: $e');
+      }
     } catch (e) {
       print('❌ Error ending live stream: $e');
       print('   Error details: ${e.toString()}');
@@ -683,6 +701,31 @@ class LiveStreamService {
       });
     } catch (e) {
       print('❌ Error keeping stream alive: $e');
+    }
+  }
+
+  /// Clear viewers subcollection (so Audience list is real-time per session)
+  Future<void> _clearViewersSubcollection(String streamId) async {
+    const int batchSize = 500; // Firestore batch limit
+    var totalDeleted = 0;
+    while (true) {
+      final snapshot = await _firestore
+          .collection(_collection)
+          .doc(streamId)
+          .collection('viewers')
+          .limit(batchSize)
+          .get();
+      if (snapshot.docs.isEmpty) break;
+      final batch = _firestore.batch();
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      totalDeleted += snapshot.docs.length;
+      if (snapshot.docs.length < batchSize) break;
+    }
+    if (totalDeleted > 0) {
+      print('   🗑️ Cleared $totalDeleted viewer(s) from stream $streamId');
     }
   }
   

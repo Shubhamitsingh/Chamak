@@ -29,7 +29,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final LocationService _locationService = LocationService();
   
   bool _isSaving = false;
-  bool _isLoading = true;
+  bool _isLoading = false; // Start with false to show content immediately
   bool _isGettingLocation = false;
   String? _locationStatus; // inline status message below Detect button
   

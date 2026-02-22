@@ -1,0 +1,12 @@
+{
+  "name": "firebase-migration",
+  "version": "1.0.0",
+  "description": "Firebase Firestore export script using Admin SDK",
+  "main": "export-firestore-admin.js",
+  "scripts": {
+    "export": "node export-firestore-admin.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

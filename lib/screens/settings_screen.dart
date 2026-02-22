@@ -40,23 +40,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // Get phone number and email from Firebase Auth
+      // Get phone number and email from Firebase Auth (always available when signed in)
       _phoneNumber = currentUser.phoneNumber;
       _email = currentUser.email;
 
       // Get user data from Firestore to get numericUserId and email
       final userData = await _databaseService.getUserData(currentUser.uid);
-      if (userData != null && mounted) {
+      if (mounted) {
         setState(() {
-          _userId = IdGeneratorService.getDisplayId(userData.numericUserId);
-          // Use email from Firestore if available (more reliable)
-          if (userData.email != null && userData.email!.isNotEmpty) {
-            _email = userData.email;
+          if (userData != null && userData.numericUserId.isNotEmpty) {
+            _userId = IdGeneratorService.getDisplayId(userData.numericUserId);
+            if (userData.email != null && userData.email!.isNotEmpty) {
+              _email = userData.email;
+            }
+          } else {
+            // Fallback for new/Play Store users: Firestore doc may not exist yet
+            _userId = currentUser.uid;
           }
         });
       }
     } catch (e) {
       debugPrint('Error loading user data in settings: $e');
+      if (mounted && _auth.currentUser != null) {
+        setState(() {
+          _userId = _auth.currentUser!.uid;
+        });
+      }
     }
   }
 
@@ -127,9 +136,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: AppLocalizations.of(context)!.accountSecurity,
                       subtitle: AppLocalizations.of(context)!.phonePasswordAccountSettings,
                   onTap: () {
-                    // Use email if available, otherwise use phone number
+                    // Use email if available, then phone, then placeholder (so Account Security always opens when signed in)
                     final identifier = _email ?? _phoneNumber ?? '';
-                    if (identifier.isEmpty || _userId == null) {
+                    final userId = _userId ?? _auth.currentUser?.uid ?? '';
+                    if (userId.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(AppLocalizations.of(context)!.errorLoadingProfile),
@@ -144,8 +154,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => AccountSecurityScreen(
-                            phoneNumber: identifier,
-                            userId: _userId!,
+                            phoneNumber: identifier.isEmpty ? '—' : identifier,
+                            userId: userId,
                           ),
                         ),
                       );

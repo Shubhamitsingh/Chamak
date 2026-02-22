@@ -87,7 +87,7 @@ class EndStreamConfirmationSheet extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: onConfirm,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF69B4),
+                        backgroundColor: const Color(0xFFFF1B7C), // App theme pink
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(

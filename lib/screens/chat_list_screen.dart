@@ -460,8 +460,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
             child: StreamBuilder<List<ChatModel>>(
               stream: _chatService.getUserChats(_currentUserId!),
               builder: (context, snapshot) {
-          // Loading
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          // Only show loading indicator on initial load, not on rebuilds
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(
                 color: Color(0xFF04B104),
@@ -638,18 +638,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
     // Clean design - NO containers, NO borders, NO decorations
     return InkWell(
       onTap: () async {
-        // Try to fetch user quickly; fall back to cached chat data to reduce lag
-        UserModel? otherUser;
-
-        try {
-          otherUser = await _searchService
-              .getUserById(otherUserId)
-              .timeout(const Duration(seconds: 3));
-        } catch (_) {
-          // ignore and use fallback
-        }
-
-        otherUser ??= UserModel(
+        // Navigate immediately using cached chat data - fetch user data in background
+        // This ensures instant navigation without waiting
+        final otherUser = UserModel(
           userId: otherUserId,
           numericUserId: '',
           phoneNumber: '',
@@ -661,15 +652,26 @@ class _ChatListScreenState extends State<ChatListScreen> {
         );
 
         if (!mounted) return;
+        
+        // Navigate immediately - no delay
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ChatScreen(
               chatId: chat.chatId,
-              otherUser: otherUser!,
+              otherUser: otherUser,
             ),
           ),
         );
+        
+        // Fetch full user data in background (non-blocking)
+        // User data will update via StreamBuilder in ChatScreen
+        _searchService
+            .getUserById(otherUserId)
+            .timeout(const Duration(seconds: 2))
+            .catchError((_) {
+              // Ignore - cached data is sufficient for navigation
+            });
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

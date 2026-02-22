@@ -48,7 +48,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
   
   
   bool _isProcessing = false;
-  bool _isLoading = true;
+  bool _isLoading = false; // Start with false to show content immediately
   PaymentMethodModel? _selectedPaymentMethod; // Selected saved payment method
   
   // Animation controller for balance
@@ -241,7 +241,7 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     return BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
+      border: Border.all(color: Colors.grey.shade300, width: 1),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.04),
@@ -335,37 +335,42 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
             ),
           ),
               const SizedBox(height: 12),
-          // Large coin balance - centered (abbreviated format)
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _formatBalance(_displayedBalance),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 52,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                  height: 1.1,
-                ),
-              ),
-              // Show exact number below if >= 1000
-              if (_displayedBalance >= 1000)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '(${_formatExactNumber(_displayedBalance)} coins)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.3,
+          // Large coin balance - scale down font when number is long so it fits
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final text = _formatExactNumber(_displayedBalance);
+              final digitCount = text.replaceAll(',', '').length;
+              // Cap font size: smaller when more digits (e.g. 52 -> 40 -> 28 -> 20)
+              double fontSize = 52;
+              if (digitCount > 10) {
+                fontSize = 20;
+              } else if (digitCount > 8) {
+                fontSize = 28;
+              } else if (digitCount > 6) {
+                fontSize = 36;
+              } else if (digitCount > 5) {
+                fontSize = 42;
+              }
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      text,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                        height: 1.1,
+                      ),
                     ),
                   ),
-                ),
-            ],
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -374,10 +379,9 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
 
   // ========== CONVERSION CARD (White Card Overlapping) ==========
   Widget _buildConversionCard() {
-    // Calculate USD: 1000 C Coins = $0.05
-    // 1 C Coin = $0.05 / 1000 = $0.00005
-    final usdRate = 0.05 / 1000; // 1000 coins = $0.05
-    final conversionUSD = 1000 * usdRate; // Should be 0.05
+    // 1 Lakh C Coins = ₹450 (display in INR)
+    const oneLakhCoins = 100000;
+    const oneLakhINR = 450; // 1,00,000 coins = ₹450
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -410,33 +414,28 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Circular gradient icon with white star
-                Container(
+                // Coin icon (coin2.png)
+                SizedBox(
                   width: 24,
                   height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF9800), Color(0xFFFFEB3B)], // Orange to Yellow
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.star,
-                    color: Colors.white,
-                    size: 16,
+                  child: Image.asset(
+                    'assets/images/coin2.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.monetization_on, color: Color(0xFFFF9800), size: 24),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 14),
                 Flexible(
-                  child: Text(
-                    '1000 Coin = \$ ${conversionUSD.toStringAsFixed(3)}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                      height: 1.2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Text(
+                      '1,00,000 Coin = ₹$oneLakhINR',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        height: 1.2,
+                      ),
                     ),
                   ),
                 ),
@@ -710,10 +709,10 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
                           
                           const SizedBox(width: 8),
                           
-                          // Balance number (Animated) - formatted
+                          // Balance number (Animated) - full digits
                           Flexible(
                             child: Text(
-                              _formatBalance(_displayedBalance),
+                              _formatExactNumber(_displayedBalance),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 24,
@@ -844,7 +843,8 @@ class _MyEarningScreenState extends State<MyEarningScreen> {
     return StreamBuilder<List<PaymentMethodModel>>(
       stream: _paymentMethodService.getUserPaymentMethods(currentUser.uid),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // Only show loading indicator on initial load, not on rebuilds
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return Center(
             key: _withdrawalSectionKey,
             child: const Padding(

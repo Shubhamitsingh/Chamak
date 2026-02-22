@@ -56,8 +56,8 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
       body: StreamBuilder<List<FollowerModel>>(
         stream: _followService.getFollowers(widget.userId),
         builder: (context, snapshot) {
-          // Loading state
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          // Only show loading indicator on initial load, not on rebuilds
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(
               child: CircularProgressIndicator(
                 color: Color(0xFFFF69B4),
@@ -423,43 +423,47 @@ class _FollowersListScreenState extends State<FollowersListScreen> {
                       return const SizedBox.shrink();
                     }
                     
+                    // Fixed width so Follow / Unfollow boxes are equal and stable (compact)
+                    const double followButtonWidth = 80;
+                    const double followButtonHeight = 28;
                     return Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: TextButton(
-                        onPressed: () {
-                          if (isFollowing) {
-                            // Unfollow
-                            _handleUnfollow(follower.followerId);
-                          } else {
-                            // Follow
-                            if (userModel != null) {
-                              _handleFollow(userModel);
+                      child: SizedBox(
+                        width: followButtonWidth,
+                        height: followButtonHeight,
+                        child: TextButton(
+                          onPressed: () {
+                            if (isFollowing) {
+                              _handleUnfollow(follower.followerId);
                             } else {
-                              // Fetch user model first
-                              _firestore.collection('users').doc(follower.followerId).get().then((doc) {
-                                if (doc.exists && mounted) {
-                                  final fetchedUser = UserModel.fromFirestore(doc);
-                                  _handleFollow(fetchedUser);
-                                }
-                              });
+                              if (userModel != null) {
+                                _handleFollow(userModel);
+                              } else {
+                                _firestore.collection('users').doc(follower.followerId).get().then((doc) {
+                                  if (doc.exists && mounted) {
+                                    final fetchedUser = UserModel.fromFirestore(doc);
+                                    _handleFollow(fetchedUser);
+                                  }
+                                });
+                              }
                             }
-                          }
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF1B7C), // App theme color
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            backgroundColor: isFollowing ? Colors.grey[100] : const Color(0xFFFF1B7C),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            minimumSize: const Size(80, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          isFollowing ? 'Unfollow' : 'Follow',
-                          style: TextStyle(
-                            color: isFollowing ? Colors.grey[800] : Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                          child: Text(
+                            isFollowing ? 'Unfollow' : 'Follow',
+                            style: TextStyle(
+                              color: isFollowing ? Colors.grey[800] : Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),

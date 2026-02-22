@@ -13,6 +13,8 @@ import '../services/chat_service.dart';
 import '../services/call_request_service.dart';
 import '../services/agora_token_service.dart';
 import '../services/database_service.dart';
+import '../services/call_coin_deduction_service.dart';
+import '../services/online_status_service.dart';
 import '../widgets/call_request_dialog.dart';
 import 'user_profile_view_screen.dart';
 import 'private_call_screen.dart';
@@ -40,6 +42,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final CallRequestService _callRequestService = CallRequestService();
   final AgoraTokenService _tokenService = AgoraTokenService();
   final DatabaseService _databaseService = DatabaseService();
+  final CallCoinDeductionService _coinDeductionService = CallCoinDeductionService();
+  final OnlineStatusService _onlineStatusService = OnlineStatusService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String? _currentUserId;
@@ -64,6 +68,8 @@ class _ChatScreenState extends State<ChatScreen> {
     // Mark messages as read when opening chat
     if (_currentUserId != null) {
       _chatService.markMessagesAsRead(widget.chatId, _currentUserId!);
+      // Mark current user as active so other user sees us online (green dot)
+      _onlineStatusService.updateLastActive(_currentUserId!);
     }
 
     // Listen for numbers (digits or words) while typing
@@ -254,7 +260,7 @@ class _ChatScreenState extends State<ChatScreen> {
           },
           child: Row(
             children: [
-              // Real-time profile image updates from Firestore
+              // Real-time profile image + online status (green/red dot like messages list)
               StreamBuilder<DocumentSnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('users')
@@ -268,23 +274,62 @@ class _ChatScreenState extends State<ChatScreen> {
                     profileImage = userData?['photoURL'] ?? userData?['profileImage'] ?? widget.otherUser.profileImage;
                   }
                   
-                  return CircleAvatar(
-                    radius: 15, // Reduced from 18 to 15 (30px diameter instead of 36px)
-                    // Soft pink-purple so header avatar matches chat theme
-                    backgroundColor: const Color(0xFFCE93D8),
-                    backgroundImage: profileImage.isNotEmpty
-                        ? NetworkImage(profileImage)
-                        : null,
-                    child: profileImage.isEmpty
-                        ? Text(
-                            widget.otherUser.name[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14, // Reduced from 16 to match smaller avatar
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: 15,
+                        backgroundColor: const Color(0xFFCE93D8),
+                        backgroundImage: profileImage.isNotEmpty
+                            ? NetworkImage(profileImage)
+                            : null,
+                        child: profileImage.isEmpty
+                            ? Text(
+                                widget.otherUser.name[0].toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      ),
+                      // Online/Live indicator (green = online, red = live, same as messages screen)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: StreamBuilder<bool>(
+                          stream: _onlineStatusService.getUserLiveStatusStream(widget.otherUser.uid),
+                          builder: (context, liveSnapshot) {
+                            final isLive = liveSnapshot.data ?? false;
+                            return StreamBuilder<String>(
+                              stream: _onlineStatusService.getUserStatusStream(widget.otherUser.uid),
+                              builder: (context, onlineSnapshot) {
+                                final onlineStatus = onlineSnapshot.data ?? 'offline';
+                                final isOnline = onlineStatus == 'online';
+                                Color? indicatorColor;
+                                if (isLive) {
+                                  indicatorColor = Colors.red;
+                                } else if (isOnline) {
+                                  indicatorColor = const Color(0xFF04B104); // Green
+                                } else {
+                                  return const SizedBox.shrink();
+                                }
+                                return Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: indicatorColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 1.5),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -434,7 +479,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: StreamBuilder<List<MessageModel>>(
                   stream: _chatService.getChatMessages(widget.chatId),
                   builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                // Only show loading indicator on initial load, not when keyboard opens
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                   return const Center(
                     child: CircularProgressIndicator(
                       // Light pink to match app theme
@@ -592,79 +638,48 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
 
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
 
-                  // Gift Icon Button
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFB800), Color(0xFFFFD700)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x80FFB800),
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _showGiftPopup,
-                        borderRadius: BorderRadius.circular(18),
-                        child: Center(
-                          child: Image.asset(
-                            'assets/images/gift-box.png',
-                            width: 20,
-                            height: 20,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.card_giftcard_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              );
-                            },
-                          ),
+                  // Gift Icon Button - icon only, no circular background
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _showGiftPopup,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Image.asset(
+                          'assets/images/gift-box.png',
+                          width: 24,
+                          height: 24,
+                          fit: BoxFit.contain,
+                          color: const Color(0xFFFFB800),
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.card_giftcard_rounded,
+                              color: Color(0xFFFFB800),
+                              size: 24,
+                            );
+                          },
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
 
-                  // Send Button - Compact & Modern
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: _containsDigitsWarning ? Colors.grey[400] : const Color(0xFFFF1B7C), // App theme color
-                      shape: BoxShape.circle,
-                      boxShadow: _containsDigitsWarning 
-                          ? null
-                          : const [
-                              BoxShadow(
-                                color: Color(0x80FF1B7C),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _containsDigitsWarning ? null : _sendMessage,
-                        borderRadius: BorderRadius.circular(20),
+                  // Send Button - icon only, no circular background
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _containsDigitsWarning ? null : _sendMessage,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
                         child: Icon(
                           _containsDigitsWarning ? Icons.block : Icons.send_rounded,
-                          color: Colors.white,
-                          size: 20,
+                          color: _containsDigitsWarning ? Colors.grey : const Color(0xFFFF1B7C),
+                          size: 24,
                         ),
                       ),
                     ),
@@ -977,11 +992,12 @@ class _ChatScreenState extends State<ChatScreen> {
                       bottomLeft: Radius.circular(isSentByMe ? 8 : 2),
                       bottomRight: Radius.circular(isSentByMe ? 2 : 8),
                     ),
+                    // Use opaque border color (Flutter does not allow transparent border with borderRadius)
                     border: isGift
                         ? Border.all(
                             color: isSentByMe
-                                ? const Color(0xFFFFB800).withValues(alpha: 0.5)
-                                : const Color(0xFFFFB800).withValues(alpha: 0.3),
+                                ? const Color(0xFFFFD54F)
+                                : const Color(0xFFFFE082),
                             width: 1.5,
                           )
                         : null,
@@ -1283,6 +1299,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // Request permissions with safety checks
     if (!mounted) return;
+    
+    // Check balance FIRST before showing loading or requesting permissions
+    // Use shorter timeout for instant popup display
+    try {
+      final hasEnoughCoins = await _coinDeductionService.hasEnoughCoins(currentUser.uid)
+          .timeout(const Duration(seconds: 2));
+      if (!hasEnoughCoins) {
+        // Show popup instantly without waiting for balance details
+        _showInsufficientBalanceDialog('');
+        return;
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking balance: $e');
+      // If balance check fails or times out, show popup anyway to be safe
+      _showInsufficientBalanceDialog('');
+      return;
+    }
     
     // Set flag to prevent multiple simultaneous requests
     setState(() {
@@ -1611,13 +1644,9 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // Show insufficient balance dialog - Matching Telegram/Play Store rating popup style
+  // Show insufficient balance dialog - Simplified design
   void _showInsufficientBalanceDialog(String errorMessage) {
     if (!mounted) return;
-    
-    // Extract balance from error message
-    final balanceMatch = RegExp(r'Your balance: (\d+) coins').firstMatch(errorMessage);
-    final currentBalance = balanceMatch?.group(1) ?? '0';
     
     showDialog(
       context: context,
@@ -1625,262 +1654,132 @@ class _ChatScreenState extends State<ChatScreen> {
       barrierColor: Colors.black.withOpacity(0.7),
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-        child: FadeInDown(
-          duration: const Duration(milliseconds: 400),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 280),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header with gradient and wallet icon (matching Telegram popup)
-                _buildInsufficientBalanceHeader(),
-                
-                // Content box (matching Telegram popup)
-                _buildInsufficientBalanceContent(currentBalance),
-              ],
-            ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
           ),
+          child: _buildInsufficientBalanceContent(),
         ),
       ),
     );
   }
 
-  // Build header for insufficient balance dialog
-  Widget _buildInsufficientBalanceHeader() {
+  // Build content for insufficient balance dialog - Single unified container
+  Widget _buildInsufficientBalanceContent() {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFF1B7C), // Pink
-            Color(0xFF9C27B0), // Purple
-          ],
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Wallet icon on the left
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(
-                Icons.account_balance_wallet_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-          // Title - truly centered
-          const Text(
-            'Insufficient Balance',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
-            ),
-          ),
-          // Close icon on the right
-          Align(
-            alignment: Alignment.centerRight,
-            child: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.close_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Build content for insufficient balance dialog
-  Widget _buildInsufficientBalanceContent(String currentBalance) {
-    return Container(
-      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(16),
-          bottomRight: Radius.circular(16),
-        ),
+        borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Description text
-          Text(
-            'You need at least 300 coins to start a video call.',
+          // Title
+          const Text(
+            'Insufficient Coins',
+            textAlign: TextAlign.left,
             style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[700],
-              height: 1.3,
+              color: Color(0xFFFF1B7C), // App theme pink color
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
           
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           
-          // Balance display
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey[300]!,
-                width: 1,
-              ),
+          // Simple message text - Left aligned
+          const Text(
+            'Your balance is insufficient to\ncontinue with call. A minimum of\n300 coins is required.',
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+              height: 1.5,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.account_balance_wallet,
-                  color: Color(0xFFFF1B7C),
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Balance: $currentBalance coins',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.w600,
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Recharge and Cancel buttons in same row
+          Row(
+            children: [
+              // Cancel button
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 10),
-          
-          // Benefits list (compact)
-          _buildRechargeBenefits(),
-          
-          const SizedBox(height: 10),
-          
-          // Recharge button (matching Telegram Join button style)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navigate to wallet screen
-                final currentUser = FirebaseAuth.instance.currentUser;
-                if (currentUser != null && mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WalletScreen(
-                        phoneNumber: currentUser.phoneNumber ?? '',
-                        isHost: false,
-                      ),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF1B7C), // Pink (matching app theme)
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 2,
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_circle_outline, size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'Recharge Wallet',
+              
+              const SizedBox(width: 12),
+              
+              // Recharge button
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Navigate to wallet screen
+                    final currentUser = FirebaseAuth.instance.currentUser;
+                    if (currentUser != null && mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WalletScreen(
+                            phoneNumber: currentUser.phoneNumber ?? '',
+                            isHost: false,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF1B7C), // App theme pink color
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Recharge',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Build recharge benefits list (compact)
-  Widget _buildRechargeBenefits() {
-    final benefits = [
-      {'emoji': '💰', 'text': 'Instant recharge'},
-      {'emoji': '🎁', 'text': 'Bonus offers'},
-      {'text': 'Unlimited calls', 'isCall': true},
-    ];
-
-    return Column(
-      children: benefits.map((benefit) {
-        final isCall = benefit['isCall'] == true;
-        final text = benefit['text'] as String;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            children: [
-              if (isCall)
-                const Icon(
-                  Icons.call,
-                  size: 16,
-                  color: Color(0xFFFF1B7C),
-                )
-              else
-                Text(
-                  benefit['emoji'] as String,
-                  style: const TextStyle(fontSize: 16),
-                ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ],
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
 
@@ -2398,8 +2297,8 @@ class _GiftSelectionPopupState extends State<_GiftSelectionPopup> {
           color: canAfford ? Colors.white : Colors.grey[100],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: canAfford 
-                ? const Color(0xFFFF1B7C).withValues(alpha: 0.3)
+            color: canAfford
+                ? const Color(0xFFF8BBD9)
                 : Colors.grey[300]!,
             width: 1.5,
           ),

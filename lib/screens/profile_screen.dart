@@ -164,8 +164,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: StreamBuilder<UserModel?>(
         stream: _databaseService.streamCurrentUserData(),
         builder: (context, snapshot) {
-          // Loading state
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          // Loading state - only show loading on initial load if no cached data
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             // Use cached user if available while loading
             if (_cachedUser != null) {
               return _buildProfileContent(_cachedUser!);
@@ -987,7 +987,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: const Color(0xFFFFB800),
                       iconImage: 'assets/images/walleticon.png', // Use custom wallet icon
                       showCoinIcon: true,
-                      coinBalance: uCoinsBalance, // Real-time coin balance
+                      coinBalance: uCoinsBalance,
                       onTap: () {
                         if (!mounted) return;
                         _stopAutoScroll(); // Stop slider when navigating
@@ -1024,50 +1024,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildDivider(),
             
-            // My Earning with Real-time Coin Balance
-            // NOTE: Use earnings.totalCCoins (SINGLE SOURCE OF TRUTH) instead of users.cCoins
-            StreamBuilder<DocumentSnapshot>(
-              stream: _auth.currentUser != null
-                  ? _firestore.collection('earnings').doc(_auth.currentUser!.uid).snapshots()
-                  : Stream<DocumentSnapshot>.empty(),
-              builder: (context, earningsSnapshot) {
-                // Get real-time C Coins balance from earnings collection (SINGLE SOURCE OF TRUTH)
-                int cCoinsBalance = 0;
-                if (earningsSnapshot.hasData && earningsSnapshot.data!.exists) {
-                  final data = earningsSnapshot.data!.data() as Map<String, dynamic>?;
-                  if (data != null && data.containsKey('totalCCoins')) {
-                    cCoinsBalance = data['totalCCoins'] as int? ?? 0;
-                  }
-                }
-                
-                return _buildMenuOption(
-                  icon: Icons.monetization_on_rounded,
-                  title: AppLocalizations.of(context)!.myEarning,
-                  subtitle: AppLocalizations.of(context)!.earningsWithdrawals,
-                  color: const Color(0xFF10B981),
-                  showCoin2Icon: true,
-                  coinBalance: cCoinsBalance, // Real-time C Coins balance from earnings collection
-                  onTap: () {
-                    if (!mounted) return;
-                    _stopAutoScroll();
-                    try {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MyEarningScreen(
-                            phoneNumber: widget.phoneNumber,
-                          ),
-                        ),
-                      ).then((_) {
-                        if (mounted) {
-                          _startAutoScroll();
-                        }
-                      });
-                    } catch (e) {
-                      debugPrint('Navigation error: $e');
+            // My Earning (no coin icon)
+            _buildMenuOption(
+              icon: Icons.monetization_on_rounded,
+              title: AppLocalizations.of(context)!.myEarning,
+              subtitle: AppLocalizations.of(context)!.earningsWithdrawals,
+              color: const Color(0xFF10B981),
+              onTap: () {
+                if (!mounted) return;
+                _stopAutoScroll();
+                try {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MyEarningScreen(
+                        phoneNumber: widget.phoneNumber,
+                      ),
+                    ),
+                  ).then((_) {
+                    if (mounted) {
+                      _startAutoScroll();
                     }
-                  },
-                );
+                  });
+                } catch (e) {
+                  debugPrint('Navigation error: $e');
+                }
               },
             ),
             _buildDivider(),
@@ -1603,15 +1584,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Image.asset(
                       iconImage,
-                      width: 20,
-                      height: 20,
+                      width: 17,
+                      height: 17,
                       fit: BoxFit.contain,
                     ),
                   )
                 : Icon(
                     icon,
                     color: color,
-                    size: 20,
+                    size: 17,
                   ),
           ),
           // Unread Badge (only show on icon if not showing on trailing)
@@ -1674,10 +1655,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Coin Balance Display (for Wallet with coinBalance)
+          // Wallet: from right side = digit first (rightmost), then icon (left of digit)
+          if (showCoinIcon)
+            Container(
+              margin: const EdgeInsets.only(right: 6),
+              child: Image.asset(
+                'assets/images/coin3.png',
+                width: 17,
+                height: 17,
+                fit: BoxFit.contain,
+              ),
+            ),
           if (showCoinIcon && coinBalance != null)
             Padding(
-              padding: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.only(right: 8),
               child: Text(
                 _formatCoinBalance(coinBalance),
                 style: TextStyle(
@@ -1686,17 +1677,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.3,
                 ),
-              ),
-            ),
-          // Coin Icon (only for Wallet)
-          if (showCoinIcon)
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: Image.asset(
-                'assets/images/coin3.png',
-                width: 20,
-                height: 20,
-                fit: BoxFit.contain,
               ),
             ),
           // Coin Balance Display (for My Earning with coinBalance)
@@ -1719,26 +1699,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               margin: const EdgeInsets.only(right: 8),
               child: Image.asset(
                 'assets/images/coin2.png',
-                width: 20,
-                height: 20,
+                width: 17,
+                height: 17,
                 fit: BoxFit.contain,
               ),
             ),
-          // User Level Display (for Level menu)
+          // User Level Display (for Level menu) - reduced size to match coin style
           if (showLevel && userLevel != null)
             Padding(
               padding: const EdgeInsets.only(right: 6),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFFFF1B7C), Color(0xFFE91E63)],
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
-                      blurRadius: 2,
+                      blurRadius: 1,
                       offset: const Offset(0, 1),
                     ),
                   ],
@@ -1747,7 +1727,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Lv.$userLevel',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.2,
                   ),

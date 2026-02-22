@@ -254,7 +254,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFFF1B7C).withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(25),
-                        border: Border.all(color: const Color(0xFFFF1B7C).withValues(alpha: 0.3)),
+                        border: Border.all(color: const Color(0xFFF8BBD9)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

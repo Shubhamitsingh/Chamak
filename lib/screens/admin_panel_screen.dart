@@ -739,7 +739,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
       decoration: BoxDecoration(
         color: color.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha:0.3)),
+        border: Border.all(color: Color.lerp(color, Colors.white, 0.6)!),
       ),
       child: Column(
         children: [
@@ -793,7 +793,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
               decoration: BoxDecoration(
                 color: Colors.orange.withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withValues(alpha:0.3)),
+                border: Border.all(color: Color.lerp(Colors.orange, Colors.white, 0.5)!),
               ),
               child: const Row(
                 children: [
@@ -1688,7 +1688,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF1B7C).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFFF1B7C).withOpacity(0.3)),
+                      border: Border.all(color: const Color(0xFFF8BBD9)),
                     ),
                     child: const Row(
                       children: [
@@ -2051,7 +2051,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: Color.lerp(color, Colors.white, 0.6)!),
         ),
         child: Column(
           children: [
@@ -2242,7 +2242,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerPr
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  border: Border.all(color: Color.lerp(Colors.red, Colors.white, 0.6)!),
                 ),
                 child: Row(
                   children: [

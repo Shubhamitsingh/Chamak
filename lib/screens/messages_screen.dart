@@ -169,14 +169,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
           );
         }
         
-        // Handle loading
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildChamakzTeamItem(
-            unreadCount: 0,
-            hasUnread: false,
-            lastMessage: 'Loading...',
-            hasError: false,
-          );
+        // Handle loading - only show on initial load, use empty state otherwise
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          // Don't show loading text - return empty or show with empty message
+          return const SizedBox.shrink();
         }
         
         final unreadCount = snapshot.data ?? 0;
@@ -386,8 +382,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
     return StreamBuilder<List<ChatModel>>(
       stream: _chatService.getUserChats(_currentUserId!),
       builder: (context, snapshot) {
-        // Loading
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // Only show loading indicator on initial load, not on rebuilds
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Center(
             child: CircularProgressIndicator(
               color: Color(0xFFFF69B4),

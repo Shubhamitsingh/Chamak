@@ -13,9 +13,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   bool newFollowersNotifications = true;
   bool likeAndFavouriteNotifications = true;
   bool followedStreamsLiveNotifications = true;
-  bool recommendedLiveNotifications = true;
-  bool officialMessageNotifications = true;
-  bool firstTimeProfileVisitNotifications = true;
 
   @override
   Widget build(BuildContext context) {
@@ -73,33 +70,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             onChanged: (value) {
               setState(() {
                 followedStreamsLiveNotifications = value;
-              });
-            },
-          ),
-          _buildNotificationItem(
-            title: AppLocalizations.of(context)!.recommendedLive,
-            value: recommendedLiveNotifications,
-            onChanged: (value) {
-              setState(() {
-                recommendedLiveNotifications = value;
-              });
-            },
-          ),
-          _buildNotificationItem(
-            title: AppLocalizations.of(context)!.officialMessage,
-            value: officialMessageNotifications,
-            onChanged: (value) {
-              setState(() {
-                officialMessageNotifications = value;
-              });
-            },
-          ),
-          _buildNotificationItem(
-            title: AppLocalizations.of(context)!.firstTimeProfileVisit,
-            value: firstTimeProfileVisitNotifications,
-            onChanged: (value) {
-              setState(() {
-                firstTimeProfileVisitNotifications = value;
               });
             },
           ),

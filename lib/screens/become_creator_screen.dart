@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/host_application_service.dart';
 import '../services/database_service.dart';
+import '../services/storage_service.dart';
 import '../services/id_generator_service.dart';
 import '../models/user_model.dart';
 import '../models/host_application_model.dart';
@@ -24,22 +26,15 @@ class BecomeCreatorScreen extends StatefulWidget {
 }
 
 class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
-  final _formKey = GlobalKey<FormState>();
   final HostApplicationService _applicationService = HostApplicationService();
   final DatabaseService _databaseService = DatabaseService();
+  final StorageService _storageService = StorageService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ImagePicker _picker = ImagePicker();
 
-  // Controllers
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _instagramController = TextEditingController();
-  final TextEditingController _tiktokController = TextEditingController();
-  final TextEditingController _youtubeController = TextEditingController();
-
-  // State variables
-  bool _isLoading = true;
+  File? _selfieFile;
   bool _isSubmitting = false;
   bool _termsAccepted = false;
-  DateTime? _selectedDateOfBirth;
   UserModel? _currentUser;
 
   @override
@@ -51,67 +46,47 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
   Future<void> _loadUserData() async {
     try {
       final currentUser = _auth.currentUser;
-      if (currentUser == null) {
-        if (mounted) {
-          Navigator.pop(context);
-        }
-        return;
-      }
-
+      if (currentUser == null) return;
       final userData = await _databaseService.getUserData(currentUser.uid);
-      if (mounted) {
-        setState(() {
-          _currentUser = userData;
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _currentUser = userData);
     } catch (e) {
       debugPrint('Error loading user data: $e');
+    }
+  }
+
+  Future<void> _takeSelfie() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        maxWidth: 1080,
+      );
+      if (image != null && mounted) {
+        setState(() => _selfieFile = File(image.path));
+      }
+    } catch (e) {
+      debugPrint('Camera error: $e');
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.errorLoadingProfile),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
 
-  Future<void> _selectDateOfBirth() async {
-    final DateTime now = DateTime.now();
-    final DateTime firstDate = DateTime(now.year - 100); // 100 years ago
-    final DateTime lastDate = DateTime(now.year - 18); // Must be 18+
-
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: lastDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFF1B7C),
-              onPrimary: Colors.white,
-              onSurface: Colors.black87,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null && mounted) {
-      setState(() {
-        _selectedDateOfBirth = picked;
-      });
-    }
-  }
-
-
   Future<void> _submitApplication() async {
-    if (!_formKey.currentState!.validate()) {
+    if (_selfieFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please take or upload a selfie first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
-
     if (!_termsAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -122,95 +97,54 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
       return;
     }
 
-    if (_selectedDateOfBirth == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.pleaseSelectDateOfBirth),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Verify age (must be 18+)
-    final age = DateTime.now().difference(_selectedDateOfBirth!).inDays ~/ 365;
-    if (age < 18) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.mustBe18YearsOld),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     final currentUser = _auth.currentUser;
     if (currentUser == null || _currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please login again'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Please login again'), backgroundColor: Colors.red),
       );
       return;
     }
 
-    setState(() {
-      _isSubmitting = true;
-    });
+    setState(() => _isSubmitting = true);
 
     try {
-      // Prepare social media links
-      Map<String, String>? socialMediaLinks;
-      if (_instagramController.text.isNotEmpty ||
-          _tiktokController.text.isNotEmpty ||
-          _youtubeController.text.isNotEmpty) {
-        socialMediaLinks = {};
-        if (_instagramController.text.isNotEmpty) {
-          socialMediaLinks['instagram'] = _instagramController.text.trim();
-        }
-        if (_tiktokController.text.isNotEmpty) {
-          socialMediaLinks['tiktok'] = _tiktokController.text.trim();
-        }
-        if (_youtubeController.text.isNotEmpty) {
-          socialMediaLinks['youtube'] = _youtubeController.text.trim();
-        }
+      final photoUrl = await _storageService.uploadHostApplicationSelfie(_selfieFile!);
+      if (photoUrl == null || !mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to upload selfie. Try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
       }
 
-      // Submit application
       final applicationId = await _applicationService.submitApplication(
         userId: currentUser.uid,
         userDisplayId: IdGeneratorService.getDisplayId(_currentUser!.numericUserId),
         username: _currentUser!.displayName ?? 'User',
         phoneNumber: _currentUser!.phoneNumber,
-        dateOfBirth: _selectedDateOfBirth!,
-        email: _emailController.text.trim().isNotEmpty
-            ? _emailController.text.trim()
-            : null,
+        dateOfBirth: DateTime(DateTime.now().year - 18, 1, 1),
+        email: null,
         bio: '',
-        socialMediaLinks: socialMediaLinks,
-        profilePhotoUrl: null,
+        socialMediaLinks: null,
+        profilePhotoUrl: photoUrl,
         termsAccepted: _termsAccepted,
       );
 
       if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-
+        setState(() => _isSubmitting = false);
         if (applicationId != null) {
-          // Application submitted successfully - Navigate directly to status screen
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CreatorApplicationStatusScreen(
-                  applicationId: applicationId,
-                  phoneNumber: widget.phoneNumber,
-                ),
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreatorApplicationStatusScreen(
+                applicationId: applicationId,
+                phoneNumber: widget.phoneNumber,
               ),
-            );
-          }
+            ),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -223,9 +157,7 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
     } catch (e) {
       debugPrint('Error submitting application: $e');
       if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
+        setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${e.toString()}'),
@@ -236,63 +168,8 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
     }
   }
 
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _instagramController.dispose();
-    _tiktokController.dispose();
-    _youtubeController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            AppLocalizations.of(context)!.becomeACreator,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          centerTitle: true,
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFFFF1B7C),
-          ),
-        ),
-      );
-    }
-
-    if (_currentUser == null) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Center(
-          child: Text(AppLocalizations.of(context)!.errorLoadingUserData),
-        ),
-      );
-    }
-
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       return Scaffold(
@@ -333,33 +210,20 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
       body: StreamBuilder<DocumentSnapshot?>(
         stream: _applicationService.getApplicationStatus(currentUser.uid),
         builder: (context, appSnapshot) {
-          // Show loading while checking status
-          if (appSnapshot.connectionState == ConnectionState.waiting) {
+          if (appSnapshot.connectionState == ConnectionState.waiting && !appSnapshot.hasData) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFFF1B7C),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFFFF1B7C)),
             );
           }
-
-          // Handle errors
           if (appSnapshot.hasError) {
-            debugPrint('❌ Error loading application status: ${appSnapshot.error}');
-            // On error, show the form (allow application)
-            return _buildApplicationForm();
+            return _buildSelfieForm();
           }
-
-          // Check if application exists
           final hasApplication = appSnapshot.hasData && appSnapshot.data != null && appSnapshot.data!.exists;
-          
           if (hasApplication) {
             try {
               final application = HostApplicationModel.fromFirestore(appSnapshot.data!);
               final applicationId = appSnapshot.data!.id;
-              
-              // If approved or pending/reviewing, navigate to status screen (not show duplicate view)
               if (application.isApproved || application.isPending || application.status == HostApplicationStatus.reviewing) {
-                // Navigate to dedicated status screen instead of showing duplicate view
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) {
                     Navigator.pushReplacement(
@@ -373,506 +237,211 @@ class _BecomeCreatorScreenState extends State<BecomeCreatorScreen> {
                     );
                   }
                 });
-                // Show loading while navigating
                 return const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFFFF1B7C),
-                  ),
+                  child: CircularProgressIndicator(color: Color(0xFFFF1B7C)),
                 );
               }
-              
-              // If rejected, show form to allow reapplication
               if (application.isRejected) {
-                return _buildApplicationForm(showRejectedMessage: true, rejectionReason: application.rejectionReason);
+                return _buildSelfieForm(showRejectedMessage: true, rejectionReason: application.rejectionReason);
               }
             } catch (e) {
-              debugPrint('❌ Error parsing application: $e');
-              // On parse error, show the form
-              return _buildApplicationForm();
+              debugPrint('Error parsing application: $e');
             }
           }
-
-          // No application - show form
-          return _buildApplicationForm();
+          return _buildSelfieForm();
         },
       ),
     );
   }
 
-  Widget _buildApplicationForm({bool showRejectedMessage = false, String? rejectionReason}) {
+  Widget _buildSelfieForm({bool showRejectedMessage = false, String? rejectionReason}) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Show rejected message if applicable
-            if (showRejectedMessage) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.red[200]!,
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.cancel_rounded,
-                      color: Colors.red,
-                      size: 28,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.applicationRejected,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            rejectionReason != null && rejectionReason.isNotEmpty
-                                ? AppLocalizations.of(context)!.reason(rejectionReason)
-                                : AppLocalizations.of(context)!.applicationNotApprovedCanReapply,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.red[800],
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
+      child: Column(
+        children: [
+          if (showRejectedMessage) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[200]!),
               ),
-            ],
-            Text(
-              AppLocalizations.of(context)!.personalInformation,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // User ID (Read-only)
-            _buildReadOnlyField(
-              label: AppLocalizations.of(context)!.userID,
-              value: IdGeneratorService.getDisplayId(_currentUser!.numericUserId),
-              icon: Icons.badge_outlined,
-            ),
-
-            const SizedBox(height: 10),
-
-            // Username (Read-only)
-            _buildReadOnlyField(
-              label: AppLocalizations.of(context)!.username,
-              value: _currentUser!.displayName ?? AppLocalizations.of(context)!.notSet,
-              icon: Icons.person_outline,
-            ),
-
-            const SizedBox(height: 10),
-
-            // Phone Number (Read-only)
-            _buildReadOnlyField(
-              label: AppLocalizations.of(context)!.phoneNumber,
-              value: _currentUser!.phoneNumber,
-              icon: Icons.phone_outlined,
-            ),
-
-            const SizedBox(height: 10),
-
-            // Date of Birth
-            GestureDetector(
-              onTap: _selectDateOfBirth,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: _selectedDateOfBirth == null
-                        ? Colors.grey[300]!
-                        : const Color(0xFFFF1B7C),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      color: Color(0xFFFF1B7C),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.dateOfBirth,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _selectedDateOfBirth != null
-                                ? DateFormat('dd/MM/yyyy').format(_selectedDateOfBirth!)
-                                : AppLocalizations.of(context)!.selectYourDateOfBirth,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: _selectedDateOfBirth == null
-                                  ? Colors.black87
-                                  : Colors.grey[400],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: Color(0xFFFF1B7C),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // Email (Optional)
-            TextFormField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.emailOptional,
-                hintText: AppLocalizations.of(context)!.emailPlaceholder,
-                prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFFFF1B7C), size: 20),
-                filled: true,
-                fillColor: Colors.grey[50],
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
-                ),
-              ),
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  if (!value.contains('@') || !value.contains('.')) {
-                    return AppLocalizations.of(context)!.pleaseEnterValidEmail;
-                  }
-                }
-                return null;
-              },
-            ),
-
-            const SizedBox(height: 14),
-
-            // Social Media Links (Optional)
-            Text(
-              AppLocalizations.of(context)!.socialMediaLinksOptional,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Instagram
-            TextFormField(
-              controller: _instagramController,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.instagram,
-                hintText: AppLocalizations.of(context)!.instagramPlaceholder,
-                prefixIcon: const Icon(Icons.camera_alt_outlined, color: Color(0xFFFF1B7C), size: 20),
-                filled: true,
-                fillColor: Colors.grey[50],
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // TikTok
-            TextFormField(
-              controller: _tiktokController,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.tiktok,
-                hintText: AppLocalizations.of(context)!.instagramPlaceholder,
-                prefixIcon: const Icon(Icons.music_note_outlined, color: Color(0xFFFF1B7C), size: 20),
-                filled: true,
-                fillColor: Colors.grey[50],
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // YouTube
-            TextFormField(
-              controller: _youtubeController,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.youtube,
-                hintText: AppLocalizations.of(context)!.channelURL,
-                prefixIcon: const Icon(Icons.play_circle_outline, color: Color(0xFFFF1B7C), size: 20),
-                filled: true,
-                fillColor: Colors.grey[50],
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFFF1B7C), width: 1.5),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // Benefits Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    AppLocalizations.of(context)!.benefitsOfBecomingCreator,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppLocalizations.of(context)!.benefitsOfBecomingCreatorDescription,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[800],
-                      height: 1.4,
+                  const Icon(Icons.cancel_rounded, color: Colors.red, size: 26),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.applicationRejected,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          rejectionReason ?? AppLocalizations.of(context)!.applicationNotApprovedCanReapply,
+                          style: TextStyle(fontSize: 12, color: Colors.red[800], height: 1.3),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 14),
-
-            // Terms & Conditions
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Checkbox(
-                  value: _termsAccepted,
-                  onChanged: (value) {
-                    setState(() {
-                      _termsAccepted = value ?? false;
-                    });
-                  },
-                  activeColor: const Color(0xFFFF1B7C),
+          ],
+          Text(
+            'Take a selfie for verification',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[800],
+                    height: 1.4,
+                  ),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 10, right: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Flexible(
-                          child: RichText(
-                            text: TextSpan(
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[700],
-                                height: 1.4,
+                const SizedBox(height: 28),
+                Center(
+                  child: GestureDetector(
+                    onTap: _selfieFile == null ? null : () {},
+                    child: ClipOval(
+                      clipBehavior: Clip.antiAlias,
+                      child: Container(
+                        width: 280,
+                        height: 280,
+                        color: Colors.grey[200],
+                        child: _selfieFile != null
+                            ? Image.file(
+                                _selfieFile!,
+                                fit: BoxFit.cover,
+                                width: 280,
+                                height: 280,
+                              )
+                            : Image.asset(
+                                'assets/images/face-verification.png',
+                                width: 280,
+                                height: 280,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 280,
+                                  height: 280,
+                                  color: Colors.grey[200],
+                                  child: Icon(
+                                    Icons.camera_alt_rounded,
+                                    size: 80,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
                               ),
-                              children: [
-                                TextSpan(text: AppLocalizations.of(context)!.iAcceptThe),
-                                WidgetSpan(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const TermsAndConditionsScreen(),
-                                        ),
-                                      );
-                                    },
-                                    child: Text(
-                                      AppLocalizations.of(context)!.termsConditions,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: const Color(0xFFFF1B7C),
-                                        fontWeight: FontWeight.w600,
-                                        decoration: TextDecoration.underline,
-                                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.38,
+                    child: OutlinedButton.icon(
+                      onPressed: _isSubmitting ? null : _takeSelfie,
+                      icon: const Icon(Icons.camera_alt, size: 20, color: Color(0xFFFF1B7C)),
+                      label: const Text('Take selfie', style: TextStyle(color: Color(0xFFFF1B7C), fontWeight: FontWeight.w600, fontSize: 14)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFFF1B7C)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 112),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Checkbox(
+                      value: _termsAccepted,
+                      onChanged: (v) => setState(() => _termsAccepted = v ?? false),
+                      activeColor: const Color(0xFFFF1B7C),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 10, right: 8),
+                        child: RichText(
+                          text: TextSpan(
+                            style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.3),
+                            children: [
+                              TextSpan(text: '${AppLocalizations.of(context)!.iAcceptThe} '),
+                              WidgetSpan(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const TermsAndConditionsScreen(),
                                       ),
+                                    );
+                                  },
+                                  child: Text(
+                                    AppLocalizations.of(context)!.termsConditions,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFFF1B7C),
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
-                                TextSpan(text: AppLocalizations.of(context)!.andAgreeToPlatformRules),
-                              ],
+                              ),
+                              TextSpan(text: ' ${AppLocalizations.of(context)!.andAgreeToPlatformRules}'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: (_selfieFile != null && _termsAccepted && !_isSubmitting)
+                        ? _submitApplication
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF1B7C),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey[300],
+                      disabledForegroundColor: Colors.grey[600],
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              AppLocalizations.of(context)!.submitApplication,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.visible,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            // Submit Button
-            Center(
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.70, // 70% of screen width
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitApplication,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF1B7C),
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    shadowColor: const Color(0xFFFF1B7C).withOpacity(0.3),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    disabledBackgroundColor: Colors.grey[400],
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          AppLocalizations.of(context)!.submitApplication,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.3,
-                            color: Colors.white,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.visible,
-                        ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReadOnlyField({
-    required String label,
-    required String value,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.grey[300]!,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFFFF1B7C), size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

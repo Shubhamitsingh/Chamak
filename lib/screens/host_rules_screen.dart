@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/database_service.dart';
-import '../models/user_model.dart';
-import '../widgets/cached_avatar_widget.dart';
+
+const String _agoraAppId = '43bb5e13c835444595c8cf087a0ccaa4';
 
 class HostRulesScreen extends StatefulWidget {
   final VoidCallback onGoLive;
@@ -20,553 +22,213 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
   final DatabaseService _databaseService = DatabaseService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  UserModel? _userData;
-  bool _isLoading = true;
+  bool _hasPermission = false;
+  bool _isCheckingPermission = true;
+  
+  // Agora engine for camera preview
+  RtcEngine? _engine;
+  bool _isPreviewReady = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _checkPermission();
   }
 
-  Future<void> _loadUserData() async {
+  Future<void> _checkPermission() async {
     try {
       final userId = _auth.currentUser?.uid;
-      if (userId != null) {
-        final userData = await _databaseService.getUserData(userId);
+      if (userId == null) {
         if (mounted) {
           setState(() {
-            _userData = userData;
-            _isLoading = false;
+            _isCheckingPermission = false;
+            _hasPermission = false;
           });
+          _goBack();
         }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
+        return;
+      }
+
+      final userData = await _databaseService.getUserData(userId);
+      if (mounted) {
+        setState(() {
+          _hasPermission = userData?.isActive ?? false;
+          _isCheckingPermission = false;
+        });
+
+        if (_hasPermission) {
+          await _initializeCameraPreview();
+        } else {
+          _goBack();
         }
       }
     } catch (e) {
-      debugPrint('❌ Error loading user data: $e');
+      debugPrint('❌ Error checking permission: $e');
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isCheckingPermission = false;
+          _hasPermission = false;
         });
+        _goBack();
+      }
+    }
+  }
+
+  void _goBack() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.pop(context);
+    });
+  }
+
+  Future<void> _initializeCameraPreview() async {
+    try {
+      // Request camera and microphone permissions
+      final cameraStatus = await Permission.camera.request();
+      final micStatus = await Permission.microphone.request();
+
+      if (cameraStatus.isDenied || micStatus.isDenied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Camera and microphone permissions are required to go live'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Initialize Agora engine for preview only
+      _engine = createAgoraRtcEngine();
+      await _engine!.initialize(
+        const RtcEngineContext(
+          appId: _agoraAppId,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+        ),
+      );
+
+      // Enable video
+      await _engine!.enableVideo();
+
+      // Start preview
+      await _engine!.startPreview();
+
+      // Setup local video view
+      await _engine!.setupLocalVideo(
+        const VideoCanvas(
+          uid: 0,
+          renderMode: RenderModeType.renderModeFit,
+        ),
+      );
+
+      if (mounted) {
+        setState(() {
+          _isPreviewReady = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error initializing camera preview: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error initializing camera: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
 
   @override
+  void dispose() {
+    // Clean up Agora engine
+    _engine?.stopPreview();
+    _engine?.disableVideo();
+    _engine?.release();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A), // Dark background
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A1A), // Dark background
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          'Chamakz Live',
+          'Go Live',
           style: TextStyle(
-            color: Color(0xFFFF1B7C),
+            color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),
         centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  Colors.grey[700]!,
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF1B7C)))
-          : Column(
-        children: [
-                // Dark Content Section - Scrollable
-          Expanded(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1A1A1A), // Dark background
-                    ),
-                    child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                          const SizedBox(height: 24),
-                          
-                          // Progress Steps Indicator
-                          _buildProgressSteps(),
-                          
-                          const SizedBox(height: 32),
-                          
-                          // Large Host Image
-                          _buildHostImage(),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // Speech Bubble with Text
-                          _buildSpeechBubble(),
-                          
-                          const SizedBox(height: 28),
-                          
-                          // Host Rules List
-                          _buildHostRulesList(),
-                          
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Go Live Button - Fixed at Bottom
-                Container(
-                  color: const Color(0xFF1A1A1A), // Dark background
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                  child: SafeArea(
-                    top: false,
-                    child: _buildGoLiveButton(),
-                          ),
-                        ),
-                      ],
-                    ),
+      body: _isCheckingPermission
+          ? const SizedBox.shrink() // Open simply – no spinner; popup or camera when check done
+          : _hasPermission
+              ? _buildCameraPreview()
+              : const SizedBox.shrink(), // No permission: popup handles the UI
     );
   }
 
-  // Progress Steps - Compact Design
-  Widget _buildProgressSteps() {
-    return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Step 1 - Active
-          Column(
-                      children: [
-                        Container(
-                width: 44,
-                height: 44,
-                          decoration: BoxDecoration(
-                  color: const Color(0xFFFF1B7C),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 3),
-                          ),
-                  ],
-                        ),
-                child: const Center(
-                  child: Text(
-                    '1',
-                          style: TextStyle(
-                      color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                    ),
-                  ),
-              const SizedBox(height: 6),
-              const Text(
-                'Rules',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-          // Connector Line - Enhanced Design
-                            Expanded(
-                    child: Container(
-              height: 2,
-              margin: const EdgeInsets.only(bottom: 35),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                    const Color(0xFFFF1B7C).withValues(alpha: 0.4),
-                    Colors.grey[300]!,
-                    Colors.grey[200]!,
-                          ],
-                  stops: const [0.0, 0.3, 1.0],
-                ),
-                borderRadius: BorderRadius.circular(1),
-                        ),
-                        ),
-                      ),
-          // Step 2 - Next
-          Column(
-                        children: [
-                          Container(
-                width: 44,
-                height: 44,
-                            decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                            ),
-                            child: const Icon(
-                  Icons.live_tv,
-                  color: Colors.white,
-                  size: 20,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                'Go Live',
-                                  style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ],
-                            ),
-        ],
-      ),
-    );
-  }
-
-  // Large Host Image - Compact Design
-  Widget _buildHostImage() {
-    final userId = _auth.currentUser?.uid ?? '';
-    final photoURL = _userData?.photoURL;
-    
-    return Container(
-      width: 140,
-      height: 140,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 5),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            spreadRadius: 1,
-            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-      child: Stack(
-        children: [
-          // Background Circle with gradient
-          Container(
-            width: 140,
-            height: 140,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFFFF1B7C).withValues(alpha: 0.12),
-                  const Color(0xFFFF69B4).withValues(alpha: 0.08),
-                ],
-              ),
-            ),
-          ),
-          // Profile Image
-          Padding(
-            padding: const EdgeInsets.all(2.5),
-            child: CachedAvatarWidget(
-              photoURL: photoURL,
-              userId: userId,
-              radius: 67,
-            ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  // Speech Bubble - Enhanced Design
-  Widget _buildSpeechBubble() {
+  Widget _buildCameraPreview() {
     return Stack(
-      clipBehavior: Clip.none,
       children: [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2A2A2A), // Dark grey container
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: const Color(0xFFFF1B7C).withValues(alpha: 0.3),
-              width: 1.5,
-            ),
-                          boxShadow: [
-                            BoxShadow(
-                color: const Color(0xFFFF1B7C).withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-                spreadRadius: 0,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 12,
-                offset: const Offset(0, 3),
-                spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.stars_rounded,
-                    color: const Color(0xFFFF1B7C).withValues(alpha: 0.8),
-                    size: 18,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'Go live, make connections & get gifts',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                        height: 1.3,
-                        letterSpacing: 0.1,
-                      ),
+        // Camera Preview
+        Positioned.fill(
+          child: _isPreviewReady && _engine != null
+              ? AgoraVideoView(
+                  controller: VideoViewController(
+                    rtcEngine: _engine!,
+                    canvas: const VideoCanvas(
+                      uid: 0,
+                      renderMode: RenderModeType.renderModeHidden,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Review the community guidelines to ensure a safe and positive experience.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 13,
-                  height: 1.4,
-                  letterSpacing: 0.05,
+                )
+              : const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFFFF1B7C),
+                  ),
                 ),
-              ),
-            ],
-          ),
         ),
-        // Speech bubble tail (pointing up to host image)
+        
+        // Go Live Button - Container with reduced width, moved upward from bottom
         Positioned(
-          top: -10,
-          left: MediaQuery.of(context).size.width / 2 - 10,
-          child: CustomPaint(
-            size: const Size(20, 10),
-            painter: _SpeechBubblePainter(),
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(48, 0, 48, 72),
+              child: _buildGoLiveButton(),
+            ),
           ),
         ),
       ],
     );
   }
 
-  // Host Rules List - Professional Design
-  Widget _buildHostRulesList() {
-    final rules = [
-      {
-        'icon': Icons.verified_user,
-        'title': 'Age Verification',
-        'description': 'You must be 18+ years old to go live',
-      },
-      {
-        'icon': Icons.shield,
-        'title': 'Content Guidelines',
-        'description': 'No explicit, violent, or inappropriate content',
-      },
-      {
-        'icon': Icons.people,
-        'title': 'Respectful Behavior',
-        'description': 'Be respectful to all viewers and maintain a positive environment',
-      },
-      {
-        'icon': Icons.block,
-        'title': 'No Harassment',
-        'description': 'Harassment, bullying, or hate speech is strictly prohibited',
-      },
-      {
-        'icon': Icons.privacy_tip,
-        'title': 'Privacy & Safety',
-        'description': 'Do not share personal information or engage in unsafe activities',
-      },
-      {
-        'icon': Icons.monetization_on,
-        'title': 'Gift Policy',
-        'description': 'Gifts received are subject to platform terms and conditions',
-      },
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF1B7C),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  'Community Guidelines',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.2,
-                ),
-              ),
-            ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...rules.map((rule) => _buildRuleItem(
-                icon: rule['icon'] as IconData,
-                title: rule['title'] as String,
-                description: rule['description'] as String,
-              )),
-        ],
-      ),
-    );
-  }
-
-  // Individual Rule Item - Enhanced Design
-  Widget _buildRuleItem({
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A), // Dark grey container
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.grey[700]!,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-            width: 44,
-            height: 44,
-                decoration: BoxDecoration(
-              gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFFFF1B7C).withValues(alpha: 0.15),
-                  const Color(0xFFFF1B7C).withValues(alpha: 0.08),
-                ],
-                ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFFF1B7C).withValues(alpha: 0.2),
-                width: 1,
-              ),
-                ),
-                child: Icon(
-                  icon,
-              color: const Color(0xFFFF1B7C),
-              size: 22,
-                ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-          Text(
-            title,
-            style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.1,
-            ),
-          ),
-                const SizedBox(height: 5),
-          Text(
-            description,
-            style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-              height: 1.4,
-                    letterSpacing: 0.05,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Go Live Button - Compact Design
   Widget _buildGoLiveButton() {
     return Container(
       width: double.infinity,
       height: 52,
       decoration: BoxDecoration(
-        color: const Color(0xFFFF1B7C),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF1B7C).withValues(alpha: 0.4),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 2),
             spreadRadius: 0,
           ),
         ],
@@ -574,61 +236,24 @@ class _HostRulesScreenState extends State<HostRulesScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: widget.onGoLive,
-          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            // Call the onGoLive callback to start the live stream
+            widget.onGoLive();
+          },
+          borderRadius: BorderRadius.circular(10),
           child: const Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.live_tv,
-                  color: Colors.white,
-                  size: 22,
-                ),
-                SizedBox(width: 10),
-                Text(
-                  'Go Live',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ],
+            child: Text(
+              'Go Live',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.6,
+              ),
             ),
           ),
         ),
       ),
     );
   }
-
-}
-
-// Custom Painter for Speech Bubble Tail - Professional
-class _SpeechBubblePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF2A2A2A) // Dark grey for speech bubble tail
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    path.moveTo(size.width / 2, 0);
-    path.lineTo(size.width / 2 - 10, size.height);
-    path.lineTo(size.width / 2 + 10, size.height);
-    path.close();
-
-    canvas.drawPath(path, paint);
-    
-    // Border
-    final borderPaint = Paint()
-      ..color = const Color(0xFFFF1B7C).withValues(alpha: 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawPath(path, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

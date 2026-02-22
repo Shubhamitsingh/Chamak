@@ -328,7 +328,7 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.25),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            border: Border.all(color: Colors.white70),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -362,7 +362,7 @@ class _LevelScreenState extends State<LevelScreen> with TickerProviderStateMixin
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+        border: Border.all(color: Colors.white70, width: 1),
       ),
       child: Row(
         children: [

@@ -96,8 +96,8 @@ class _TeamMessagesScreenState extends State<TeamMessagesScreen> {
             child: StreamBuilder<List<TeamMessageModel>>(
               stream: _teamMessageService.getTeamMessagesStream(),
               builder: (context, snapshot) {
-                // Loading
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                // Only show loading indicator on initial load, not on rebuilds
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                   return const Center(
                     child: CircularProgressIndicator(
                       color: Color(0xFFFF1B7C),

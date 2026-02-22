@@ -1670,7 +1670,7 @@ exports.verifyPlayStorePurchase = onCall(
     try {
       // Map product IDs to coin amounts
       const productToCoins = {
-        'coins_90_pack': 90, // Changed from coins_90 (deleted ID can't be reused)
+        'coins_190': 190, // ₹19 package - 190 coins (10 coins/rupee)
         'coins_550': 550,
         'coins_1100': 1100,
         'coins_1700': 1700,

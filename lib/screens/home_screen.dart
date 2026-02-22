@@ -10,6 +10,8 @@ import 'chat_list_screen.dart';
 import 'wallet_screen.dart';
 import 'agora_live_stream_screen.dart';
 import 'host_rules_screen.dart';
+import 'become_creator_screen.dart';
+import 'contact_support_screen.dart';
 import 'user_profile_view_screen.dart';
 import '../widgets/announcement_panel.dart';
 import '../services/live_stream_service.dart';
@@ -30,6 +32,7 @@ import '../widgets/enhanced_loading_screen.dart';
 import '../services/device_service.dart';
 import 'live_reels_screen.dart';
 import 'nearby_users_screen.dart';
+import 'leaderboard_screen.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 
@@ -309,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen>
             color: const Color(0xFFFF1744).withOpacity(0.1),
             borderRadius: BorderRadius.circular(5),
             border: Border.all(
-              color: const Color(0xFFFF1744).withOpacity(0.2),
+              color: const Color(0xFFF8BBD9),
               width: 1,
             ),
           ),
@@ -1144,14 +1147,15 @@ class _HomeScreenState extends State<HomeScreen>
                     padding: const EdgeInsets.all(2.0),
                     child: Image.asset(
                       'assets/images/bell.png',
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       fit: BoxFit.contain,
+                      color: Colors.white.withOpacity(0.95),
                       errorBuilder: (context, error, stackTrace) {
                         return Icon(
                           Icons.notifications,
                           color: Colors.white.withOpacity(0.95),
-                          size: 24,
+                          size: 20,
                         );
                       },
                     ),
@@ -1168,14 +1172,15 @@ class _HomeScreenState extends State<HomeScreen>
                         padding: const EdgeInsets.all(2.0),
                         child: Image.asset(
                           'assets/images/bell.png',
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           fit: BoxFit.contain,
+                          color: Colors.white.withOpacity(0.95),
                           errorBuilder: (context, error, stackTrace) {
                             return Icon(
                               Icons.notifications,
                               color: Colors.white.withOpacity(0.95),
-                              size: 24,
+                              size: 20,
                             );
                           },
                         ),
@@ -1228,14 +1233,15 @@ class _HomeScreenState extends State<HomeScreen>
                                 padding: const EdgeInsets.all(2.0),
                                 child: Image.asset(
                                   'assets/images/bell.png',
-                                  width: 24,
-                                  height: 24,
+                                  width: 20,
+                                  height: 20,
                                   fit: BoxFit.contain,
+                                  color: Colors.white.withOpacity(0.95),
                                   errorBuilder: (context, error, stackTrace) {
                                     return Icon(
                                       Icons.notifications,
                                       color: Colors.white.withOpacity(0.95),
-                                      size: 24,
+                                      size: 20,
                                     );
                                   },
                                 ),
@@ -1321,6 +1327,38 @@ class _HomeScreenState extends State<HomeScreen>
                         color: Colors.white.withOpacity(0.95),
                         size: 24,
                       ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 4),
+
+                // Trophy Icon (first from right) - Leaderboard
+                GestureDetector(
+                  onTap: () {
+                    if (!mounted) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LeaderboardScreen(),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(2.0),
+                    child: Image.asset(
+                      'assets/images/rank.png',
+                      width: 18,
+                      height: 18,
+                      fit: BoxFit.contain,
+                      color: Colors.white.withOpacity(0.95),
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.emoji_events_rounded,
+                          color: Colors.white.withOpacity(0.95),
+                          size: 18,
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -1648,15 +1686,16 @@ class _HomeScreenState extends State<HomeScreen>
             debugPrint('👥 [EXPLORE] Hosts snapshot state: ${hostsSnapshot.connectionState}, hasData: ${hostsSnapshot.hasData}, hasError: ${hostsSnapshot.hasError}');
             debugPrint('📡 [EXPLORE] Live streams snapshot state: ${liveStreamsSnapshot.connectionState}, hasData: ${liveStreamsSnapshot.hasData}, hasError: ${liveStreamsSnapshot.hasError}');
             
-            // Loading state - wait only if hosts data not yet available
+            // Show empty state immediately instead of loading indicator
+            // Data will load in background and update when ready
             if (hostsSnapshot.connectionState == ConnectionState.waiting &&
                 !hostsSnapshot.hasData) {
-              debugPrint('⏳ [EXPLORE] Waiting for hosts data...');
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFFF69B4),
-                ),
-              );
+              debugPrint('⏳ [EXPLORE] Loading hosts data in background...');
+              // Show empty state - data will populate when ready
+              if (!liveStreamsSnapshot.hasData || liveStreamsSnapshot.data == null || liveStreamsSnapshot.data!.isEmpty) {
+                return const SizedBox.shrink(); // Show nothing while loading, content will appear when data arrives
+              }
+              // If we have live streams, show them even if hosts are still loading
             }
 
             // Error state - Handle permission-denied and index errors specifically
@@ -2865,14 +2904,15 @@ class _HomeScreenState extends State<HomeScreen>
                 );
               }
             }
-            // Loading state - wait only for hosts data
+            // Show content immediately - data loads in background
+            // Loading state - show empty state instead of spinner
             if (hostsSnapshot.connectionState == ConnectionState.waiting &&
                 !hostsSnapshot.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFFF69B4),
-                ),
-              );
+              // Show empty state - data will populate when ready
+              if (!liveStreamsSnapshot.hasData || liveStreamsSnapshot.data == null || liveStreamsSnapshot.data!.isEmpty) {
+                return const SizedBox.shrink(); // Show nothing while loading, content will appear when data arrives
+              }
+              // If we have live streams, show them even if hosts are still loading
             }
 
             // Error state - Handle permission-denied specifically
@@ -3287,14 +3327,15 @@ class _HomeScreenState extends State<HomeScreen>
               .where('isActive', isEqualTo: true)
               .snapshots(),
           builder: (context, hostsSnapshot) {
-            // Loading state - wait only for hosts data
+            // Show content immediately - data loads in background
+            // Loading state - show empty state instead of spinner
             if (hostsSnapshot.connectionState == ConnectionState.waiting &&
                 !hostsSnapshot.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFFF69B4),
-                ),
-              );
+              // Show empty state - data will populate when ready
+              if (!liveStreamsSnapshot.hasData || liveStreamsSnapshot.data == null || liveStreamsSnapshot.data!.isEmpty) {
+                return const SizedBox.shrink(); // Show nothing while loading, content will appear when data arrives
+              }
+              // If we have live streams, show them even if hosts are still loading
             }
 
             // Error state - Handle permission-denied specifically
@@ -4008,27 +4049,8 @@ class _HomeScreenState extends State<HomeScreen>
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(
-                color: Color(0xFFFF69B4),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Starting live stream...',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
+        barrierColor: Colors.black.withValues(alpha: 0.7),
+        builder: (context) => const _AnimatedLoadingDialog(),
       );
       isLoadingDialogShown = true;
       navigator = Navigator.of(context);
@@ -4152,15 +4174,17 @@ class _HomeScreenState extends State<HomeScreen>
         isActive: true,
       );
 
-      // Create stream with longer timeout and better error handling
+      // Create stream with longer timeout and better error handling.
+      // Use the returned document ID so host screen gets real-time viewer count and audience list (fixes doc reuse mismatch).
+      String actualStreamId = streamId;
       try {
-        await liveStreamService
+        actualStreamId = await liveStreamService
             .createStream(stream)
             .timeout(const Duration(seconds: 10));
-        debugPrint('✅ Live stream created: $streamId');
+        debugPrint('✅ Live stream created: $actualStreamId');
       } catch (e) {
         debugPrint('⚠️ Error creating stream (but continuing): $e');
-        // Continue anyway - stream might still work
+        // Continue anyway - stream might still work; use generated streamId
       }
 
       // Close loading dialog
@@ -4171,7 +4195,7 @@ class _HomeScreenState extends State<HomeScreen>
 
       if (!mounted) return;
 
-      // Step 8: Navigate to live stream screen
+      // Step 8: Navigate to live stream screen (use actualStreamId so host sees real-time viewer count and audience list)
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -4179,7 +4203,7 @@ class _HomeScreenState extends State<HomeScreen>
             channelName: channelName,
             token: token,
             isHost: true,
-            streamId: streamId,
+            streamId: actualStreamId,
           ),
         ),
       );
@@ -4222,107 +4246,292 @@ class _HomeScreenState extends State<HomeScreen>
     return const ChatListScreen();
   }
 
+  // ========== (+) GO LIVE TAP: permission check, then HostRulesScreen or bottom sheet on home ==========
+  Future<void> _onGoLiveTapped() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.pleaseLoginToStartLiveStream),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      final userData = await _databaseService.getUserData(currentUser.uid);
+      if (mounted && (userData == null || !userData.isActive)) {
+        _showGoLiveBottomSheet();
+        return;
+      }
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HostRulesScreen(onGoLive: _startLiveStream),
+        ),
+      );
+    } catch (e) {
+      if (mounted) _showGoLiveBottomSheet();
+    }
+  }
+
+  void _showGoLiveBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Center(
+                child: Text(
+                  'Go Live',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFFFF1B7C),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'You need to become a creator to go live.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        final phoneNumber = _auth.currentUser?.phoneNumber ??
+                            _auth.currentUser?.email ?? '';
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BecomeCreatorScreen(
+                              phoneNumber: phoneNumber,
+                            ),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF1B7C).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Image.asset(
+                                'assets/images/video.png',
+                                fit: BoxFit.contain,
+                                color: const Color(0xFFFF1B7C),
+                                errorBuilder: (_, __, ___) => const Icon(Icons.star_rounded, color: Color(0xFFFF1B7C), size: 24),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            AppLocalizations.of(context)!.becomeACreator,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ContactSupportScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF06B6D4).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.support_agent_rounded, color: Color(0xFF06B6D4), size: 24),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            AppLocalizations.of(context)!.contactSupport,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ========== BOTTOM NAVIGATION BAR ==========
   Widget _buildBottomNavigationBar() {
     final currentUser = _auth.currentUser;
 
-    return BottomNavigationBar(
-      currentIndex: _currentBottomIndex,
-      onTap: (index) {
-        // Handle (+) button click (index 2) - navigate to host rules screen
-        if (index == 2) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HostRulesScreen(
-                onGoLive: _startLiveStream,
-              ),
-            ),
-          );
-          // Don't change the selected index, keep it on current tab
-          return;
-        }
-
-        setState(() {
-          _currentBottomIndex = index;
-        });
-      },
-      selectedItemColor: Colors.black, // Black for selected items
-      unselectedItemColor: Colors.grey,
-      type: BottomNavigationBarType.fixed,
-      elevation: 8,
-      backgroundColor: Colors.white,
-      selectedFontSize: 11,
-      unselectedFontSize: 10,
-      iconSize: 28,
-      items: [
-        // Home
-        BottomNavigationBarItem(
-          icon: const Icon(Icons.home_rounded, size: 28),
-          label: AppLocalizations.of(context)!.home,
+    return Theme(
+      data: Theme.of(context).copyWith(
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
+        bottomNavigationBarTheme: Theme.of(context).bottomNavigationBarTheme.copyWith(
+          selectedIconTheme: const IconThemeData(size: 26),
+          unselectedIconTheme: const IconThemeData(size: 26),
+          selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+          unselectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.normal),
         ),
-
-        // Wallet
-        BottomNavigationBarItem(
-          icon: _buildColoredIcon(
-            'assets/images/walleticon.png',
-            isSelected: _currentBottomIndex == 1,
+      ),
+      child: BottomNavigationBar(
+        currentIndex: _currentBottomIndex,
+          onTap: (index) {
+            if (index == 2) {
+              _onGoLiveTapped();
+              return;
+            }
+            setState(() => _currentBottomIndex = index);
+          },
+          selectedItemColor: Colors.black,
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          elevation: 8,
+          backgroundColor: Colors.white,
+          selectedFontSize: 10,
+          unselectedFontSize: 10,
+          iconSize: 26,
+          items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded, size: 26),
+            label: AppLocalizations.of(context)!.home,
           ),
-          label: AppLocalizations.of(context)!.wallet,
-        ),
-
-        // Go Live (Plus Icon - Centered)
-        BottomNavigationBarItem(
-          icon: Padding(
-            padding: const EdgeInsets.only(top: 5),
-            child: Container(
-              width: 44,
-              height: 44, // Fixed: Increased from 32 to 44 for accessibility (minimum touch target)
-              decoration: BoxDecoration(
-                color: Colors.grey[300], // Gray background
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.2), // Gray shadow
-                    blurRadius: 6,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.add,
-                color: Colors.black, // Black icon
-                size: 24,
-                weight: 700,
-              ),
+          BottomNavigationBarItem(
+            icon: _buildColoredIcon(
+              'assets/images/walleticon.png',
+              isSelected: _currentBottomIndex == 1,
+              size: 26,
+              selectedColor: Colors.black,
             ),
+            label: AppLocalizations.of(context)!.wallet,
           ),
-          label: '',
-        ),
-
-        // Message with Badge
-        BottomNavigationBarItem(
-          icon: currentUser != null
-              ? StreamBuilder<int>(
-                  stream: _chatService.getTotalUnreadCount(currentUser.uid),
-                  builder: (context, snapshot) {
-                    final unreadCount = snapshot.data ?? 0;
-                    return _buildMessageIconWithBadge(unreadCount);
-                  },
-                )
-              : _buildColoredIcon(
-                  'assets/images/comment.png',
-                  isSelected: _currentBottomIndex == 3,
+          BottomNavigationBarItem(
+            icon: Padding(
+              padding: EdgeInsets.zero,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.2),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-          label: AppLocalizations.of(context)!.messages,
-        ),
-
-        // Me (Profile)
+                child: const Icon(
+                  Icons.add,
+                  color: Colors.black,
+                  size: 20,
+                  weight: 700,
+                ),
+              ),
+            ),
+            label: '',
+          ),
         BottomNavigationBarItem(
-          icon: const Icon(Icons.person, size: 28),
-          label: AppLocalizations.of(context)!.me,
-        ),
-      ],
+            icon: currentUser != null
+                ? StreamBuilder<int>(
+                    stream: _chatService.getTotalUnreadCount(currentUser.uid),
+                    builder: (context, snapshot) {
+                      final unreadCount = snapshot.data ?? 0;
+                      return _buildMessageIconWithBadge(unreadCount);
+                    },
+                  )
+                : _buildColoredIcon(
+                    'assets/images/comment.png',
+                    isSelected: _currentBottomIndex == 3,
+                    size: 26,
+                    selectedColor: Colors.black,
+                  ),
+            label: AppLocalizations.of(context)!.messages,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person, size: 26),
+            label: AppLocalizations.of(context)!.me,
+          ),
+        ],
+      ),
     );
   }
 
@@ -4334,6 +4543,8 @@ class _HomeScreenState extends State<HomeScreen>
         _buildColoredIcon(
           'assets/images/comment.png',
           isSelected: _currentBottomIndex == 3,
+          size: 26,
+          selectedColor: Colors.black,
         ),
         if (unreadCount > 0)
           Positioned(
@@ -4420,16 +4631,18 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // Build colored icon (black when selected, gray when not selected)
-  Widget _buildColoredIcon(String imagePath, {required bool isSelected}) {
+  Widget _buildColoredIcon(String imagePath, {
+    required bool isSelected,
+    double size = 28,
+    Color? selectedColor,
+  }) {
+    final color = isSelected ? (selectedColor ?? Colors.black) : Colors.grey;
     return ColorFiltered(
-      colorFilter: ColorFilter.mode(
-        isSelected ? Colors.black : Colors.grey,
-        BlendMode.srcATop,
-      ),
+      colorFilter: ColorFilter.mode(color, BlendMode.srcATop),
       child: Image.asset(
         imagePath,
-        width: 28,
-        height: 28,
+        width: size,
+        height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
         errorBuilder: (context, error, stackTrace) {
@@ -4437,8 +4650,85 @@ class _HomeScreenState extends State<HomeScreen>
             imagePath.contains('walleticon')
                 ? Icons.account_balance_wallet
                 : Icons.message,
-            size: 28,
-            color: isSelected ? Colors.black : Colors.grey,
+            size: size,
+            color: color,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AnimatedLoadingDialog extends StatefulWidget {
+  const _AnimatedLoadingDialog();
+
+  @override
+  State<_AnimatedLoadingDialog> createState() => _AnimatedLoadingDialogState();
+}
+
+class _AnimatedLoadingDialogState extends State<_AnimatedLoadingDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2700), // ~900ms per number, slower
+    )..repeat(); // Loop continuously
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          // Single circle: show 1, then 2, then 3, then 1... (one number at a time)
+          final currentNumber = (_controller.value * 3).floor() % 3 + 1;
+          
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // One circle only, number cycles 1 → 2 → 3 → 1
+              Container(
+                width: 96,
+                height: 96,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    '$currentNumber',
+                    style: const TextStyle(
+                      color: Color(0xFFFF1B7C),
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Starting live stream...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           );
         },
       ),
